@@ -1051,7 +1051,7 @@ jobs:
       - name: Build installable APK
         run: |
           chmod +x ./gradlew
-          ./gradlew :app:assembleDebug --no-daemon --stacktrace
+          ./gradlew :app:assembleDebug --no-daemon --max-workers=2 --console=plain -Dorg.gradle.jvmargs="-Xmx6g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8" -Dkotlin.compiler.execution.strategy=in-process
       - name: Upload Spotui Modified APK
         uses: actions/upload-artifact@v4
         with:
