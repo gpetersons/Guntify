@@ -21,8 +21,8 @@ jobs:
       - name: Apply Spotui Modified source
         shell: bash
         run: |
-          test -f Spotui-Modified-adaptive-home-source.zip || { echo 'Missing source ZIP in repository root'; exit 1; }
-          unzip -q -o Spotui-Modified-adaptive-home-source.zip
+          test -f Spotui-Modified-radio-download-shuffle-source.zip || { echo 'Missing source ZIP in repository root'; exit 1; }
+          unzip -q -o Spotui-Modified-radio-download-shuffle-source.zip
           cp -a Spotui-Modified/. ./
           rm -rf Spotui-Modified
 
