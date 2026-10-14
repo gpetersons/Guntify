@@ -33,10 +33,10 @@ jobs:
           PY
       - name: Extract source
         run: |
-          sha256sum USpot-build-30-source.zip
-          unzip -q USpot-build-30-source.zip -d build-source
+          sha256sum USpot-build-32-source.zip
+          unzip -q USpot-build-32-source.zip -d build-source
           grep -E 'version(Code|Name) =' build-source/Spotui-Modified/app/build.gradle.kts
-          grep -q 'versionCode = 30' build-source/Spotui-Modified/app/build.gradle.kts
+          grep -q 'versionCode = 32' build-source/Spotui-Modified/app/build.gradle.kts
       - name: Build and test
         working-directory: build-source/Spotui-Modified
         run: |
@@ -45,5 +45,5 @@ jobs:
           ./gradlew :app:testDebugUnitTest --no-daemon --max-workers=2
       - uses: actions/upload-artifact@v4
         with:
-          name: USpot-1.1-build-30-APK
+          name: USpot-1.1-build-32-APK
           path: build-source/Spotui-Modified/app/build/outputs/apk/debug/*.apk
