@@ -19,7 +19,7 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v3
         with:
-          packages: "platform-tools platforms;android-34 build-tools;34.0.0"
+          packages: "platform-tools platforms;android-34 build-tools;35.0.0"
       - name: Restore saved signing key
         env:
           SIGNING_KEY: ${{ secrets.USPOT_SIGNING_KEYSTORE_BASE64 }}
@@ -32,7 +32,7 @@ jobs:
           pathlib.Path(os.environ['USPOT_SIGNING_KEYSTORE']).write_bytes(base64.b64decode(''.join(key.split()), validate=True))
           PY
       - name: Extract source
-        run: unzip -q USpot-1.1-source.zip -d build-source
+        run: unzip -q USpot-1.1-backup-source.zip -d build-source
       - name: Build and test
         working-directory: build-source/Spotui-Modified
         run: |
