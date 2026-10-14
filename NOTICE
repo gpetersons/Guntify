@@ -1,10 +1,10 @@
 USpot — modified version of Spotui
-Display version: 1.1; internal build: 39
+Display version: 1.1; internal build: 41
 Modification notice date: October 14, 2026
 
 Original project: Spotui, by its authors and contributors
 https://github.com/Spotui/Spotui
-USpot modifications: Shawn (rare621), Copyright (C) 2026
+USpot modifications: rare621, Copyright (C) 2026
 https://github.com/rare621/Spotui
 
 This is a modified fork, not an official Spotui or Spotify release. The work
@@ -37,6 +37,6 @@ Spotify is a trademark of Spotify AB. USpot is not affiliated with or endorsed
 by Spotify. The code license does not grant rights to third-party music,
 trademarks or services.
 
-Corresponding source: the matching USpot-build-39-source.zip, distributed with
+Corresponding source: the matching USpot-build-41-source.zip, distributed with
 the APK and retained at https://github.com/rare621/Spotui . See SOURCE.md for
 the exact build source link, build instructions and distribution instructions.

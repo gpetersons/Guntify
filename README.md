@@ -1,6 +1,6 @@
 # USpot
 
-USpot is Shawn’s (rare621) modified version of Spotui for Android, built with Jetpack Compose.
+USpot is rare621’s modified version of Spotui for Android, built with Jetpack Compose.
 
 Original app credit: [Spotui creators and contributors](https://github.com/Spotui/Spotui). USpot is a modified fork released under **GNU GPL version 3**. See [LICENSE](LICENSE), [NOTICE](NOTICE) and [SOURCE.md](SOURCE.md) for the license, dated changes, credits and source/build information. See MODIFIED_VERIFICATION.md for testing limitations and update-signing requirements.
 

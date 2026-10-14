@@ -1,11 +1,11 @@
-# Source and distribution information — USpot 1.1, build 39
+# Source and distribution information — USpot 1.1, build 41
 
 USpot is a modified Spotui fork distributed under GNU GPL version 3. The
 original license text is retained unchanged in LICENSE. See NOTICE for credits,
 the dated modification notice and warranty statement.
 
-The source matching this build is **USpot-build-39-source.zip**:
-https://github.com/rare621/Spotui/blob/main/USpot-build-39-source.zip
+The source matching this build is **USpot-build-41-source.zip**:
+https://github.com/rare621/Spotui/blob/main/USpot-build-41-source.zip
 
 The build workflow also includes this exact input ZIP, LICENSE, NOTICE and this
 file in the same downloadable artifact as the APK. Keep the source alongside
