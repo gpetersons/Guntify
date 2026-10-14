@@ -32,7 +32,11 @@ jobs:
           pathlib.Path(os.environ['USPOT_SIGNING_KEYSTORE']).write_bytes(base64.b64decode(''.join(key.split()), validate=True))
           PY
       - name: Extract source
-        run: unzip -q USpot-1.1-home-refresh-source.zip -d build-source
+        run: |
+          sha256sum USpot-build-29-source.zip
+          unzip -q USpot-build-29-source.zip -d build-source
+          grep -E 'version(Code|Name) =' build-source/Spotui-Modified/app/build.gradle.kts
+          grep -q 'versionCode = 29' build-source/Spotui-Modified/app/build.gradle.kts
       - name: Build and test
         working-directory: build-source/Spotui-Modified
         run: |
@@ -41,5 +45,5 @@ jobs:
           ./gradlew :app:testDebugUnitTest --no-daemon --max-workers=2
       - uses: actions/upload-artifact@v4
         with:
-          name: USpot-1.1-APK
+          name: USpot-1.1-build-29-APK
           path: build-source/Spotui-Modified/app/build/outputs/apk/debug/*.apk
