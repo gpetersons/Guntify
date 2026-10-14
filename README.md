@@ -1,6 +1,8 @@
-# spotui
+# USpot
 
-A Spotify clone for Android, built with Jetpack Compose.
+USpot is Shawn’s (rare621) modified version of Spotui for Android, built with Jetpack Compose.
+
+Original app credit: [Spotui creators and contributors](https://github.com/Spotui/Spotui). USpot is a modified fork released under **GNU GPL version 3**. See [LICENSE](LICENSE), [NOTICE](NOTICE) and [SOURCE.md](SOURCE.md) for the license, dated changes, credits and source/build information. See MODIFIED_VERIFICATION.md for testing limitations and update-signing requirements.
 
 It connects to your real Spotify account and mirrors the Spotify experience:
 
@@ -25,3 +27,7 @@ spotui builds on the work of several open-source projects:
 ## Disclaimer
 
 This project is for educational purposes only. Spotify is a trademark of Spotify AB.
+
+## Sharing an APK
+
+Distribute the matching source ZIP with every APK, keep all notices and license files, and provide a clear source link on the download page. The GitHub workflow packages APK, source, LICENSE, NOTICE and SOURCE.md together. Preserve these files when publishing a release; do not rely solely on expiring Actions artifacts.

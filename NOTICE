@@ -1,0 +1,42 @@
+USpot — modified version of Spotui
+Display version: 1.1; internal build: 39
+Modification notice date: October 14, 2026
+
+Original project: Spotui, by its authors and contributors
+https://github.com/Spotui/Spotui
+USpot modifications: Shawn (rare621), Copyright (C) 2026
+https://github.com/rare621/Spotui
+
+This is a modified fork, not an official Spotui or Spotify release. The work
+as a whole is distributed under GNU General Public License version 3. Existing
+copyright, license and attribution notices are preserved. Other components
+retain their respective notices and license terms; these are not replaced by
+this notice. See LICENSE for the complete GPL version 3 text.
+
+USpot's changes include local listening-based Home recommendations and history,
+Radio queue management, Following, search and Library UI, equalizer controls,
+settings and data backup, playback preparation/recovery/resumption, navigation,
+branding and build packaging. The dated source packages and validation notes
+describe the modified build. Features are subject to the documented testing
+limits; the notices do not assert that every feature has been device-tested.
+
+You may copy, redistribute and modify this work under the GPL version 3.
+This program is distributed WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See LICENSE.
+
+Credits inherited from the original Spotui README:
+- Meld: Spotify metadata and YouTube streaming layer (the original README did
+  not identify a specific repository URL).
+- Neptune: https://github.com/navneet851/spotify-clone-jetpack-compose
+- SpotiFLAC: https://github.com/spotbye/SpotiFLAC
+- SimpMusic: https://github.com/maxrave-dev/SimpMusic
+Additional imported code and build dependencies keep their own notices.
+This credit list is not a complete audit of every dependency's license.
+
+Spotify is a trademark of Spotify AB. USpot is not affiliated with or endorsed
+by Spotify. The code license does not grant rights to third-party music,
+trademarks or services.
+
+Corresponding source: the matching USpot-build-39-source.zip, distributed with
+the APK and retained at https://github.com/rare621/Spotui . See SOURCE.md for
+the exact build source link, build instructions and distribution instructions.
