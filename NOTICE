@@ -1,5 +1,5 @@
 USpot — modified version of Spotui
-Display version: 1.1; internal build: 41
+Display version: 1.1; internal build: 42
 Modification notice date: October 14, 2026
 
 Original project: Spotui, by its authors and contributors
@@ -17,7 +17,8 @@ USpot's changes include local listening-based Home recommendations and history,
 Radio queue management, Following, search and Library UI, equalizer controls,
 settings and data backup, playback preparation/recovery/resumption, navigation,
 branding and build packaging. The dated source packages and validation notes
-describe the modified build. Features are subject to the documented testing
+describe the modified build. Build 42 adds Smart Downloads, listening Stats, queue undo,
+Radio tuning, Smart Shuffle and collection looping. Features are subject to the documented testing
 limits; the notices do not assert that every feature has been device-tested.
 
 You may copy, redistribute and modify this work under the GPL version 3.
@@ -37,6 +38,6 @@ Spotify is a trademark of Spotify AB. USpot is not affiliated with or endorsed
 by Spotify. The code license does not grant rights to third-party music,
 trademarks or services.
 
-Corresponding source: the matching USpot-build-41-source.zip, distributed with
+Corresponding source: the matching USpot-build-42-source.zip, distributed with
 the APK and retained at https://github.com/rare621/Spotui . See SOURCE.md for
 the exact build source link, build instructions and distribution instructions.
