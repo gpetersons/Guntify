@@ -35,10 +35,10 @@ jobs:
           PY
       - name: Extract source
         run: |
-          sha256sum USpot-build-51-source.zip
-          unzip -q USpot-build-51-source.zip -d build-source
+          sha256sum USpot-build-52-source.zip
+          unzip -q USpot-build-52-source.zip -d build-source
           grep -E 'version(Code|Name) =' build-source/Spotui-Modified/app/build.gradle.kts
-          grep -q 'versionCode = 51' build-source/Spotui-Modified/app/build.gradle.kts
+          grep -q 'versionCode = 52' build-source/Spotui-Modified/app/build.gradle.kts
       - name: Build and test
         working-directory: build-source/Spotui-Modified
         run: |
@@ -49,9 +49,9 @@ jobs:
         run: |
           mkdir -p release
           cp build-source/Spotui-Modified/app/build/outputs/apk/debug/*.apk release/
-          cp USpot-build-51-source.zip release/
+          cp USpot-build-52-source.zip release/
           cp build-source/Spotui-Modified/{LICENSE,NOTICE,SOURCE.md} release/
       - uses: actions/upload-artifact@v4
         with:
-          name: USpot-1.1-build-51-APK
+          name: USpot-1.1-build-52-APK
           path: release/*
