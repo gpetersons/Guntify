@@ -693,6 +693,23 @@ object SongPlayer {
     // prefetch of upcoming tracks doesn't clobber the current source badge (a
     // prefetch resolving the NEXT track via YouTube was flipping the badge to
     // "YouTube" while the current track streamed from Spotify).
+    /** Resolves audio for the paired LAN browser without starting or changing the phone player. */
+    internal suspend fun resolveForBrowser(song: com.music.spotui.data.entity.SongsModel, context: Context): Pair<String, String?>? =
+        withContext(Dispatchers.IO) {
+            registerLossless(listOf(song.url to song.spotifyTrackId))
+            registerDuration(listOf(song.url to song.durationMs))
+            registerExplicit(listOf(song.url to song.explicit))
+            registerMetadata(listOf(song.url to TrackMatchMetadata(song.title, song.singer, song.album)))
+            kotlinx.coroutines.withTimeoutOrNull(50_000L) {
+                resolveStreamUrl(song.url, context.applicationContext, forPlayback = false)?.let { uri ->
+                    uri to streamMimeType(uri, sourceCache[song.url].orEmpty())
+                }
+            }
+        }
+
+    internal fun browserDataSource(context: Context): androidx.media3.datasource.DataSource =
+        com.music.spotui.deezer.DeezerAwareDataSourceFactory(cacheDataSourceFactory(context)).createDataSource()
+
     private suspend fun resolveStreamUrl(
         song: String,
         appContext: Context,
@@ -1328,8 +1345,9 @@ object SongPlayer {
         suspend fun tryIds(ids: List<String>): YTPlayerUtils.PlaybackData? {
             for (videoId in ids) {
                 if (!tried.add(videoId)) continue
-                // One hung candidate must not use up the whole budget.
-                (kotlinx.coroutines.withTimeoutOrNull(15_000L) {
+                // Allow the existing bounded proof (12s) and signature (8s)
+                // initializers to finish; the overall 45s lookup budget still applies.
+                (kotlinx.coroutines.withTimeoutOrNull(30_000L) {
                     YTPlayerUtils.playerResponseForPlayback(
                         videoId = videoId,
                         audioQuality = audioQuality,
@@ -1933,7 +1951,7 @@ object SongPlayer {
         if (!preparationBackoff.ready(now)) return
         preparationJob = scope.launch {
             try {
-                val url = kotlinx.coroutines.withTimeoutOrNull(15_000L) {
+                val url = kotlinx.coroutines.withTimeoutOrNull(35_000L) {
                     resolveStreamUrl(next.url, ctx)
                 } ?: return@launch
                 val valid = withContext(Dispatchers.Main) {

@@ -15,10 +15,11 @@ android {
 
     defaultConfig {
         applicationId = "com.music.spotui.modified"
+        manifestPlaceholders["uspotAppLabel"] = "@string/app_name"
         minSdk = 26
         targetSdk = 34
         // Must exceed every published build: 1.5 shipped as versionCode 14 ("1.4").
-        versionCode = 71
+        versionCode = 74
         versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -51,6 +52,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            if (providers.gradleProperty("uspotWebPreview").orNull == "true") {
+                applicationIdSuffix = ".desktoppreview"
+                manifestPlaceholders["uspotAppLabel"] = "USpot Desktop Preview"
+            }
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -85,6 +92,7 @@ kotlin {
 }
 
 dependencies {
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.2")

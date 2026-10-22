@@ -1,0 +1,6 @@
+{
+  "name": "uspot-web-preview-tests",
+  "private": true,
+  "scripts": {"test": "node browser.cjs"},
+  "devDependencies": {"jsdom": "26.1.0"}
+}

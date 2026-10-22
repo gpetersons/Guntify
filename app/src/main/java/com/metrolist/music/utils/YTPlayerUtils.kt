@@ -65,6 +65,7 @@ object YTPlayerUtils {
     private val MAIN_CLIENT: YouTubeClient = ANDROID_MUSIC
 
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
+        WEB_REMIX,
         TVHTML5,
         ANDROID_VR_1_65_10,
         ANDROID_VR_1_43_32,
@@ -101,7 +102,7 @@ object YTPlayerUtils {
         // Restore visitor initialization used by the earlier resolver. Native clients
         // can require a consistent visitor context even when no web PoToken is needed.
         if (YouTube.visitorData.isNullOrBlank()) {
-            YouTube.visitorData = YouTube.visitorData().getOrNull()
+            YouTube.visitorData = kotlinx.coroutines.withTimeoutOrNull(2_000L) { YouTube.visitorData().getOrNull() }
         }
 
         // Check if this is an uploaded/privately owned track
@@ -166,6 +167,8 @@ object YTPlayerUtils {
             // An obsolete/refused identity can fail at HTTP level before a
             // playability body exists. BitChord walks on instead of aborting.
             for (candidate in STREAM_FALLBACK_CLIENTS) {
+                // Web clients require the proof-bearing path below.
+                if (candidate.useWebPoTokens) continue
                 val response = playerRequest(trace) { YouTube.player(
                     videoId,
                     playlistId,
@@ -301,6 +304,29 @@ object YTPlayerUtils {
                     continue
                 }
 
+                if (client == WEB_REMIX) {
+                    // A real signed-in browser fallback is also needed when native
+                    // clients return OK metadata but their CDN URLs are rejected.
+                    // Never send account cookies to native client identities.
+                    if (!isLoggedIn || usedAgeRestrictedClient == WEB_REMIX) continue
+                    if (sessionId == null) {
+                        YouTube.visitorData = kotlinx.coroutines.withTimeoutOrNull(2_000L) { YouTube.visitorData().getOrNull() }
+                        sessionId = YouTube.visitorData?.takeIf { it.isNotBlank() }
+                    }
+                    val visitor = sessionId ?: continue
+                    if (poToken == null) {
+                        try {
+                            poToken = kotlinx.coroutines.withTimeoutOrNull(12_000L) {
+                                poTokenGenerator.getWebClientPoToken(videoId, visitor)
+                            }
+                        } catch (error: Exception) {
+                            if (error is kotlinx.coroutines.CancellationException) throw error
+                            trace.endpoint(error)
+                        }
+                    }
+                    if (poToken == null) { trace.missingProof(); continue }
+                }
+
                 Timber.tag(logTag).d("Fetching player response for fallback client: ${client.clientName}")
                 // Only pass poToken for clients that support it
                 val clientPoToken = if (client.useWebPoTokens) poToken?.playerRequestPoToken else null
@@ -313,7 +339,7 @@ object YTPlayerUtils {
                         client,
                         clientSigTimestamp,
                         clientPoToken,
-                        authenticated = false,
+                        authenticated = client == WEB_REMIX && isLoggedIn,
                     ) }
             }
 
@@ -374,7 +400,8 @@ object YTPlayerUtils {
                 } else {
                     STREAM_FALLBACK_CLIENTS[clientIndex]
                 }
-                streamUrl = patchClientVersion(streamUrl, currentClient.clientVersion)
+                // Preserve the provider-signed query, including cver. Changing it
+                // after issuance can invalidate the CDN signature.
 
                 // Check if this is a privately owned track
                 val isPrivatelyOwnedTrack = streamPlayerResponse.videoDetails?.musicVideoType == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK"
@@ -450,7 +477,7 @@ object YTPlayerUtils {
                 // Check if this is a privately owned track (uploaded song)
                 val isPrivatelyOwned = streamPlayerResponse.videoDetails?.musicVideoType == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK"
 
-                if (isPrivatelyOwned || clientIndex == STREAM_FALLBACK_CLIENTS.lastIndex) {
+                if (isPrivatelyOwned) {
                     // Restore the original last-resort player attempt. A probe and actual
                     // playback can be treated differently by the CDN; ExoPlayer still
                     // verifies the media and retains its buffering/error recovery.
@@ -585,7 +612,15 @@ object YTPlayerUtils {
         } else "bytes=0-${2 * 1024 * 1024 - 1}"
         val request = okhttp3.Request.Builder().get().url(url).addHeader("Range", range)
         YouTubeClient.forStreamUrl(url).mediaHeaders().forEach { (name, value) -> request.header(name, value) }
-        return com.music.spotui.audio.StreamUrlProbe.check(httpClient.newCall(request.build()), contentLength, onRejected = trace::rejectedHttp)
+        return com.music.spotui.audio.StreamUrlProbe.check(httpClient.newCall(request.build()), contentLength, onRejected = { code ->
+            trace.rejectedHttp(code)
+            runCatching {
+                com.music.spotui.data.preferences.PlaybackDiagnostics.record(
+                    CipherDeobfuscator.appContext, "YouTube stream rejected",
+                    "${YouTubeClient.forStreamUrl(url).clientName}: HTTP $code",
+                )
+            }
+        })
     }
     data class SignatureTimestampResult(
         val timestamp: Int?,
@@ -689,12 +724,6 @@ object YTPlayerUtils {
         Timber.tag(logTag).e("Failed to get stream URL")
         return null
     }
-
-    /** Keep the CDN URL aligned with the client version that minted it. */
-    private fun patchClientVersion(url: String, clientVersion: String): String =
-        if ("cver=" in url) {
-            url.replace(Regex("cver=[^&]+"), "cver=$clientVersion")
-        } else url
 
     fun forceRefreshForVideo(videoId: String) {
         Timber.tag(logTag).d("Force refreshing for videoId: $videoId")

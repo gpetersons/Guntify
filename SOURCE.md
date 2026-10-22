@@ -1,22 +1,27 @@
-# Corresponding source — USpot 1.1, build 71
+# Corresponding source — USpot 1.1, build 74
 
-This repository contains the current source directly. The workflow builds the checkout on pushes to main or when run manually from Actions; no versioned ZIP extraction is needed.
+This repository contains the current source directly. The workflow builds the checkout on pushes to main or manual Actions runs; no source ZIP extraction is needed.
 
-Each published release includes **USpot.apk**, **USpot-source.zip**, **LICENSE**, **NOTICE** and this file. The source ZIP is created with `git archive` from the same commit that built the APK. Keep that exact source with each APK you redistribute.
+Each release includes **USpot.apk**, **USpot-source.zip**, **LICENSE**, **NOTICE** and this file. The source ZIP comes from `git archive` of the same commit that built the APK. Retain that matching source when redistributing the APK.
 
 Repository: https://github.com/rare621/USpot
-Matching release: https://github.com/rare621/USpot/releases/tag/v1.1-build-71
+Matching release: https://github.com/rare621/USpot/releases/tag/v1.1-build-74
 
-## Build requirements
+## Build
 
-- Java 17.
-- Android SDK platform 34 and build-tools 35.0.0.
-- Gradle 8.11.1 from the included wrapper; dependencies resolve from the configured repositories.
+Use Java 17, Android SDK platform 34, build-tools 35.0.0 and the included Gradle 8.11.1 wrapper.
 
-Run `./gradlew :app:assembleDebug --no-daemon --max-workers=2` and `./gradlew :app:testDebugUnitTest --no-daemon --max-workers=2`.
+```sh
+./gradlew :app:assembleDebug :app:testDebugUnitTest --no-daemon --max-workers=2
+cd webui-tests
+npm install --no-audit --no-fund
+npm test
+```
 
-The CI workflow restores the existing private key from `USPOT_SIGNING_KEYSTORE_BASE64`. The existing optional `USPOT_STORE_PASSWORD`, `USPOT_KEY_ALIAS` and `USPOT_KEY_PASSWORD` secrets retain their previous meaning/defaults. Do not generate a replacement key for an update to existing installations. Local builds use the usual debug key unless configured otherwise.
+CI restores the existing production key from `USPOT_SIGNING_KEYSTORE_BASE64`. Optional `USPOT_STORE_PASSWORD`, `USPOT_KEY_ALIAS` and `USPOT_KEY_PASSWORD` retain their defaults and previous meaning. Never commit signing material or generate a replacement key for an update. Local debug builds can use a different key.
 
-The application ID remains `com.music.spotui.modified`, with versionName `1.1` and versionCode `71`. New releases must increase versionCode. The workflow publishes a versioned release only after assembly and unit tests pass; an existing release tag is retained rather than overwritten.
+The public release keeps application ID `com.music.spotui.modified`, versionName `1.1`, versionCode `74`. The workflow checks the signed APK against the previous public release's certificate, application ID and version before publication. It also requires assembly, app unit tests and browser interaction checks to pass. Existing release tags are retained rather than relabeled.
 
-The original GPL version 3 text and third-party source notices are retained. Original project: https://github.com/Spotui/Spotui .
+`-PuspotWebPreview=true` is an optional developer setting for the separately installed `com.music.spotui.modified.desktoppreview` app. It is not used for the public APK and does not update regular USpot installations.
+
+Original GPL version 3 licensing and third-party notices are retained. Original project: https://github.com/Spotui/Spotui . Desktop & Browser uses NanoHTTPD under its bundled BSD 3-Clause notice.

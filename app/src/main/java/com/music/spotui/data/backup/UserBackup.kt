@@ -64,7 +64,7 @@ object UserBackup {
             val files = BackupArchive.stage(stream, stage, (context.cacheDir.usableSpace - 32L * 1024 * 1024).coerceAtLeast(0L))
             val manifest = JSONObject(files.getValue("backup.json").readText())
             require(manifest.getString("format") == "USpotBackup" && manifest.getInt("schema") == 1) { "Unsupported backup format." }
-            require(manifest.getString("appId") == BuildConfig.APPLICATION_ID) { "This backup belongs to another app." }
+            require(BackupIdentityPolicy.compatible(manifest.getString("appId"), BuildConfig.APPLICATION_ID)) { "This backup belongs to another app." }
             val declared = manifest.getJSONObject("files")
             require(files.keys - "backup.json" == declared.keys().asSequence().toSet()) { "Backup file list does not match." }
             declared.keys().forEach { name ->

@@ -49,22 +49,7 @@ class BackupViewModel @Inject constructor(
             try {
         SongPlayer.pause(); SongPlayer.stop()
         withContext(Dispatchers.IO) { UserBackup.restore(context, uri) }
-        invalidateDownloadCache()
-        com.music.spotui.ui.theme.AppearanceSettings.reload(context)
-        com.music.spotui.audio.PlaybackEqualizer.reload(context)
-        val playback = loadLastPlayback(context)
-        val snapshot = loadPlaybackQueue(context)
-        if (playback != null) {
-            val (song, position) = playback
-            if (snapshot != null && snapshot.songs.any { it.id == song.id }) current.restore(snapshot) else current.updateQueue(listOf(song))
-            current.updateSongState(song.coverUri, song.title, song.singer, false, song.id, current.queue.value.indexOfFirst { it.id == song.id }.coerceAtLeast(0), song.album)
-            SongPlayer.setRestorePoint(song.url, position)
-        } else {
-            current.updateQueue(emptyList()); current.updateSongState("", "", "", false, 0, 0, "")
-        }
-        savePlaybackActive(context, false)
-        ListeningHistorySignals.revision.value++
-        BackupSignals.revision.value++
+        com.music.spotui.data.backup.BackupRestoreEffects.apply(context, current)
         _message.value = "Backup restored. Sign in again if needed; reselect external local music folders."
         android.widget.Toast.makeText(context, "Backup restored", android.widget.Toast.LENGTH_LONG).show()
             } catch (cancelled: kotlinx.coroutines.CancellationException) {

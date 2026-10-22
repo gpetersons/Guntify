@@ -81,8 +81,12 @@ class PoTokenGenerator {
                 Triple(webPoTokenGenerator!!, webPoTokenStreamingPot!!, shouldRecreate)
             }
 
-        val playerPot = try {
-            poTokenGenerator.generatePoToken(videoId)
+        // Keep the upstream player/video and streaming/session bindings distinct.
+        // See TeamNewPipe/NewPipe PoTokenProviderImpl: PoTokenResult(visitorData, playerPot, streamingPot).
+        val result = try {
+            PoTokenResult.forVideo(sessionToken = streamingPot, videoId = videoId) {
+                poTokenGenerator.generatePoToken(it)
+            }
         } catch (throwable: Throwable) {
             if (throwable is kotlinx.coroutines.CancellationException) throw throwable
             if (hasBeenRecreated) {
@@ -100,9 +104,6 @@ class PoTokenGenerator {
 
         Timber.tag(TAG).d("poToken pair generated successfully")
 
-        return PoTokenResult(
-            playerRequestPoToken = streamingPot,
-            streamingDataPoToken = playerPot,
-        )
+        return result
     }
 }

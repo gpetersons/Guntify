@@ -12,7 +12,7 @@
   · <a href="https://github.com/rare621/USpot/releases/latest/download/USpot-source.zip">Source code</a>
 </p>
 
-**Version 1.1 · build 71 · Android 8.0 or newer**
+**Version 1.1 · build 74 · Android 8.0 or newer**
 
 USpot builds on [Spotui](https://github.com/Spotui/Spotui), adding a Home that learns from your listening, saved radio stations, radio mixes and more ways to make the player your own. Spotify supplies catalog and account information; music playback uses the existing YouTube and alternative-source integrations.
 
@@ -66,6 +66,7 @@ These are additions and refinements in this fork. Spotify search, playlists, lik
 | **Smart Downloads** | Optional automatic downloads based on your listening. **Off by default**; starts with a target of **20 songs** when you enable it, adjustable in Settings. |
 | **Equalizer** | On/off controls, presets and manual sound adjustment connected to the player's audio session. |
 | **Appearance** | USpot branding, refreshed Home/Library/player/menu designs, playing-context highlights, and light/dark appearance that can follow your device. |
+| **Desktop & Browser** | Optional Wi-Fi browser interface: browse and listen on your computer using the phone as the backend. Shares local history and saved data; browser queue, volume and EQ stay separate. |
 | **Backup and restore** | Export and import local app data from Settings. |
 | **Playback resilience** | Upcoming-stream preparation, retry/backoff handling, recovery controls and sanitized local playback diagnostics. |
 | **Android Auto** | Expanded Recent and Recent radios browsing, plus media-search/voice-request handling. Availability depends on Android, the car and the assistant. |
@@ -88,6 +89,16 @@ New users start with the Spotify content available to their account. As qualifie
 **USpot Radio** is a saved station whose queue the app generates and extends. Start with one song, or choose up to five for **Radio Mix**. The station can combine its original songs with changing playback context as you listen. Stay close limits exploration; Balanced and Explore more allow broader influence. Similarity is not a guarantee that every song stays in one genre.
 
 Radio memory is bounded to **90 days**. Recent songs are less likely to return immediately, rather than being permanently blocked.
+
+## 🖥️ Listen from your computer
+
+Open **Settings → Desktop & Browser → Start desktop mode** on your phone, then enter the displayed `http://...:8765/` address in your computer's browser. Keep both devices on the same trusted router; Ethernet on the computer works too.
+
+Audio plays on the computer. Qualified browser listening updates the connected app's local history, Stats and personalization. Likes and saved radio data use the phone's integrations; playback queues, volume, EQ and some browser preferences remain separate. Refresh a page to pick up data changed on the other screen.
+
+This is an **optional experimental interface**. The phone must stay connected and running in the background. Anyone on the same Wi-Fi can connect while desktop mode is running, so use trusted networks and stop it when finished. Don't expose the address or port to the internet. Some formats depend on browser support, and desktop layouts are still being refined.
+
+Regular USpot and USpot Desktop Preview are separate Android installations. Browser changes belong to whichever installation is hosting the connection; they do not automatically cross between the two apps.
 
 ## 🔒 Your data stays yours
 
@@ -118,7 +129,7 @@ chmod +x gradlew
 
 The [workflow](.github/workflows/build-spotui-modified.yml) runs on pushes to `main` and manual runs. After successful checks it publishes **USpot.apk**, **USpot-source.zip**, **LICENSE**, **NOTICE** and **SOURCE.md**. Source archives come from the same commit used for the APK.
 
-The application ID remains `com.music.spotui.modified`. Existing installations need the same signing key and a higher versionCode to update; build 71 uses versionName `1.1` and versionCode `71`. Never commit private signing material or replace the official key just to make a build succeed. Local debug builds may use a different key.
+The application ID remains `com.music.spotui.modified`. Existing installations need the same signing key and a higher versionCode to update; build 74 uses versionName `1.1` and versionCode `74`. Never commit private signing material or replace the official key just to make a build succeed. Local debug builds may use a different key.
 
 See [SOURCE.md](SOURCE.md) for signing configuration and corresponding-source information. Older source versions remain in Git history.
 

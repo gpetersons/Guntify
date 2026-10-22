@@ -21,6 +21,7 @@ class StreamFailureTrace {
         val code = status?.takeIf { it in setOf("LOGIN_REQUIRED", "UNPLAYABLE", "ERROR", "AGE_CHECK_REQUIRED", "AGE_VERIFICATION_REQUIRED", "CONTENT_CHECK_REQUIRED", "LIVE_STREAM_OFFLINE") } ?: "UNKNOWN"
         add("Status $code")
     }
+    fun missingProof() = add("Web proof unavailable")
     fun missingFormat() = add("No audio format")
     fun missingUrl() = add("No audio URL")
     fun wrongVideo() = add("Wrong video rejected")

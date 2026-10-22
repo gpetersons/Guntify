@@ -35,3 +35,5 @@ published APK releases. Retain these files when redistributing a modified APK.
 Spotify is a trademark of Spotify AB. USpot is not affiliated with or endorsed
 by Spotify. The code license does not grant rights to third-party music,
 trademarks or services.
+
+USpot Desktop & Browser uses NanoHTTPD 2.3.1 (BSD 3-Clause). Project: https://github.com/NanoHttpd/nanohttpd . See bundled NanoHTTPD-LICENSE.txt.

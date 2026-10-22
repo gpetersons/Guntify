@@ -240,14 +240,8 @@ fun PlayerScreen(navController: NavController) {
             }
     }
 
-    // Warm the stream cache for the adjacent tracks so next/previous start instantly.
-    LaunchedEffect(playerViewModel.currentSongId.value, queueSongs) {
-        val idx = queueSongs.indexOfFirst { it.id == playerViewModel.currentSongId.value }
-        if (idx >= 0) {
-            queueSongs.getOrNull(idx + 1)?.let { SongPlayer.prefetch(it.url, context) }
-            queueSongs.getOrNull(idx - 1)?.let { SongPlayer.prefetch(it.url, context) }
-        }
-    }
+    // SongPlayer owns next-track preparation after audible playback starts.
+    // Composable queue changes must not launch detached duplicate lookups.
 
     // Load the current track's Spotify Canvas (full-screen looping video background).
     LaunchedEffect(playerViewModel.currentSongId.value, queueSongs) {
