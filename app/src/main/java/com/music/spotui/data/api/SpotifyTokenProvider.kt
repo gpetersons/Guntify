@@ -20,6 +20,7 @@ object SpotifyTokenProvider {
     private const val TAG = "SpotifyTokenProvider"
     private val mutex = Mutex()
     private var expiresAtMs: Long = 0L
+    private var tokenCookie: String? = null
     // Each attempt costs 3 requests (one to the rate-limited GitHub API), so a failure
     // is remembered briefly instead of being retried by every call on every screen.
     private const val FAILURE_BACKOFF_MS = 30_000L
@@ -28,11 +29,11 @@ object SpotifyTokenProvider {
     /** [force] skips the cached token and the failure backoff (fresh login). */
     suspend fun ensureToken(context: Context, force: Boolean = false): Boolean = mutex.withLock {
         val now = System.currentTimeMillis()
-        if (!force && Spotify.accessToken != null && now < expiresAtMs - 60_000L) {
+        val spDc = SpotifySession.spDc(context)
+        if (!force && tokenCookie == spDc && Spotify.accessToken != null && now < expiresAtMs - 60_000L) {
             return@withLock true
         }
-        if (!force && now - lastFailureAtMs < FAILURE_BACKOFF_MS) return@withLock false
-        val spDc = SpotifySession.spDc(context)
+        if (!force && tokenCookie == spDc && now - lastFailureAtMs < FAILURE_BACKOFF_MS) return@withLock false
         if (spDc.isBlank()) {
             Log.w(TAG, "No sp_dc cookie set — Spotify data unavailable")
             return@withLock false
@@ -40,6 +41,7 @@ object SpotifyTokenProvider {
         SpotifyAuth.fetchAccessToken(spDc).fold(
             onSuccess = { token ->
                 Spotify.accessToken = token.accessToken
+                tokenCookie = spDc
                 expiresAtMs = token.accessTokenExpirationTimestampMs
                 lastFailureAtMs = 0L
                 Log.d(TAG, "Spotify token refreshed")
@@ -47,6 +49,7 @@ object SpotifyTokenProvider {
             },
             onFailure = {
                 Log.e(TAG, "Failed to fetch Spotify token", it)
+                tokenCookie = spDc
                 lastFailureAtMs = now
                 false
             },

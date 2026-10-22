@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -102,6 +103,7 @@ fun DownloadsScreen(navController: NavController) {
     }
 
     Surface(
+        color = Color(AppBackground.toArgb()),
         modifier = Modifier
             .fillMaxSize()
             .background(Color(AppBackground.toArgb()))
@@ -109,25 +111,7 @@ fun DownloadsScreen(navController: NavController) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                CenterAlignedTopAppBar(
-                    modifier = Modifier.padding(16.dp, 0.dp),
-                    navigationIcon = {
-                        Icon(
-                            modifier = Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { navController.navigateUp() },
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "",
-                            tint = Color.White
-                        )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                    ),
-                    title = { Text(text = "") }
-                )
+                com.music.spotui.ui.components.CollectionBackBar(accent) { navController.navigateUp() }
             }
         ) { innerPadding ->
             Column(
@@ -135,52 +119,61 @@ fun DownloadsScreen(navController: NavController) {
                     .fillMaxSize()
                     .background(Color(AppBackground.toArgb()))
                     .consumeWindowInsets(innerPadding)
-                    .padding(bottom = innerPadding.calculateBottomPadding())
+                    .padding(top = innerPadding.calculateTopPadding(), bottom = innerPadding.calculateBottomPadding())
                     .verticalScroll(rememberScrollState())
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(360.dp)
+                        .heightIn(min = 130.dp)
                         .background(
                             brush = Brush.verticalGradient(
-                                colors = listOf(accent.copy(alpha = 0.5f), Color(AppBackground.toArgb())),
-                                startY = -100f,
+                                colors = listOf(com.music.spotui.ui.theme.artworkHeader(accent), Color(AppBackground.toArgb())),
+                                startY = 0f,
                             ),
                         ),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Spacer(modifier = Modifier.padding(25.dp))
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Box(
-                            modifier = Modifier
-                                .size(200.dp)
-                                .background(accent.copy(alpha = 0.25f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = ImageVector.vectorResource(R.drawable.ic_download),
-                                contentDescription = "",
-                                tint = accent,
-                                modifier = Modifier.size(90.dp),
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.padding(5.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         modifier = Modifier.padding(20.dp, 5.dp, 0.dp, 0.dp),
                         text = "Downloaded",
-                        color = Color.White,
-                        fontSize = 28.sp,
+                        color = com.music.spotui.ui.theme.AppText,
+                        fontSize = 30.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         modifier = Modifier.padding(20.dp, 4.dp, 20.dp, 0.dp),
                         text = "${songs.size} songs • available offline",
-                        color = Color.Gray,
+                        color = com.music.spotui.ui.theme.AppSecondary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
+                }
+
+                if (songs.isNotEmpty()) {
+                    val collectionActive = com.music.spotui.audio.CollectionPlaybackPolicy.active("local:downloads",
+                        playerViewModel.activeCollection.value?.key, playerViewModel.currentSongId.value, playerViewModel.queue.value.map { it.id })
+                    val shuffled = collectionActive && playerViewModel.shuffleState.value
+                    fun startDownloads(shuffle: Boolean) {
+                        if (shuffle) playerViewModel.startShuffled(songs) else playerViewModel.updateQueue(songs)
+                        playerViewModel.activeCollection.value = com.music.spotui.data.entity.PlaybackCollection(
+                            "local:downloads", "local", "downloads", "Downloaded", songs.first().coverUri, "Offline music")
+                        val first = playerViewModel.queue.value.firstOrNull() ?: return
+                        playerViewModel.updateSongState(first.coverUri, first.title, first.singer, true, first.id, 0, first.album)
+                        SongPlayer.playSong(first.url, context)
+                    }
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        com.music.spotui.ui.components.CollectionAction(androidx.compose.ui.res.painterResource(R.drawable.ic_player_shuffle), "Shuffle downloads", shuffled) {
+                            if (collectionActive) playerViewModel.updateShuffleState(!shuffled) else startDownloads(true)
+                        }
+                        Spacer(Modifier.weight(1f))
+                        com.music.spotui.ui.components.CollectionPlayButton(collectionActive && playerViewModel.currentSongPlayingState.value) {
+                            if (collectionActive) {
+                                if (playerViewModel.currentSongPlayingState.value) SongPlayer.pause() else SongPlayer.play()
+                            } else startDownloads(false)
+                        }
+                    }
                 }
 
                 // ── Bulk actions: Export all / Clear all ──
@@ -196,7 +189,7 @@ fun DownloadsScreen(navController: NavController) {
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(50))
-                                .background(Color(0xFF1A1A20))
+                                .background(com.music.spotui.ui.theme.AppSurface)
                                 .clickable {
                                     CoroutineScope(Dispatchers.IO).launch {
                                         val (n, dest) = com.music.spotui.data.preferences.exportDownloads(context)
@@ -219,7 +212,7 @@ fun DownloadsScreen(navController: NavController) {
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(50))
-                                .background(Color(0xFF1A1A20))
+                                .background(com.music.spotui.ui.theme.AppSurface)
                                 .clickable {
                                     val n = com.music.spotui.data.preferences.clearAllDownloads(context)
                                     songs = getDownloadedSongs(context)
@@ -238,26 +231,26 @@ fun DownloadsScreen(navController: NavController) {
                     androidx.compose.material3.TextButton(
                         onClick = { com.music.spotui.di.Downloads.cancelAll() },
                         modifier = Modifier.padding(horizontal = 8.dp),
-                    ) { Text("Cancel all downloads (${inProgress.size})", color = Color.White) }
+                    ) { Text("Cancel all downloads (${inProgress.size})", color = com.music.spotui.ui.theme.AppText) }
                 }
                 inProgress.forEach { (song, pct) ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp, 8.dp),
+                            .padding(20.dp, 5.dp).clip(RoundedCornerShape(14.dp)).background(com.music.spotui.ui.theme.AppSurface).padding(10.dp),
                     ) {
                         GlideImage(
                             modifier = Modifier
                                 .size(48.dp)
-                                .clip(RoundedCornerShape(4.dp)),
+                                .clip(RoundedCornerShape(12.dp)),
                             model = song.coverUri,
                             failure = placeholder(R.drawable.placeholder),
                             contentScale = ContentScale.Crop,
                             contentDescription = "",
                         )
                         Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-                            Text(text = song.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                            Text(text = song.title, color = com.music.spotui.ui.theme.AppText, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                             Spacer(modifier = Modifier.height(4.dp))
                             androidx.compose.material3.LinearProgressIndicator(
                                 progress = { (pct.coerceIn(0, 100)) / 100f },
@@ -266,12 +259,12 @@ fun DownloadsScreen(navController: NavController) {
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp)),
                                 color = accent,
-                                trackColor = Color(0xFF333333),
+                                trackColor = com.music.spotui.ui.theme.AppRaised,
                             )
                         }
                         Text(
                             text = "$pct%",
-                            color = Color.Gray,
+                            color = com.music.spotui.ui.theme.AppSecondary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(start = 12.dp),
@@ -282,7 +275,7 @@ fun DownloadsScreen(navController: NavController) {
                 if (songs.isEmpty() && inProgress.isEmpty()) {
                     Text(
                         text = "No downloads yet. Tap ⋯ on a track and choose Download.",
-                        color = Color.Gray,
+                        color = com.music.spotui.ui.theme.AppSecondary,
                         fontSize = 14.sp,
                         modifier = Modifier.padding(20.dp),
                     )
@@ -291,20 +284,21 @@ fun DownloadsScreen(navController: NavController) {
                         com.music.spotui.ui.components.SwipeToQueue(songs[index]) {
                         val song = songs[index]
                         val currentColor = if (song.id == playerViewModel.currentSongId.value)
-                            Color(AppPalette.toArgb()) else Color.White
+                            Color(AppPalette.toArgb()) else com.music.spotui.ui.theme.AppText
 
                         Row(
                             horizontalArrangement = Arrangement.Start,
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(20.dp, 8.dp)
+                                .padding(20.dp, 5.dp).clip(RoundedCornerShape(14.dp)).background(com.music.spotui.ui.theme.AppSurface).padding(10.dp)
                                 .combinedClickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
                                     onLongClick = { menuSong = song },
                                     onClick = {
                                         playerViewModel.updateQueue(songs)
+                                        playerViewModel.activeCollection.value = com.music.spotui.data.entity.PlaybackCollection("local:downloads", "local", "downloads", "Downloaded", song.coverUri, "Offline music")
                                         SongPlayer.playSong(song.url, context)
                                         playerViewModel.updateSongState(
                                             song.coverUri, song.title, song.singer,
@@ -316,7 +310,7 @@ fun DownloadsScreen(navController: NavController) {
                             GlideImage(
                                 modifier = Modifier
                                     .size(48.dp)
-                                    .clip(RoundedCornerShape(4.dp)),
+                                    .clip(RoundedCornerShape(12.dp)),
                                 model = song.coverUri,
                                 failure = placeholder(R.drawable.placeholder),
                                 contentScale = ContentScale.Crop,
@@ -324,7 +318,7 @@ fun DownloadsScreen(navController: NavController) {
                             )
                             Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
                                 Text(text = song.title, color = currentColor, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                                Text(text = song.singer, color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                                Text(text = song.singer, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                             }
                             // Visible way into the song menu (export, remove…); long-press alone was hidden.
                             androidx.compose.material3.IconButton(onClick = { menuSong = song }) {

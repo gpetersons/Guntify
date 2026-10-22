@@ -1,38 +1,22 @@
-# Source and distribution information — USpot 1.1, build 42
+# Corresponding source — USpot 1.1, build 70
 
-USpot is a modified Spotui fork distributed under GNU GPL version 3. The
-original license text is retained unchanged in LICENSE. See NOTICE for credits,
-the dated modification notice and warranty statement.
+This repository contains the current source directly. The workflow builds the checkout on pushes to main or when run manually from Actions; no versioned ZIP extraction is needed.
 
-The source matching this build is **USpot-build-42-source.zip**:
-https://github.com/rare621/Spotui/blob/main/USpot-build-42-source.zip
+Each published release includes **USpot.apk**, **USpot-source.zip**, **LICENSE**, **NOTICE** and this file. The source ZIP is created with `git archive` from the same commit that built the APK. Keep that exact source with each APK you redistribute.
 
-The build workflow also includes this exact input ZIP, LICENSE, NOTICE and this
-file in the same downloadable artifact as the APK. Keep the source alongside
-every APK you share; include a clear source link on each release/download page
-and keep the matching source available for recipients. A link to the original
-Spotui project alone is not the source of a modified USpot APK. GitHub Actions
-artifacts expire, so use a durable release/download location for public releases
-and include both APK and matching source there.
+Repository: https://github.com/rare621/USpot
+Matching release: https://github.com/rare621/USpot/releases/tag/v1.1-build-70
 
-## Build a modified copy
+## Build requirements
 
-1. Extract the ZIP and open the Spotui-Modified directory.
-2. Install Java 17, Android SDK platform 34 and build-tools 35.0.0. Gradle's
-   wrapper obtains Gradle 8.11.1. Gradle resolves the declared libraries from
-   the repositories configured in settings.gradle.kts.
-3. For your own build, use your own Android signing key or the normal local
-   debug key. Do not request or publish USpot's private update-signing key.
-   To update an existing installed USpot APK in place, its original signing
-   key is required; otherwise a differently signed copy needs a different
-   application ID or separate installation.
-4. Run `./gradlew :app:assembleDebug --no-daemon --max-workers=2`.
-5. Run `./gradlew :app:testDebugUnitTest --no-daemon --max-workers=2`.
+- Java 17.
+- Android SDK platform 34 and build-tools 35.0.0.
+- Gradle 8.11.1 from the included wrapper; dependencies resolve from the configured repositories.
 
-The source includes the app, Spotify and InnerTube modules, Gradle wrapper,
-resources and build configuration. Existing third-party notices are retained;
-this notice addition is not a full dependency, media-rights or service-terms
-audit and does not certify blanket legal compliance.
+Run `./gradlew :app:assembleDebug --no-daemon --max-workers=2` and `./gradlew :app:testDebugUnitTest --no-daemon --max-workers=2`.
 
-Original Spotui: https://github.com/Spotui/Spotui
-GNU GPL v3: https://www.gnu.org/licenses/gpl-3.0.html
+The CI workflow restores the existing private key from `USPOT_SIGNING_KEYSTORE_BASE64`. The existing optional `USPOT_STORE_PASSWORD`, `USPOT_KEY_ALIAS` and `USPOT_KEY_PASSWORD` secrets retain their previous meaning/defaults. Do not generate a replacement key for an update to existing installations. Local builds use the usual debug key unless configured otherwise.
+
+The application ID remains `com.music.spotui.modified`, with versionName `1.1` and versionCode `70`. New releases must increase versionCode. The workflow publishes a versioned release only after assembly and unit tests pass; an existing release tag is retained rather than overwritten.
+
+The original GPL version 3 text and third-party source notices are retained. Original project: https://github.com/Spotui/Spotui .

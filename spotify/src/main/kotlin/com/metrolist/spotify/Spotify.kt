@@ -20,9 +20,11 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
+import io.ktor.client.request.put
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -122,6 +124,8 @@ object Spotify {
         val statusCode: Int,
         override val message: String,
         val retryAfterSec: Long = 0,
+        val endpoint: String = "",
+        val detail: String = "",
     ) : Exception(message)
 
     @Volatile
@@ -236,11 +240,11 @@ object Spotify {
         token: String,
         body: JsonObject,
     ): GqlResult {
-        val maxRetries = 3
+        val maxRetries = if (operationName in setOf("addToPlaylist", "removeFromPlaylist", "moveItemsInPlaylist", "addToLibrary", "removeFromLibrary", "editPlaylistAttributes")) 1 else 3
         for (attempt in 0 until maxRetries) {
             log(
                 "D",
-                "GQL POST $operationName (token: ${token.take(8)}...)" +
+                "GQL POST $operationName (authenticated)" +
                     if (attempt > 0) " [retry $attempt]" else "",
             )
 
@@ -268,7 +272,7 @@ object Spotify {
                     delay(retryAfter * 1000)
                     continue
                 }
-                throw SpotifyException(429, "Rate limited", retryAfterSec = retryAfter)
+                throw SpotifyException(429, "Request rejected with HTTP 429", retryAfterSec = retryAfter, endpoint = operationName, detail = safeErrorDetail(response.bodyAsText()))
             }
             if (response.status == HttpStatusCode.PreconditionFailed) {
                 return GqlResult(json = null, isPersistedQueryNotFound = true)
@@ -276,7 +280,7 @@ object Spotify {
             if (response.status.value !in 200..299) {
                 val bodyText = response.bodyAsText()
                 log("E", "GQL $operationName FAILED: ${response.status.value} — ${bodyText.take(200)}")
-                throw SpotifyException(response.status.value, "GraphQL error ${response.status.value}: $bodyText")
+                throw SpotifyException(response.status.value, "GraphQL request rejected", endpoint = operationName, detail = safeErrorDetail(bodyText))
             }
 
             val responseJson = json.parseToJsonElement(response.bodyAsText()).jsonObject
@@ -288,7 +292,7 @@ object Spotify {
                     return GqlResult(json = null, isPersistedQueryNotFound = true)
                 }
                 log("E", "GQL $operationName returned error: $errorMsg")
-                throw SpotifyException(400, "GraphQL: $errorMsg")
+                throw SpotifyException(400, "GraphQL: $errorMsg", endpoint = operationName, detail = errorMsg.take(180))
             }
 
             return GqlResult(json = responseJson, isPersistedQueryNotFound = false)
@@ -314,7 +318,7 @@ object Spotify {
         for (attempt in 0 until maxRetries) {
             log(
                 "D",
-                "REST GET $endpoint (token: ${token.take(8)}...)" +
+                "REST GET $endpoint (authenticated)" +
                     if (attempt > 0) " [retry $attempt]" else "",
             )
             val response =
@@ -1005,33 +1009,67 @@ object Spotify {
                 )
             }
             log("D", "addTracksToPlaylist: added ${trackUris.size} tracks to $playlistId")
-        }
-
-    /**
-     * Creates a new (private) playlist for the current user via the REST API
-     * and returns it. The web-player token carries the playlist-modify scopes.
-     */
-    suspend fun createPlaylist(name: String): Result<SpotifyPlaylist> =
-        runCatching {
+        }.recoverCatching { error ->
+            if (error !is SpotifyException || error.statusCode !in listOf(400, 403, 404, 405, 412)) throw error
             val token = accessToken ?: throw SpotifyException(401, "Not authenticated")
-            val userId = me().getOrThrow().id
-            if (userId.isBlank()) throw SpotifyException(500, "No user id for createPlaylist")
-            val body = buildJsonObject {
-                put("name", name)
-                put("public", false)
-            }
-            val response = restClient.post("users/$userId/playlists") {
+            val body = buildJsonObject { putJsonArray("uris") { trackUris.forEach { add(it) } } }
+            val response = restClient.post("playlists/$playlistId/items") {
                 header("Authorization", "Bearer $token")
                 setBody(TextContent(body.toString(), ContentType.Application.Json))
             }
-            if (response.status.value !in 200..299) {
-                log("W", "createPlaylist($name) HTTP ${response.status.value}: ${response.bodyAsText().take(200)}")
-                throw SpotifyException(response.status.value, "createPlaylist HTTP ${response.status.value}")
-            }
-            val playlist = json.decodeFromString<SpotifyPlaylist>(response.bodyAsText())
-            log("D", "createPlaylist($name) OK — ${playlist.id}")
-            playlist
+            if (response.status.value !in 200..299) throw SpotifyException(response.status.value, "Adding songs failed (HTTP ${response.status.value})")
+            Unit
         }
+
+    /** Uploads a JPEG cover using Spotify's supported image endpoint. */
+    suspend fun uploadPlaylistCover(playlistId: String, base64Jpeg: String): Result<Unit> = runCatching {
+        val token = accessToken ?: throw SpotifyException(401, "Not authenticated")
+        require(base64Jpeg.length <= 256 * 1024) { "Cover exceeds Spotify's size limit" }
+        val response = restClient.put("playlists/$playlistId/images") {
+            header("Authorization", "Bearer $token")
+            setBody(TextContent(base64Jpeg, ContentType.Image.JPEG))
+        }
+        if (response.status.value !in 200..299) throw SpotifyException(response.status.value, "Playlist cover upload failed")
+    }
+
+    /** Uses the authenticated Web Player's own playlist service; does not retry an ambiguous create. */
+    suspend fun createPlaylist(name: String): Result<SpotifyPlaylist> = runCatching {
+        val token = accessToken ?: throw SpotifyException(401, "Not authenticated")
+        require(name.isNotBlank()) { "Playlist name is required" }
+        val delta = buildJsonObject {
+            putJsonArray("ops") { add(buildJsonObject {
+                put("kind", "UPDATE_LIST_ATTRIBUTES")
+                putJsonObject("updateListAttributes") {
+                    putJsonObject("newAttributes") { putJsonObject("values") { put("name", name.trim()) } }
+                }
+            }) }
+        }
+        val endpoint = "Web Player playlist create"
+        val response = gqlClient.post("https://spclient.wg.spotify.com/playlist/v2/playlist") {
+            header("Authorization", "Bearer $token")
+            setBody(TextContent(delta.toString(), ContentType.Application.Json))
+        }
+        val raw = response.bodyAsText()
+        if (response.status.value !in 200..299) throw SpotifyException(response.status.value,
+            "Playlist creation rejected", response.headers["Retry-After"]?.toLongOrNull() ?: 0L, endpoint, safeErrorDetail(raw))
+        val uri = json.parseToJsonElement(raw).jsonObject.str("uri")
+            ?.takeIf { it.startsWith("spotify:playlist:") && it.substringAfterLast(':').isNotBlank() }
+            ?: throw SpotifyException(502, "Creation response has no playlist URI; check Spotify before retrying", endpoint = endpoint)
+        val playlist = SpotifyPlaylist(id = uri.substringAfterLast(':'), name = name.trim(), uri = uri)
+        // The Web Player follows its new playlist after creating it. Keep the returned ID
+        // even if that second operation fails, so tapping retry cannot create a duplicate.
+        val saved = addToLibrary(listOf(uri))
+        playlist.copy(libraryWarning = saved.exceptionOrNull()?.let { error ->
+            val failure = error as? SpotifyException
+            "Created, but library save failed" + (failure?.let { " (HTTP ${it.statusCode})" } ?: "")
+        })
+    }
+
+    private fun safeErrorDetail(raw: String): String {
+        val parsed = runCatching { json.parseToJsonElement(raw).jsonObject }.getOrNull()
+        val detail = parsed?.obj("error")?.str("message") ?: parsed?.str("message") ?: ""
+        return detail.replace(Regex("(?i)Bearer\\s+[^\\s]+"), "Bearer [redacted]").take(180)
+    }
 
     /**
      * Removes tracks from a Spotify playlist via GQL mutation.
@@ -1167,6 +1205,7 @@ object Spotify {
     suspend fun addToLibrary(uris: List<String>): Result<Unit> =
         runCatching {
             val vars = buildJsonObject {
+                put("interactionId", JsonNull)
                 putJsonArray("libraryItemUris") {
                     uris.forEach { add(it) }
                 }
@@ -1176,6 +1215,16 @@ object Spotify {
                 variables = vars,
             )
             log("D", "addToLibrary: added ${uris.size} items")
+        }.recoverCatching { error ->
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            if (error !is SpotifyException || error.statusCode !in listOf(400, 404, 405, 412)) throw error
+            val token = accessToken ?: throw SpotifyException(401, "Not authenticated")
+            val response = restClient.put("me/library") {
+                header("Authorization", "Bearer $token")
+                parameter("uris", uris.joinToString(","))
+            }
+            if (response.status.value !in 200..299) throw SpotifyException(response.status.value, "Spotify library change failed", response.headers["Retry-After"]?.toLongOrNull() ?: 0L, "REST library", safeErrorDetail(response.bodyAsText()))
+            Unit
         }
 
     /**
@@ -1194,6 +1243,16 @@ object Spotify {
                 variables = vars,
             )
             log("D", "removeFromLibrary: removed ${uris.size} items")
+        }.recoverCatching { error ->
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            if (error !is SpotifyException || error.statusCode !in listOf(400, 404, 405, 412)) throw error
+            val token = accessToken ?: throw SpotifyException(401, "Not authenticated")
+            val response = restClient.delete("me/library") {
+                header("Authorization", "Bearer $token")
+                parameter("uris", uris.joinToString(","))
+            }
+            if (response.status.value !in 200..299) throw SpotifyException(response.status.value, "Spotify library change failed", response.headers["Retry-After"]?.toLongOrNull() ?: 0L, "REST library", safeErrorDetail(response.bodyAsText()))
+            Unit
         }
 
     // ── Top Tracks (REST fallback — no GQL equivalent) ──────────────────
@@ -1963,7 +2022,7 @@ object Spotify {
                     // missing or wrong, which made album/EP labels look random.
                     albumType = forcedType ?: rel.str("type")?.lowercase(),
                     images = parseGqlImages(rel.obj("coverArt")?.arr("sources")),
-                    releaseDate = rel.obj("date")?.int("year")?.toString(),
+                    releaseDate = rel.obj("date")?.str("isoString") ?: rel.obj("date")?.int("year")?.toString(),
                     uri = uri,
                 )
             }
@@ -1982,7 +2041,7 @@ object Spotify {
                             .mapNotNull { parseRelease(it, forcedType) }
                     }
                     .distinctBy { it.id }
-                    .sortedByDescending { it.releaseDate?.toIntOrNull() ?: 0 }
+                    .sortedByDescending { it.releaseDate.orEmpty() }
 
             // Albums/compilations this artist appears on (features). Same nested
             // `releases.items[0]` shape as popularReleases; degrade to empty.
@@ -2001,7 +2060,7 @@ object Spotify {
                         name = rel.str("name") ?: "",
                         albumType = rel.str("type")?.lowercase(),
                         images = parseGqlImages(rel.obj("coverArt")?.arr("sources")),
-                        releaseDate = rel.obj("date")?.int("year")?.toString(),
+                        releaseDate = rel.obj("date")?.str("isoString") ?: rel.obj("date")?.int("year")?.toString(),
                         uri = uri,
                     )
                 }

@@ -3,6 +3,9 @@ package com.music.spotui
 import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -21,8 +24,16 @@ import com.music.spotui.ui.navigation.Routes
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun App() {
+    val queueSnackbar = androidx.compose.runtime.remember { androidx.compose.material3.SnackbarHostState() }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        kotlinx.coroutines.flow.merge(com.music.spotui.ui.components.QueueFeedback.messages, com.music.spotui.ui.components.PlaybackFeedback.messages).collectLatest { message ->
+            queueSnackbar.showSnackbar(message, duration = androidx.compose.material3.SnackbarDuration.Short)
+        }
+    }
     val bottomBarState = rememberSaveable { (mutableStateOf(true)) }
     val bottomBarPlayerState = rememberSaveable { (mutableStateOf(true)) }
+    val overlayHeight = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val overlayInset = with(androidx.compose.ui.platform.LocalDensity.current) { overlayHeight.intValue.toDp() }
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
 
@@ -44,11 +55,22 @@ fun App() {
 
     Scaffold(
         modifier = Modifier,
+        snackbarHost = {
+            androidx.compose.material3.SnackbarHost(queueSnackbar) { data ->
+                androidx.compose.material3.Snackbar(data,
+                    containerColor = androidx.compose.ui.graphics.Color(0xFF282828),
+                    contentColor = androidx.compose.ui.graphics.Color.White,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp))
+            }
+        },
         bottomBar = {
-            MainBottomNavigation(navController = navController, bottomBarState = bottomBarState, bottomBarPlayerState)
+            MainBottomNavigation(navController = navController, bottomBarState = bottomBarState, bottomBarPlayerState, onHeightChanged = { if (overlayHeight.intValue != it) overlayHeight.intValue = it })
         }
     ) {
-        MyNavHost(navHostController = navController, bottomBarState = bottomBarState, bottomBarPlayerState)
+        androidx.compose.runtime.CompositionLocalProvider(com.music.spotui.ui.navigation.LocalBottomOverlayInset provides (if (bottomBarState.value) overlayInset else androidx.compose.ui.unit.Dp(0f))) {
+            MyNavHost(navHostController = navController, bottomBarState = bottomBarState, bottomBarPlayerState)
+        }
     }
 }
 

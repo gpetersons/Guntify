@@ -18,6 +18,10 @@ import com.music.spotui.data.entity.HomeSection
 import com.music.spotui.data.entity.SearchResults
 import com.music.spotui.data.entity.SongsModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
@@ -132,6 +136,54 @@ class Api @Inject constructor(
             .also { if (it.isEmpty()) Log.d("Api", "getFollowedArtists: none") }
     }
 
+    suspend fun getFollowingFeed(onUpdate: (com.music.spotui.data.entity.FollowingFeed) -> Unit = {}): com.music.spotui.data.entity.FollowingFeed = kotlinx.coroutines.coroutineScope {
+        check(SpotifyTokenProvider.ensureToken(context)) { "Sign in to Spotify to see followed artists." }
+        // Distinguish failed following-list requests from an empty account.
+        val followed = mutableListOf<ArtistsModel>()
+        var offset = 0
+        do {
+            val page = kotlinx.coroutines.withTimeout(20_000L) { Spotify.myArtists(limit = 50, offset = offset).getOrThrow() }
+            followed += page.items.map { it.toArtistModel() }
+            offset += page.items.size
+        } while (page.items.isNotEmpty() && offset < page.total)
+        val unique = followed.distinctBy { it.id }
+        val gate = kotlinx.coroutines.sync.Semaphore(3)
+        val lock = kotlinx.coroutines.sync.Mutex()
+        val artists = mutableListOf<com.music.spotui.data.entity.FollowingArtist>()
+        val releases = mutableListOf<com.music.spotui.data.entity.FollowingRelease>()
+        var loaded = 0
+        var failed = 0
+        fun snapshot() = com.music.spotui.data.entity.FollowingFeed(
+            artists = artists.toList(),
+            releases = com.music.spotui.data.recommendation.FollowingPolicy.newest(releases),
+            popularSongs = com.music.spotui.data.recommendation.FollowingPolicy.popular(artists.flatMap { it.songs }),
+            failedArtists = failed, followedCount = unique.size, loadedArtists = loaded,
+        )
+        onUpdate(snapshot())
+        unique.map { artist ->
+            async(kotlinx.coroutines.Dispatchers.IO) {
+                gate.withPermit {
+                    val overview = kotlinx.coroutines.withTimeoutOrNull(20_000L) { Spotify.artistOverview(artist.id).getOrNull() }
+                    lock.withLock {
+                        loaded++
+                        if (overview == null) failed++ else {
+                            artists += com.music.spotui.data.entity.FollowingArtist(
+                                artist.id, artist.name, overview.avatarImages.firstOrNull()?.url ?: artist.coverUri,
+                                overview.topTracks.map { ArtistTrackUi(it.track.toSongModel(), it.playcount) }.distinctBy { it.song.id })
+                            releases += overview.popularReleases.map { release ->
+                                com.music.spotui.data.entity.FollowingRelease(release.id, release.name, artist.name,
+                                    release.images.firstOrNull()?.url.orEmpty(), release.releaseDate.orEmpty())
+                            }
+                        }
+                        // Make the first artists playable while the rest of a large following list loads.
+                        onUpdate(snapshot())
+                    }
+                }
+            }
+        }.awaitAll()
+        snapshot()
+    }
+
     suspend fun getArtists(): Flow<Response<List<ArtistsModel>>> = flow {
         HomeCache.artists?.let { emit(Response.Success(it)) } ?: emit(Response.Loading())
         if (!SpotifyTokenProvider.ensureToken(context)) {
@@ -168,13 +220,16 @@ class Api @Inject constructor(
      * etc. Process-cached like the other home feeds for instant re-entry.
      */
     suspend fun getHomeFeed(): Flow<Response<HomeFeedModel>> = flow {
-        HomeCache.home?.let { emit(Response.Success(it)) } ?: emit(Response.Loading())
+        val session = SpotifySession.spDc(context)
+        val cached = HomeCache.home ?: com.music.spotui.data.preferences.HomeSnapshotCache.readFeed(context)
+        cached?.let { HomeCache.home = it; emit(Response.Success(it)) } ?: emit(Response.Loading())
         if (!SpotifyTokenProvider.ensureToken(context)) {
             if (HomeCache.home == null) emit(Response.Error("Spotify not authenticated — set sp_dc cookie"))
             return@flow
         }
         Spotify.home(sectionItemsLimit = 20).fold(
             onSuccess = { feed ->
+                if (SpotifySession.spDc(context) != session) return@fold
                 val sections = feed.sections.mapNotNull { section ->
                     // The GQL feed can repeat an item inside one section (and
                     // repeat whole sections, e.g. two "New releases" rows) —
@@ -188,6 +243,7 @@ class Api @Inject constructor(
                 }.distinctBy { it.title.lowercase().ifBlank { it.hashCode().toString() } }
                 val model = HomeFeedModel(greeting = feed.greeting ?: "", sections = sections)
                 HomeCache.home = model
+                com.music.spotui.data.preferences.HomeSnapshotCache.writeFeed(context, model, session)
                 emit(Response.Success(model))
             },
             onFailure = {
@@ -235,12 +291,8 @@ class Api @Inject constructor(
         )
     }
 
-    /**
-     * Combined search: tracks + albums + artists in a single GraphQL call
-     * (searchDesktop, not rate-limited). Powers the Search screen so users can
-     * find albums and artists, not just songs.
-     */
-    suspend fun searchEverything(query: String): Flow<Response<SearchResults>> = flow {
+    /** Spotify catalog search; preserves Spotify's order within each category. */
+    suspend fun searchEverything(query: String, offset: Int = 0): Flow<Response<SearchResults>> = flow {
         emit(Response.Loading())
         if (query.isBlank()) {
             emit(Response.Success(SearchResults())); return@flow
@@ -248,21 +300,33 @@ class Api @Inject constructor(
         if (!SpotifyTokenProvider.ensureToken(context)) {
             emit(Response.Error("Spotify not authenticated — set sp_dc cookie")); return@flow
         }
-        Spotify.search(query, types = listOf("track", "album", "artist"), limit = 20).fold(
+        val limit = 50
+        Spotify.search(query.trim(), types = listOf("track", "album", "artist", "playlist"), limit = limit, offset = offset).fold(
             onSuccess = { res ->
-                // Podcasts come from the REST catalog search (best-effort — a failure
-                // there must not blank out the music results).
-                val podcasts = Spotify.searchPodcasts(query, limit = 12)
-                    .onFailure { Log.e("Api", "searchPodcasts FAILED: ${it.message}", it) }
-                    .getOrNull()
-                Log.d("Api", "podcasts: shows=${podcasts?.shows?.items?.size ?: -1} episodes=${podcasts?.episodes?.items?.size ?: -1}")
-                emit(Response.Success(SearchResults(
+                val more = listOf(res.tracks?.total, res.albums?.total, res.artists?.total, res.playlists?.total)
+                    .any { it != null && it > offset + limit }
+                val music = SearchResults(
                     songs = res.tracks?.items.orEmpty().map { it.toSongModel() },
                     albums = res.albums?.items.orEmpty().map { it.toAlbumModel() },
                     artists = res.artists?.items.orEmpty().map { it.toArtistModel() },
-                    shows = podcasts?.shows?.items.orEmpty().map { it.toPodcastModel() },
-                    episodes = podcasts?.episodes?.items.orEmpty().map { it.toEpisodeSongModel(null) },
-                )))
+                    playlists = res.playlists?.items.orEmpty().filter { it.id.isNotBlank() }.distinctBy { it.id }.map { playlist ->
+                        com.music.spotui.data.entity.LibraryEntry(playlist.id, playlist.name,
+                            "Playlist" + (playlist.owner?.displayName?.takeIf { it.isNotBlank() }?.let { " • $it" } ?: ""),
+                            playlist.images.firstOrNull()?.url.orEmpty(), true)
+                    },
+                    nextOffset = if (more) offset + limit else null,
+                )
+                // Music should appear immediately, even if podcast search is slow/unavailable.
+                emit(Response.Success(music))
+                if (offset == 0) {
+                    val podcasts = kotlinx.coroutines.withTimeoutOrNull(8_000L) {
+                        Spotify.searchPodcasts(query, limit = 12).getOrNull()
+                    }
+                    if (podcasts != null) emit(Response.Success(music.copy(
+                        shows = podcasts.shows?.items.orEmpty().map { it.toPodcastModel() },
+                        episodes = podcasts.episodes?.items.orEmpty().map { it.toEpisodeSongModel(null) },
+                    )))
+                }
             },
             onFailure = { Log.e("Api", "searchEverything failed", it); emit(Response.Error(it.message ?: "error")) },
         )
@@ -308,14 +372,63 @@ class Api @Inject constructor(
         )
     }
 
-    /**
-     * Spotify's recommendation engine: given a few seed track ids (the tracks the
-     * user is currently/recently playing), returns a list of recommended tracks to
-     * extend the queue with — i.e. the "autoplay radio" that keeps music going once
-     * a playlist/album ends. Up to 5 seeds are allowed by Spotify; we cap there.
-     * Returns an empty list on failure so callers can simply fall back to looping.
-     */
-    suspend fun getRecommendations(seedTrackIds: List<String>): List<SongsModel> {
+    /** Fetch each Radio influence through existing Spotify integrations, then blend locally. */
+    suspend fun getRadioRecommendations(original: String, evolving: String): List<SongsModel> = kotlinx.coroutines.coroutineScope {
+        val sessions=com.music.spotui.data.preferences.RadioSessions
+        val mode=com.music.spotui.data.preferences.RadioTaste.mode(context,original)
+        val tasteRevision=com.music.spotui.data.preferences.RadioTaste.revision.value
+        val heard=com.music.spotui.data.preferences.RadioMemory.recent(context,original)
+        val saved=sessions.anchors(context,original)
+        val originalIds=if(saved.isEmpty())listOf(original).filter{!sessions.isMix(it)} else saved.map{sessions.resolvedAnchor(context,it).spotifyTrackId}
+        val anchors=originalIds.filter(String::isNotBlank).distinct().take(5)
+        val extras=listOf(evolving).filter{com.music.spotui.data.recommendation.RadioDiscoveryPolicy.evolving(mode) && it.isNotBlank() && it!=original && it !in anchors && !sessions.isMix(it)}
+        val seeds=(anchors+extras).distinct()
+        val requests=seeds.map { id -> async {
+            try {
+                kotlinx.coroutines.withTimeoutOrNull(18_000L) {
+                    val song=saved.firstOrNull { sessions.resolvedAnchor(context,it).spotifyTrackId==id }
+                    var batch=getRecommendations(listOf(id),radioMode=mode)
+                    if(song!=null && (batch.isEmpty() || sessions.repairDue(context,song.spotifyTrackId))) {
+                        val repaired=repairRadioAnchor(song)
+                        if(batch.isEmpty() && repaired!=null && repaired.spotifyTrackId!=id)batch=getRecommendations(listOf(repaired.spotifyTrackId),radioMode=mode)
+                    }
+                    com.music.spotui.data.recommendation.RadioMemoryPolicy.order(batch,heard,System.currentTimeMillis())
+                }.orEmpty()
+            } catch(cancelled:kotlinx.coroutines.CancellationException){throw cancelled
+            } catch(error:Exception){emptyList<SongsModel>()}
+        } }
+        com.music.spotui.data.recommendation.RadioMixPolicy.blend(seeds,requests.map{it.await()},anchors.size,
+            mode)
+            .let { songs -> if(tasteRevision!=com.music.spotui.data.preferences.RadioTaste.revision.value)emptyList() else songs.filter{com.music.spotui.data.preferences.RadioTaste.allowed(context,it)} }
+    }
+
+    /** Refresh lookup identity only after checking recording evidence; station/queue identity stays fixed. */
+    private suspend fun repairRadioAnchor(original: SongsModel): SongsModel? {
+        val sessions=com.music.spotui.data.preferences.RadioSessions
+        if(!sessions.repairAllowed(context,original.spotifyTrackId))return null
+        sessions.checked(context,original.spotifyTrackId)
+        return kotlinx.coroutines.withTimeoutOrNull(5_000L) {
+            val current=sessions.resolvedAnchor(context,original)
+            val live=Spotify.track(current.spotifyTrackId).getOrNull()
+            if(live!=null && live.id==current.spotifyTrackId) {
+                // The same immutable catalog ID is authoritative recording evidence.
+                sessions.saveIsrc(context,original.spotifyTrackId,live.isrc.orEmpty())
+                return@withTimeoutOrNull null
+            }
+            val expected=sessions.knownIsrc(context,original.spotifyTrackId)
+            val found=listOfNotNull(live)+Spotify.search("${original.title} ${original.singer}",types=listOf("track"),limit=15).getOrNull()?.tracks?.items.orEmpty()
+            val exact=found.firstOrNull { candidate ->
+                candidate.id!=current.spotifyTrackId && com.music.spotui.data.recommendation.RadioSeedRepairPolicy.sameRecording(original,candidate.toSongModel(),expected,candidate.isrc.orEmpty())
+            } ?: return@withTimeoutOrNull null
+            val replacement=exact.toSongModel()
+            if(sessions.repaired(context,original,replacement,expected,exact.isrc.orEmpty())) {
+                com.music.spotui.data.preferences.PlaybackDiagnostics.record(context,"Radio lookup repaired","Verified same recording")
+                replacement
+            } else null
+        }
+    }
+
+    suspend fun getRecommendations(seedTrackIds: List<String>, radioMode:String? = null): List<SongsModel> {
         val seeds = seedTrackIds.filter { it.isNotBlank() }.distinct()
         if (seeds.isEmpty()) return emptyList()
         if (!SpotifyTokenProvider.ensureToken(context)) return emptyList()
@@ -333,6 +446,7 @@ class Api @Inject constructor(
         Spotify.recommendedTracks(seedId).getOrNull()?.takeIf { it.isNotEmpty() }?.let { native ->
             return native.map { it.toSongModel() }
         }
+        if(!com.music.spotui.data.recommendation.RadioDiscoveryPolicy.artistFallback(radioMode))return emptyList()
         Log.w("Api", "native recommender empty — trying artist radio")
         val seedTrack = Spotify.track(seedId).getOrNull()
             ?: return emptyList<SongsModel>().also { Log.w("Api", "getRecommendations: seed track unresolved") }
@@ -345,6 +459,7 @@ class Api @Inject constructor(
             return radio.map { it.toSongModel() }
         }
 
+        if(!com.music.spotui.data.recommendation.RadioDiscoveryPolicy.profileFallback(radioMode))return emptyList()
         Log.w("Api", "artist radio empty — falling back to heuristic engine")
         // Fallback 3: profile-based heuristic engine (best-personalized but needs top data).
         return com.music.spotui.data.recommendation.SpotifyRecommendationEngine
@@ -375,7 +490,7 @@ class Api @Inject constructor(
                 add(Spotify.artistTopTracks(rid).getOrNull()?.tracks, cap = 5)
             }
         }
-        return out.shuffled().take(30)
+        return out.take(30)
     }
 
     /**
@@ -385,6 +500,172 @@ class Api @Inject constructor(
      * presenting them as a grid the user can open. Returns LibraryEntry rows so
      * the Category screen can reuse the existing playlist row/tile rendering.
      */
+    /** Discover NEW Spotify collections from local Spotui listening, independent of Spotify's Home feed. */
+    private var localDiscoveryKey = ""
+    private var localDiscoveryTime = 0L
+    private var localDiscoveryRows = emptyList<HomeSection>()
+
+    fun cachedHomeDiscoveries(): List<HomeSection> {
+        val prefs = com.music.spotui.data.preferences.HomePersonalization
+        if (!prefs.enabled(context) || prefs.strength(context) == 0) return emptyList()
+        val samples = com.music.spotui.data.preferences.getListeningHistory(context).map {
+            com.music.spotui.data.recommendation.LocalTasteSample(it.spotifyTrackId, it.singer, it.ts, it.listenedMs, it.source)
+        }
+        if (com.music.spotui.data.recommendation.LocalHomePolicy.qualifying(samples, System.currentTimeMillis(), prefs.windowDays(context)).size < 3) return emptyList()
+        return com.music.spotui.data.preferences.HomeSnapshotCache.readDiscoveries(context, prefs.windowDays(context)).map { row ->
+            row.copy(items = row.items.filter { (it !is HomeItem.Playlist || it.id.isNotBlank()) && (it !is HomeItem.Radio || com.music.spotui.data.preferences.RadioTaste.allowed(context, it.seed)) })
+        }
+    }
+
+    suspend fun discoverHomeCollections(): List<HomeSection> {
+        val prefs = com.music.spotui.data.preferences.HomePersonalization
+        if (!prefs.enabled(context) || prefs.strength(context) == 0) return emptyList()
+        val session = SpotifySession.spDc(context)
+        val window = prefs.windowDays(context)
+        val settingsRevision = prefs.revision.value
+        val tasteRevision = com.music.spotui.data.preferences.RadioTaste.revision.value
+        val now = System.currentTimeMillis()
+        val policy = com.music.spotui.data.recommendation.LocalHomePolicy
+        val samples = com.music.spotui.data.preferences.getListeningHistory(context).map {
+            com.music.spotui.data.recommendation.LocalTasteSample(it.spotifyTrackId, it.singer, it.ts, it.listenedMs, it.source)
+        }
+        if (policy.qualifying(samples, now, window).size < 3) return emptyList()
+        if (!SpotifyTokenProvider.ensureToken(context)) return cachedHomeDiscoveries()
+        if (SpotifySession.spDc(context) != session) return emptyList()
+        if (prefs.revision.value != settingsRevision || com.music.spotui.data.preferences.RadioTaste.revision.value != tasteRevision) return cachedHomeDiscoveries()
+        val previous = cachedHomeDiscoveries()
+        val tracks = policy.topTracks(samples, now, window)
+        val artists = policy.topArtists(samples, now, window)
+        val key = session.hashCode().toString() + "|" + tracks.joinToString() + "|" + artists.joinToString() + "|" + window + "|" + Spotify.accessToken.hashCode() + "|" + settingsRevision + "|" + tasteRevision
+        if (key == localDiscoveryKey && now - localDiscoveryTime < 2L * 60_000L) return localDiscoveryRows
+        val seedTracks = kotlinx.coroutines.coroutineScope {
+            // More listening inputs without issuing fifteen catalog lookups simultaneously.
+            val permits = kotlinx.coroutines.sync.Semaphore(4)
+            tracks.map { id -> async {
+                permits.withPermit { kotlinx.coroutines.withTimeoutOrNull(8_000L) { Spotify.track(id).getOrNull() } }
+            } }.mapNotNull { it.await() }
+        }
+        val matchedArtists = artists.mapNotNull { name ->
+            val knownId = seedTracks.flatMap { it.artists }.firstOrNull { it.name.equals(name, true) }?.id
+            if (!knownId.isNullOrBlank()) knownId to name
+            else kotlinx.coroutines.withTimeoutOrNull(8_000L) { Spotify.search(name, types = listOf("artist"), limit = 5).getOrNull() }
+                ?.artists?.items.orEmpty().firstOrNull { it.name.equals(name, true) && it.id.isNotBlank() }?.let { it.id to it.name }
+        }.distinctBy { it.first }.take(5)
+        val overviews = kotlinx.coroutines.coroutineScope {
+            matchedArtists.map { artist -> async {
+                artist to kotlinx.coroutines.withTimeoutOrNull(15_000L) { Spotify.artistOverview(artist.first).getOrNull() }
+            } }.map { it.await() }
+        }
+        val albums = linkedMapOf<String, HomeItem.Album>()
+        fun addAlbum(album: com.metrolist.spotify.models.SpotifyAlbum) {
+            if (album.id.isBlank() || album.name.isBlank() || album.albumType.equals("single", true)) return
+            val names = album.artists.joinToString(", ") { it.name }
+            albums.putIfAbsent(album.id, HomeItem.Album(album.name, album.images.firstOrNull()?.url.orEmpty(), "Album • $names", names))
+        }
+        seedTracks.forEach { track ->
+            track.album?.let { album ->
+                addAlbum(com.metrolist.spotify.models.SpotifyAlbum(id = album.id, name = album.name,
+                    albumType = album.albumType, images = album.images, artists = album.artists.ifEmpty { track.artists }))
+            }
+        }
+        overviews.forEach { (artist, overview) ->
+            overview?.popularReleases?.filter { release -> release.albumType.equals("album", true) && release.artists.any { it.id == artist.first } }
+                ?.take(2)?.forEach(::addAlbum)
+        }
+        val playlistCandidates = kotlinx.coroutines.coroutineScope {
+            overviews.take(5).map { (artist, overview) -> async {
+                val neighbors = overview?.relatedArtists.orEmpty()
+                val genres = (overview?.popularReleases.orEmpty().flatMap { it.genres } + neighbors.flatMap { it.genres })
+                    .filter { it.isNotBlank() }.groupingBy { it }.eachCount().entries.sortedByDescending { it.value }
+                val broaderQuery = genres.firstOrNull()?.key?.let { "$it mix" }
+                    ?: neighbors.firstOrNull()?.name?.let { "$it mix" } ?: "${artist.second} mix"
+                tastePlaylists(artist.first, artist.second, neighbors.map { it.id }.toSet(), broaderQuery)
+            } }.awaitAll().flatten().distinctBy { it.id }
+        }
+        val playlists = com.music.spotui.data.recommendation.HomeDiversityPolicy.spread(playlistCandidates).filterIsInstance<HomeItem.Playlist>()
+        val madeFor = mutableListOf<HomeItem>()
+        val localAlbums = com.music.spotui.data.recommendation.HomeDiversityPolicy.spread(albums.values.toList())
+        val madeForPlaylists = playlists.drop(5)
+        for (i in 0 until maxOf(madeForPlaylists.size, localAlbums.size)) {
+            madeForPlaylists.getOrNull(i)?.let { madeFor += it }
+            localAlbums.getOrNull(i)?.let { madeFor += it }
+        }
+        // Spotify exposes artist/track popularity here, not a global Radio chart.
+        val knownIds = matchedArtists.map { it.first }.toSet()
+        val related = overviews.flatMap { it.second?.relatedArtists.orEmpty() }.distinctBy { it.id }
+            .filter { it.id !in knownIds }.sortedByDescending { it.popularity ?: 0 }.take(5)
+        val popular = kotlinx.coroutines.coroutineScope {
+            related.map { artist -> async {
+                val overview = kotlinx.coroutines.withTimeoutOrNull(8_000L) { Spotify.artistOverview(artist.id).getOrNull() }
+                overview?.topTracks?.maxByOrNull { it.playcount ?: 0L }?.let { item ->
+                    (overview.monthlyListeners ?: item.playcount ?: 0L) to HomeItem.Radio(item.track.toSongModel())
+                }
+            } }.awaitAll().filterNotNull().sortedByDescending { it.first }.map { it.second }
+        }.filter { com.music.spotui.data.preferences.RadioTaste.allowed(context, it.seed) }
+        val fallbackPopular = if (popular.size < 5) kotlinx.coroutines.coroutineScope {
+            val recommendations = seedTracks.take(2).map { seed -> async {
+                kotlinx.coroutines.withTimeoutOrNull(8_000L) { getRecommendations(listOf(seed.id)) }.orEmpty().take(5)
+            } }.awaitAll().flatten().distinctBy { it.spotifyTrackId }.filter { it.spotifyTrackId.isNotBlank() }.take(8)
+            recommendations.map { song -> async {
+                kotlinx.coroutines.withTimeoutOrNull(4_000L) { Spotify.track(song.spotifyTrackId).getOrNull() }
+            } }.awaitAll().filterNotNull().sortedByDescending { it.popularity ?: 0 }.map { HomeItem.Radio(it.toSongModel()) }
+        } else emptyList()
+        val popularRadios = (popular + fallbackPopular + seedTracks.sortedByDescending { it.popularity ?: 0 }.map { HomeItem.Radio(it.toSongModel()) })
+            .filter { com.music.spotui.data.preferences.RadioTaste.allowed(context, it.seed) }
+            .distinctBy { it.seed.spotifyTrackId }.take(20)
+        val rows = listOf(HomeSection(policy.ALBUMS, com.music.spotui.data.recommendation.HomeDiversityPolicy.spread(madeFor).take(15)),
+            HomeSection(policy.PLAYLISTS, playlists.take(20)), HomeSection(policy.SONG_RADIOS, com.music.spotui.data.recommendation.HomeDiversityPolicy.spread(popularRadios).take(15)))
+        // Keep the last good shelf if a catalog request fails or returns no candidates.
+        if (SpotifySession.spDc(context) != session) return emptyList()
+        if (prefs.revision.value != settingsRevision || com.music.spotui.data.preferences.RadioTaste.revision.value != tasteRevision) return cachedHomeDiscoveries()
+        val refreshed = com.music.spotui.data.preferences.HomeSnapshotCodec.retainAvailable(rows, previous)
+        if (refreshed.any { it.items.isNotEmpty() }) {
+            localDiscoveryKey = key; localDiscoveryTime = now; localDiscoveryRows = refreshed
+            com.music.spotui.data.preferences.HomeSnapshotCache.writeDiscoveries(context, window, refreshed, session)
+        }
+        return refreshed
+    }
+
+    private val homePlaylistLookups = kotlinx.coroutines.sync.Semaphore(3)
+    private suspend fun tastePlaylists(artistId: String, name: String, related: Set<String>, broaderQuery: String): List<HomeItem.Playlist> = kotlinx.coroutines.coroutineScope {
+        val candidates = listOf(name, broaderQuery).distinct().map { query -> async {
+            homePlaylistLookups.withPermit {
+                kotlinx.coroutines.withTimeoutOrNull(4_000L) {
+                    Spotify.search(query, types = listOf("playlist"), limit = 4).getOrNull()?.playlists?.items.orEmpty()
+                }.orEmpty().filter { it.id.isNotBlank() }.take(2)
+            }
+        } }.awaitAll().flatten().distinctBy { it.id }
+        val allowed = related + artistId
+        candidates.map { playlist -> async {
+            val sample = homePlaylistLookups.withPermit {
+                kotlinx.coroutines.withTimeoutOrNull(4_000L) {
+                    Spotify.playlistTracks(playlist.id, limit = 30).getOrNull()?.items.orEmpty().mapNotNull { it.track }
+                }.orEmpty()
+            }
+            val matches = sample.count { track -> track.artists.any { it.id in allowed } }
+            if (com.music.spotui.data.preferences.ArtistTastePolicy.relevantPlaylist(matches, sample.size, playlist.name.contains(name, true))) {
+                val profile = com.music.spotui.data.recommendation.HomeDiversityPolicy.profile(name, sample.map { it.artists.map { a -> a.name } })
+                HomeItem.Playlist(playlist.name, playlist.images.firstOrNull()?.url.orEmpty(), "Spotify playlist • For your listening", playlist.id, profile.artistKey, profile.mixed)
+            } else null
+        } }.awaitAll().filterNotNull()
+    }
+
+    /** Catalog search is validated against playlist tracks and Spotify's related-artist IDs. */
+    private suspend fun moreLikePlaylists(name: String): HomeSection? {
+        val artist = Spotify.search(name, types = listOf("artist"), limit = 5).getOrNull()
+            ?.artists?.items.orEmpty().firstOrNull { it.name.equals(name, ignoreCase = true) } ?: return null
+        val relatedIds = Spotify.artistRelatedArtists(artist.id).getOrNull().orEmpty().map { it.id }.toSet() + artist.id
+        val candidates = Spotify.search(name, types = listOf("playlist"), limit = 8).getOrNull()?.playlists?.items.orEmpty()
+        val validated = candidates.distinctBy { it.id }.mapNotNull { playlist ->
+            if (playlist.id.isBlank()) return@mapNotNull null
+            val sample = Spotify.playlistTracks(playlist.id, limit = 50).getOrNull()?.items.orEmpty().mapNotNull { it.track }
+            val matches = sample.count { track -> track.artists.any { it.id in relatedIds } }
+            if (!com.music.spotui.data.preferences.ArtistTastePolicy.relevantPlaylist(matches, sample.size, playlist.name.contains(name, ignoreCase = true))) return@mapNotNull null
+            HomeItem.Playlist(playlist.name, playlist.images.firstOrNull()?.url.orEmpty(), "Playlist", playlist.id)
+        }
+        return if (validated.size >= 2) HomeSection("More like ${artist.name}", validated) else null
+    }
+
     suspend fun getCategoryPlaylists(genre: String): Flow<Response<List<com.music.spotui.data.entity.LibraryEntry>>> = flow {
         emit(Response.Loading())
         if (genre.isBlank()) {
@@ -588,7 +869,7 @@ class Api @Inject constructor(
             coverUri = "https://misc.scdn.co/liked-songs/liked-songs-640.png",
             isPlaylist = true,
         )
-        val merged = listOf(liked, DOWNLOADED_ENTRY) + playlists + albums
+        val merged = com.music.spotui.data.recommendation.LibraryIdentityPolicy.unique(listOf(liked, DOWNLOADED_ENTRY) + playlists + albums)
         HomeCache.library = merged
         emit(Response.Success(merged))
     }

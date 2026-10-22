@@ -3,7 +3,7 @@ package com.metrolist.music.utils.potoken
 import android.webkit.CookieManager
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -16,11 +16,12 @@ class PoTokenGenerator {
     private var webViewBadImpl = false // whether the system has a bad WebView implementation
 
     private val webPoTokenGenLock = Mutex()
+    private val requestLock = Mutex()
     private var webPoTokenSessionId: String? = null
     private var webPoTokenStreamingPot: String? = null
     private var webPoTokenGenerator: PoTokenWebView? = null
 
-    fun getWebClientPoToken(videoId: String, sessionId: String): PoTokenResult? {
+    suspend fun getWebClientPoToken(videoId: String, sessionId: String): PoTokenResult? {
         Timber.tag(TAG).d("getWebClientPoToken called: videoId=$videoId, visitorDataPresent=${sessionId.isNotBlank()}")
         Timber.tag(TAG).d("WebView state: supported=$webViewSupported, badImpl=$webViewBadImpl")
         if (!webViewSupported || webViewBadImpl) {
@@ -29,9 +30,11 @@ class PoTokenGenerator {
         }
 
         return try {
-            Timber.tag(TAG).d("Calling runBlocking to generate poToken...")
-            runBlocking { getWebClientPoToken(videoId, sessionId, forceRecreate = false) }
+            withTimeoutOrNull(12_000L) {
+                requestLock.withLock { getWebClientPoToken(videoId, sessionId, forceRecreate = false) }
+            }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Timber.tag(TAG).e(e, "poToken generation exception: ${e.javaClass.simpleName}: ${e.message}")
             when (e) {
                 is BadWebViewException -> {
@@ -55,11 +58,12 @@ class PoTokenGenerator {
         val (poTokenGenerator, streamingPot, hasBeenRecreated) =
             webPoTokenGenLock.withLock {
                 val shouldRecreate =
-                    forceRecreate || webPoTokenGenerator == null || webPoTokenGenerator!!.isExpired || webPoTokenSessionId != sessionId
+                    forceRecreate || webPoTokenStreamingPot == null || webPoTokenGenerator == null || webPoTokenGenerator!!.isExpired || webPoTokenSessionId != sessionId
 
                 if (shouldRecreate) {
                     Timber.tag(TAG).d("Creating new PoTokenWebView (forceRecreate=$forceRecreate)")
                     webPoTokenSessionId = sessionId
+                    webPoTokenStreamingPot = null
 
                     withContext(Dispatchers.Main) {
                         webPoTokenGenerator?.close()
@@ -80,6 +84,7 @@ class PoTokenGenerator {
         val playerPot = try {
             poTokenGenerator.generatePoToken(videoId)
         } catch (throwable: Throwable) {
+            if (throwable is kotlinx.coroutines.CancellationException) throw throwable
             if (hasBeenRecreated) {
                 // the poTokenGenerator has just been recreated (and possibly this is already the
                 // second time we try), so there is likely nothing we can do

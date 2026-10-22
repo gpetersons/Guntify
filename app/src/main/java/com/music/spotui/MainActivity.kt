@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         controllerFuture?.let { MediaController.releaseFuture(it) }
-        SongPlayer.release()
+        // The foreground playback service owns the player; Activity recreation must not release audio.
     }
 }
 

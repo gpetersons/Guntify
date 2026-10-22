@@ -7,11 +7,11 @@ import java.net.URL
 
 /** Checks GitHub for a release newer than this build. */
 object UpdateChecker {
-    private const val LATEST = "https://api.github.com/repos/Spotui/Spotui/releases/latest"
-    private const val RELEASES_PAGE = "https://github.com/Spotui/Spotui/releases/latest"
+    private const val LATEST = "https://api.github.com/repos/rare621/USpot/releases/latest"
+    private const val RELEASES_PAGE = "https://github.com/rare621/USpot/releases/latest"
     // GitHub allows 60 unauthenticated API calls an hour per IP; a few a day is plenty.
     private const val CHECK_EVERY_MS = 6 * 60 * 60 * 1000L
-    private const val PREF = "updates"
+    private const val PREF = "uspot_release_checks"
 
     data class Update(val version: String, val url: String)
 
@@ -37,6 +37,7 @@ object UpdateChecker {
                     conn.disconnect()
                 }
                 val o = JSONObject(body)
+                if (!o.optString("name").startsWith("USpot", ignoreCase = true)) return null
                 p.edit()
                     .putString("latest", o.optString("tag_name"))
                     .putString("url", o.optString("html_url").ifBlank { RELEASES_PAGE })

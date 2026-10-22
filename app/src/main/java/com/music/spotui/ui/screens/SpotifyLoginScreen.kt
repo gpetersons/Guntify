@@ -191,7 +191,7 @@ fun SpotifyLoginScreen(navController: NavController) {
         ) {
             Text(
                 text = if (isProcessing) statusMessage.ifBlank { "Signing in…" } else "Log in to Spotify",
-                color = if (hasError) Color(0xFFE22134) else Color.White,
+                color = if (hasError) Color(0xFFE22134) else com.music.spotui.ui.theme.AppText,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
             )
@@ -245,16 +245,15 @@ private fun LoginForm(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(72.dp))
-        Icon(
+        androidx.compose.foundation.Image(
             painter = painterResource(id = R.drawable.logo),
-            contentDescription = "Spotify",
-            tint = Color(SPOTIFY_GREEN),
+            contentDescription = "USpot",
             modifier = Modifier.size(56.dp),
         )
         Spacer(Modifier.height(28.dp))
         Text(
             "Log in to Spotify",
-            color = Color.White,
+            color = com.music.spotui.ui.theme.AppText,
             fontWeight = FontWeight.Bold,
             fontSize = 26.sp,
         )
@@ -262,7 +261,7 @@ private fun LoginForm(
 
         Text(
             "Email or username",
-            color = Color.White,
+            color = com.music.spotui.ui.theme.AppText,
             fontWeight = FontWeight.SemiBold,
             fontSize = 13.sp,
             modifier = Modifier.fillMaxWidth(),
@@ -285,7 +284,7 @@ private fun LoginForm(
         Spacer(Modifier.height(16.dp))
         Text(
             "Password",
-            color = Color.White,
+            color = com.music.spotui.ui.theme.AppText,
             fontWeight = FontWeight.SemiBold,
             fontSize = 13.sp,
             modifier = Modifier.fillMaxWidth(),
@@ -354,7 +353,7 @@ private fun LoginForm(
         TextButton(onClick = onUseWeb, enabled = !isProcessing) {
             Text(
                 "Trouble logging in? Use the Spotify web page",
-                color = Color(0xFFB3B3B3),
+                color = com.music.spotui.ui.theme.AppSecondary,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
             )
@@ -364,7 +363,7 @@ private fun LoginForm(
         TextButton(onClick = onUseWeb, enabled = !isProcessing) {
             Text(
                 "Don't have an account? Sign up",
-                color = Color.White,
+                color = com.music.spotui.ui.theme.AppText,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -376,9 +375,9 @@ private fun LoginForm(
 
 @Composable
 private fun spotifyFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Color.White,
-    unfocusedTextColor = Color.White,
-    cursorColor = Color.White,
+    focusedTextColor = com.music.spotui.ui.theme.AppText,
+    unfocusedTextColor = com.music.spotui.ui.theme.AppText,
+    cursorColor = com.music.spotui.ui.theme.AppText,
     focusedBorderColor = Color.White,
     unfocusedBorderColor = Color(0xFF727272),
     focusedContainerColor = Color(0xFF121212),

@@ -15,6 +15,7 @@ data class SpotifyPlaylist(
     val public: Boolean? = null,
     val collaborative: Boolean = false,
     @SerialName("snapshot_id") val snapshotId: String? = null,
+    @kotlinx.serialization.Transient val libraryWarning: String? = null,
 )
 
 @Serializable

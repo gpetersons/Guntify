@@ -125,13 +125,8 @@ fun MiniPlayer(navController: NavHostController) {
         darkVibrantColor = color
     }
 
-    var isLiked by remember {
-        mutableStateOf(false)
-    }
+    var isLiked by com.music.spotui.ui.components.rememberSongLiked(context, songId.toString())
     val likeState = miniPlayerViewModel.likeState.value
-    LaunchedEffect(likeState, songId) {
-        isLiked = isSongLiked(context, songId.toString())
-    }
     val currentTrack = miniPlayerViewModel.queue.value.firstOrNull { it.id == songId }
     var showSavedIn by remember { mutableStateOf(false) }
     if (showSavedIn && currentTrack != null) {
@@ -152,7 +147,7 @@ fun MiniPlayer(navController: NavHostController) {
 
             .padding(13.dp, 0.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(darkVibrantColor)
+            .background(if (com.music.spotui.ui.theme.AppearanceSettings.effectiveDark) darkVibrantColor else com.music.spotui.ui.theme.AppRaised)
             .padding(8.dp, 0.dp)
             .clipToBounds()
 
@@ -193,8 +188,8 @@ fun MiniPlayer(navController: NavHostController) {
                     modifier = Modifier
                         .widthIn(Dp.Unspecified, 200.dp)
                 ) {
-                    Text(text = songTitle, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis )
-                    Text(text = songSinger, color = Color.LightGray, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Text(text = songTitle, color = com.music.spotui.ui.theme.AppText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis )
+                    Text(text = songSinger, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 }
             }
 
@@ -234,7 +229,7 @@ fun MiniPlayer(navController: NavHostController) {
                                     context, currentTrack?.spotifyTrackId.orEmpty(), true)
                             },
                         painter = painterResource(id = R.drawable.ic_add),
-                        tint = Color.White,
+                        tint = com.music.spotui.ui.theme.AppText,
                         contentDescription = "Add",
                     )
                 }
@@ -247,7 +242,7 @@ fun MiniPlayer(navController: NavHostController) {
                         painterResource(id = R.drawable.play_svgrepo_com)
                     ,
                     contentDescription = "",
-                    tint = Color.White,
+                    tint = com.music.spotui.ui.theme.AppText,
                     modifier = Modifier
                         .size(36.dp)
                         .padding(5.dp, 0.dp)
@@ -373,15 +368,16 @@ fun Snackbar(showMessage : String) {
 fun ConfirmDownloadAllDialog(count: Int, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = com.music.spotui.ui.theme.AppSurface, titleContentColor = com.music.spotui.ui.theme.AppText, textContentColor = com.music.spotui.ui.theme.AppSecondary,
         title = { androidx.compose.material3.Text("Download $count tracks?") },
         text = { androidx.compose.material3.Text("They are saved for offline playback. You can cancel from Downloads.") },
         confirmButton = {
             androidx.compose.material3.TextButton(onClick = { onDismiss(); onConfirm() }) {
-                androidx.compose.material3.Text("Download")
+                androidx.compose.material3.Text("Download", color = Color(0xFF1ED760))
             }
         },
         dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) { androidx.compose.material3.Text("Cancel") }
+            androidx.compose.material3.TextButton(onClick = onDismiss) { androidx.compose.material3.Text("Cancel", color = com.music.spotui.ui.theme.AppText) }
         },
     )
 }

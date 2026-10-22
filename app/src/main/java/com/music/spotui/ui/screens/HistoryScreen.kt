@@ -95,7 +95,7 @@ fun HistoryScreen(navController: NavController) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "",
-                            tint = Color.White,
+                            tint = com.music.spotui.ui.theme.AppText,
                             modifier = Modifier
                                 .size(26.dp)
                                 .clickable(
@@ -104,12 +104,12 @@ fun HistoryScreen(navController: NavController) {
                                 ) { navController.navigateUp() },
                         )
                         Spacer(Modifier.width(16.dp))
-                        Text("Listening history", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text("Listening history", color = com.music.spotui.ui.theme.AppText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     }
                     if (history.isNotEmpty()) {
                         Text(
                             "Clear all",
-                            color = Color(0xFFB3B3B3),
+                            color = com.music.spotui.ui.theme.AppSecondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.clickable(
@@ -128,7 +128,7 @@ fun HistoryScreen(navController: NavController) {
                 item {
                     Text(
                         "Nothing here yet — play something!",
-                        color = Color.Gray,
+                        color = com.music.spotui.ui.theme.AppSecondary,
                         fontSize = 14.sp,
                         modifier = Modifier.padding(16.dp, 32.dp),
                     )
@@ -137,27 +137,27 @@ fun HistoryScreen(navController: NavController) {
                 // ── Stats ──
                 item {
                     Column(modifier = Modifier.padding(16.dp, 8.dp)) {
-                        Text("Stats", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text("Stats", color = com.music.spotui.ui.theme.AppText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(6.dp))
-                        Text("${history.size} plays logged", color = Color.Gray, fontSize = 13.sp)
+                        Text("${history.size} plays logged", color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp)
                         Spacer(Modifier.height(10.dp))
                         if (topArtists.isNotEmpty()) {
-                            Text("Top artists", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Top artists", color = com.music.spotui.ui.theme.AppText, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                             topArtists.forEachIndexed { i, e ->
                                 Text(
                                     "${i + 1}. ${e.key} — ${e.value} plays",
-                                    color = Color(0xFFB3B3B3), fontSize = 13.sp,
+                                    color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp,
                                     modifier = Modifier.padding(top = 3.dp),
                                 )
                             }
                             Spacer(Modifier.height(10.dp))
                         }
                         if (topTracks.isNotEmpty()) {
-                            Text("Top tracks", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Top tracks", color = com.music.spotui.ui.theme.AppText, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                             topTracks.forEachIndexed { i, e ->
                                 Text(
                                     "${i + 1}. ${e.key} — ${e.value} plays",
-                                    color = Color(0xFFB3B3B3), fontSize = 13.sp, maxLines = 1,
+                                    color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp, maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(top = 3.dp),
                                 )
@@ -168,7 +168,7 @@ fun HistoryScreen(navController: NavController) {
                 item {
                     Text(
                         "History",
-                        color = Color.White,
+                        color = com.music.spotui.ui.theme.AppText,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(16.dp, 14.dp, 16.dp, 4.dp),
@@ -211,10 +211,10 @@ private fun HistoryRow(entry: HistoryEntry, onRemove: () -> Unit) {
                 .weight(1f)
                 .padding(start = 10.dp, end = 8.dp),
         ) {
-            Text(entry.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(entry.title, color = com.music.spotui.ui.theme.AppText, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 "${entry.singer} • ${DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(entry.ts))}",
-                color = Color.Gray, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
         Icon(

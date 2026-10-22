@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.music.spotui.data.entity.SongsModel
 
@@ -29,16 +28,13 @@ import com.music.spotui.data.entity.SongsModel
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SwipeToQueue(song: SongsModel, content: @Composable () -> Unit) {
-    val context = LocalContext.current
     val playerViewModel: com.music.spotui.ui.viewmodel.PlayerViewModel =
         androidx.hilt.navigation.compose.hiltViewModel()
     val state = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.StartToEnd) {
                 val added = playerViewModel.addToQueue(song)
-                android.widget.Toast.makeText(
-                    context, if (added) "Added to queue" else "Already in queue", android.widget.Toast.LENGTH_SHORT,
-                ).show()
+                QueueFeedback.added(added)
             }
             false // snap back: the row stays in its list
         },

@@ -25,13 +25,17 @@ object ProfileCache {
     private val fetching = AtomicBoolean(false)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    fun clear() { name = null; imageUrl = null }
+
     fun ensure(context: Context) {
+        val cookie = SpotifySession.spDc(context)
         if (name != null) return
         if (!fetching.compareAndSet(false, true)) return
         scope.launch {
             try {
                 if (SpotifyTokenProvider.ensureToken(context)) {
                     Spotify.me().onSuccess { user ->
+                        if (cookie != SpotifySession.spDc(context)) return@onSuccess
                         name = user.displayName ?: user.id
                         imageUrl = user.images.firstOrNull()?.url
                     }

@@ -1,4 +1,14 @@
 pluginManagement {
+    // Dependencies include newer Kotlin metadata than AGP 8.10's bundled D8 supports.
+    buildscript {
+        repositories {
+            google()
+            mavenCentral()
+        }
+        dependencies {
+            classpath("com.android.tools:r8:8.13.19")
+        }
+    }
     repositories {
         google()
         mavenCentral()

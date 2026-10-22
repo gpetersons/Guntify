@@ -42,11 +42,11 @@ fun MusicSourceScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("Choose your music source", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            Text("Choose your music source", color = com.music.spotui.ui.theme.AppText, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
             Text(
                 "Spotify keeps your library and recommendations. Choose where Spotui streams the audio.",
-                color = Color(0xFFB3B3B3), fontSize = 14.sp, textAlign = TextAlign.Center,
+                color = com.music.spotui.ui.theme.AppSecondary, fontSize = 14.sp, textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(32.dp))
 
@@ -86,10 +86,10 @@ private fun SourceCard(title: String, subtitle: String, color: Color, onClick: (
         Box(
             Modifier.background(color, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 9.dp),
             contentAlignment = Alignment.Center,
-        ) { Text("♫", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold) }
+        ) { Text("♫", color = com.music.spotui.ui.theme.AppText, fontSize = 22.sp, fontWeight = FontWeight.Bold) }
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
-            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = Color(0xFFB3B3B3), fontSize = 12.sp, lineHeight = 17.sp)
+            Text(title, color = com.music.spotui.ui.theme.AppText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, lineHeight = 17.sp)
         }
         Icon(Icons.Filled.KeyboardArrowRight, contentDescription = null, tint = color)
     }

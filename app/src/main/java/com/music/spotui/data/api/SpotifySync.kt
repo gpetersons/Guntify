@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
 object SpotifySync {
 
     private const val TAG = "SpotifySync"
+    private val saveMutex = kotlinx.coroutines.sync.Mutex()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun setTrackSaved(context: Context, trackId: String, saved: Boolean) =
@@ -33,8 +34,10 @@ object SpotifySync {
         if (id.isBlank()) return
         val app = context.applicationContext
         scope.launch {
+            saveMutex.lock()
+            try {
             if (!SpotifyTokenProvider.ensureToken(app)) {
-                Log.w(TAG, "no token — skipped syncing $uri saved=$saved")
+                showSyncFailure(app)
                 return@launch
             }
             val result =
@@ -42,8 +45,15 @@ object SpotifySync {
                 else Spotify.removeFromLibrary(listOf(uri))
             result.fold(
                 onSuccess = { Log.d(TAG, "synced $uri saved=$saved") },
-                onFailure = { Log.w(TAG, "failed syncing $uri saved=$saved", it) },
+                onFailure = { Log.w(TAG, "failed syncing $uri saved=$saved", it); showSyncFailure(app) },
             )
+            } finally { saveMutex.unlock() }
+        }
+    }
+
+    private fun showSyncFailure(context: Context) {
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            android.widget.Toast.makeText(context, "Saved locally, but Spotify sync failed. Check your connection and try the action again.", android.widget.Toast.LENGTH_LONG).show()
         }
     }
 

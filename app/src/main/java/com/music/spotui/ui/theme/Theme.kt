@@ -48,21 +48,19 @@ fun SpotuiTheme(
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    AppearanceSettings.initialize(LocalContext.current)
+    AppearanceSettings.deviceDark.value = isSystemInDarkTheme()
+    val useDark = AppearanceSettings.effectiveDark
+    val colorScheme = if (useDark) DarkColorScheme.copy(background = AppBackground, surface = AppSurface, onBackground = AppText, onSurface = AppText)
+        else LightColorScheme.copy(background = AppBackground, surface = AppSurface, onBackground = AppText, onSurface = AppText)
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = Color.Transparent.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+            // Music screens use dark/artwork backgrounds: retain readable white system icons.
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !useDark && !AppearanceSettings.artworkScreen.value
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) window.isStatusBarContrastEnforced = false
         }
     }
 

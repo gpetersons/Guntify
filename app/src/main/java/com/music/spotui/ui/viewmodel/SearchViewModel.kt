@@ -36,6 +36,13 @@ class SearchViewModel @Inject constructor(private val repository: AppRepository,
     }
 
     private var searchJob: Job? = null
+    private var pageJob: Job? = null
+    private var activeQuery = ""
+    private var searchVersion = 0L
+    private val _loadingMore = MutableStateFlow(false)
+    val loadingMore: StateFlow<Boolean> = _loadingMore
+    private val _pageError = MutableStateFlow("")
+    val pageError: StateFlow<String> = _pageError
 
     init {
         // Start empty — results come from live searches, not the rate-limited
@@ -45,26 +52,9 @@ class SearchViewModel @Inject constructor(private val repository: AppRepository,
 
     fun updateQueue(songs: List<SongsModel>) = currentSongState.updateQueue(songs)
 
-    /**
-     * Start playback of a single search result as a *radio*, the way Spotify does:
-     * the queue becomes just this track, then Spotify-recommended tracks (seeded from
-     * it) are appended as they load — instead of queuing the rest of the search list
-     * (which made playback "just go down the search results"). The append is skipped
-     * if the user has since started something else.
-     */
-    fun startRadioFromSong(song: SongsModel) {
+    /** Search selection is ordinary playback; Radio remains an explicit menu action. */
+    fun startSong(song: SongsModel) {
         currentSongState.updateQueue(listOf(song))
-        val seed = song.spotifyTrackId
-        if (seed.isBlank()) return
-        viewModelScope.launch(Dispatchers.IO) {
-            val recs = repository.provideRecommendations(listOf(seed))
-            val current = currentSongState.queue.value
-            // Only extend if this radio is still the active queue (user didn't tap away).
-            if (current.size == 1 && current.first().id == song.id) {
-                val fresh = recs.filter { it.id != song.id }
-                if (fresh.isNotEmpty()) currentSongState.updateQueue(current + fresh)
-            }
-        }
     }
 
     fun updateSongState(coverUri: String, title: String, singer: String, playingState: Boolean, songId : Int, songIndex : Int = 0, album : String = "") {
@@ -73,9 +63,18 @@ class SearchViewModel @Inject constructor(private val repository: AppRepository,
 
     fun search(query: String) {
         searchJob?.cancel()
+        pageJob?.cancel()
+        pageJob = null
+        activeQuery = query.trim()
+        val version = ++searchVersion
+        _loadingMore.value = false
+        _pageError.value = ""
+        _results.value = Response.Loading()
         searchJob = viewModelScope.launch(Dispatchers.IO) {
             delay(150) // short debounce for snappy real-time results
             repository.searchEverything(query).collect { result ->
+                if (searchVersion != version) return@collect
+                if (pageJob != null) return@collect
                 _results.value = result
                 // Keep the legacy songs flow in sync for any remaining consumers.
                 _songs.value = when (result) {
@@ -86,4 +85,35 @@ class SearchViewModel @Inject constructor(private val repository: AppRepository,
             }
         }
     }
+    fun loadMore() {
+        if (_loadingMore.value) return
+        val previous = (_results.value as? Response.Success)?.data ?: return
+        val offset = previous.nextOffset ?: return
+        val query = activeQuery
+        val version = searchVersion
+        _loadingMore.value = true
+        _pageError.value = ""
+        pageJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                repository.searchEverything(query, offset).collect { response ->
+                    if (searchVersion != version) return@collect
+                    when (response) {
+                        is Response.Success -> {
+                            val merged = com.music.spotui.data.recommendation.SearchPagePolicy.append(previous, response.data)
+                            _results.value = Response.Success(merged)
+                            _songs.value = Response.Success(merged.songs)
+                        }
+                        is Response.Error -> _pageError.value = response.error
+                        is Response.Loading -> Unit
+                    }
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled
+            } catch (error: Exception) {
+                if (searchVersion == version) _pageError.value = error.message ?: "Could not load more results."
+            } finally {
+                if (searchVersion == version) _loadingMore.value = false
+            }
+        }
+    }
+
 }

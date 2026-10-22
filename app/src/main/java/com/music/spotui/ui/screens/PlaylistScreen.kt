@@ -83,7 +83,7 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
     }
 
     val songs = (songsResp as? Response.Success)?.data.orEmpty()
-    val playlist = (playlistResp as? Response.Success)?.data
+    val originalPlaylist = (playlistResp as? Response.Success)?.data
         ?: AlbumsModel(
             id = playlistId.hashCode() and 0x7fffffff,
             artists = "",
@@ -92,6 +92,8 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
             time = "",
         )
 
+    val localCover = com.music.spotui.data.api.PlaylistCover.localPath(context, playlistId)
+    val playlist = if (localCover != null) originalPlaylist.copy(coverUri = localCover) else originalPlaylist
 
     var menuSong by remember { mutableStateOf<com.music.spotui.data.entity.SongsModel?>(null) }
     menuSong?.let { sel ->
@@ -113,6 +115,7 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
     }
 
     Surface(
+        color = Color(AppBackground.toArgb()),
         modifier = Modifier
             .fillMaxSize()
             .background(Color(AppBackground.toArgb()))
@@ -130,25 +133,7 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                CenterAlignedTopAppBar(
-                    modifier = Modifier.padding(16.dp, 0.dp),
-                    navigationIcon = {
-                        Icon(
-                            modifier = Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { navController.navigateUp() },
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "",
-                            tint = Color.White
-                        )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                    ),
-                    title = { Text(text = "") }
-                )
+                com.music.spotui.ui.components.CollectionBackBar(dominentColor) { navController.navigateUp() }
             }
         ) { innerPadding ->
             LazyColumn(
@@ -164,31 +149,24 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                             .fillMaxWidth()
                             // Minimum, not fixed: a long playlist description used to
                             // overflow the fixed height and squash the play button.
-                            .heightIn(min = 440.dp)
+                            .heightIn(min = 380.dp)
                             .padding(bottom = 8.dp)
                             .background(
                                 brush = Brush.verticalGradient(
-                                    colors = listOf(dominentColor, Color(AppBackground.toArgb())),
-                                    startY = -100f,
+                                    colors = listOf(com.music.spotui.ui.theme.artworkHeader(dominentColor), Color(AppBackground.toArgb())),
+                                    startY = 0f,
                                 ),
                             ),
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Spacer(modifier = Modifier.padding(25.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            GlideImage(
-                                modifier = Modifier.size(230.dp),
-                                model = playlist.coverUri,
-                                failure = placeholder(R.drawable.placeholder),
-                                contentDescription = "",
-                            )
-                        }
+                        com.music.spotui.ui.components.CollectionArtwork(playlist.coverUri, "Collection artwork")
                         Spacer(modifier = Modifier.padding(5.dp))
                         Text(
                             modifier = Modifier.padding(20.dp, 5.dp, 0.dp, 0.dp),
                             text = playlist.name.ifBlank { playlistName },
-                            color = Color.White,
+                            color = com.music.spotui.ui.theme.AppText,
                             fontSize = 23.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -196,7 +174,7 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                             Text(
                                 modifier = Modifier.padding(20.dp, 4.dp, 20.dp, 0.dp),
                                 text = playlist.time,
-                                color = Color.Gray,
+                                color = com.music.spotui.ui.theme.AppSecondary,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -204,8 +182,8 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                         if (playlist.artists.isNotBlank()) {
                             Text(
                                 modifier = Modifier.padding(20.dp, 4.dp, 0.dp, 0.dp),
-                                text = "Playlist • ${playlist.artists}",
-                                color = Color.White,
+                                text = "Spotify playlist • ${playlist.artists}",
+                                color = com.music.spotui.ui.theme.AppText,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -249,29 +227,18 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(52.dp)
+                                .heightIn(min = 56.dp)
                                 .padding(20.dp, 0.dp)
                         ) {
                             // Download the whole playlist (all tracks) for offline playback.
                             var askDownloadAll by remember { mutableStateOf(false) }
-                            var playlistDownloaded by remember(songs) {
-                                mutableStateOf(songs.isNotEmpty() && com.music.spotui.di.Downloads.allDownloaded(songs, context))
-                            }
+                            val playlistDownloaded = com.music.spotui.ui.components.rememberCollectionDownloaded(songs, context)
                             if (songs.isNotEmpty()) {
-                                Icon(
-                                    imageVector = if (playlistDownloaded)
-                                        Icons.Default.CheckCircle else ImageVector.vectorResource(R.drawable.ic_download),
-                                    tint = if (playlistDownloaded) Color(AppPalette.toArgb()) else Color.White,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null,
-                                        ) {
+                                com.music.spotui.ui.components.CollectionAction(painter = painterResource(if (playlistDownloaded) R.drawable.added else R.drawable.ic_download), label = "Download playlist", active = playlistDownloaded, enabled = songs.isNotEmpty()) {
+
                                             if (!playlistDownloaded) askDownloadAll = true
-                                        },
-                                    contentDescription = "Download playlist",
-                                )
+                                        
+                            }
                                 if (askDownloadAll) {
                                     com.music.spotui.ui.components.ConfirmDownloadAllDialog(
                                         songs.size, onDismiss = { askDownloadAll = false },
@@ -284,16 +251,11 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
                                 // Shuffle-play: start the playlist in random order.
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_player_shuffle),
-                                    tint = Color.White,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null,
-                                        ) {
-                                            playlistViewModel.startShuffled(displaySongs)?.let { first ->
+                                com.music.spotui.ui.components.CollectionAction(painter = painterResource(R.drawable.ic_player_shuffle), label = "Shuffle play", active = playlistViewModel.shuffleActive, smart = playlistViewModel.smartShuffleActive, enabled = songs.isNotEmpty()) {
+
+                                            if (playlistViewModel.collectionActive) playlistViewModel.cycleShuffle()
+                                        else playlistViewModel.startShuffled(displaySongs)?.let { first ->
+                                                com.music.spotui.data.preferences.HomeRecents.rememberPlaylist(context, playlistId, playlist.name, playlist.coverUri)
                                                 SongPlayer.playSong(first.url, context)
                                                 playlistViewModel.updateSongState(
                                                     first.coverUri,
@@ -305,31 +267,22 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                                                     playlist.name,
                                                 )
                                             }
-                                        },
-                                    contentDescription = "Shuffle play",
-                                )
+                                        
+                            }
                                 Spacer(modifier = Modifier.width(16.dp))
                             }
                             // Always visible: pause when playing, resume when this
                             // list's track is paused, otherwise start from the top.
                             if (songs.isNotEmpty()) {
-                                val playing = playlistViewModel.currentSongPlayingState.value
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(52.dp)
-                                        .clip(RoundedCornerShape(100.dp))
-                                        .background(Color.White)
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null
-                                        ) {
+                                val playing = playlistViewModel.collectionActive && playlistViewModel.currentSongPlayingState.value
+                                com.music.spotui.ui.components.CollectionPlayButton(playing = playing, onClick = {
                                             when {
                                                 playing -> playlistViewModel.setPlaying(false)
-                                                songs.any { it.id == playlistViewModel.currentSongId.value } ->
+                                                playlistViewModel.collectionActive ->
                                                     playlistViewModel.setPlaying(true)
                                                 else -> {
                                                     playlistViewModel.updateQueue(displaySongs)
+                                                    com.music.spotui.data.preferences.HomeRecents.rememberPlaylist(context, playlistId, playlist.name, playlist.coverUri)
                                                     SongPlayer.playSong(displaySongs[0].url, context)
                                                     playlistViewModel.updateSongState(
                                                         displaySongs[0].coverUri,
@@ -341,18 +294,9 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                                                         playlist.name
                                                     )
                                                 }
+                                            
                                             }
-                                        }
-                                ) {
-                                    Icon(
-                                        modifier = Modifier.size(25.dp),
-                                        tint = Color.Black,
-                                        painter = painterResource(
-                                            id = if (playing) R.drawable.ic_playing else R.drawable.play_svgrepo_com,
-                                        ),
-                                        contentDescription = if (playing) "Pause" else "Play"
-                                    )
-                                }
+                                })
                             }
                         }
                     }
@@ -367,7 +311,7 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                 itemsIndexed(displaySongs, key = { index, _ -> rowKeys[index] }) { index, song ->
                     com.music.spotui.ui.components.SwipeToQueue(song) {
                     val currentColor = if (song.id == playlistViewModel.currentSongId.value)
-                        Color(AppPalette.toArgb()) else Color.White
+                        Color(AppPalette.toArgb()) else com.music.spotui.ui.theme.AppText
 
                     Row(
                         horizontalArrangement = Arrangement.Start,
@@ -381,6 +325,7 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                                 onLongClick = { menuSong = song },
                                 onClick = {
                                     playlistViewModel.updateQueue(displaySongs)
+                                    com.music.spotui.data.preferences.HomeRecents.rememberPlaylist(context, playlistId, playlist.name, playlist.coverUri)
                                     SongPlayer.playSong(song.url, context)
                                     playlistViewModel.updateSongState(
                                         song.coverUri,
@@ -413,7 +358,7 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                             )
                             Text(
                                 text = song.singer,
-                                color = Color.Gray,
+                                color = com.music.spotui.ui.theme.AppSecondary,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1

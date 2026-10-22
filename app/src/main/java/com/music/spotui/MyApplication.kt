@@ -70,5 +70,6 @@ class MyApplication : Application(){
         appScope.launch { runCatching { api.getHomeFeed().collect {} } }
         appScope.launch { runCatching { api.getAlbums().collect {} } }
         appScope.launch { runCatching { api.getArtists().collect {} } }
+        com.music.spotui.di.SmartDownloadManager.start(this)
     }
 }

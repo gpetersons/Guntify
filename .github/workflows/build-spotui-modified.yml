@@ -1,15 +1,19 @@
-name: Build USpot APK
+name: Build and release USpot
 on:
-  workflow_dispatch:
-  pull_request:
+  push:
     branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: uspot-release
+  cancel-in-progress: false
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     env:
-      USPOT_SIGNING_KEYSTORE: ${{ github.workspace }}/uspot-signing.keystore
+      USPOT_SIGNING_KEYSTORE: ${{ runner.temp }}/uspot-signing.keystore
       USPOT_STORE_PASSWORD: ${{ secrets.USPOT_STORE_PASSWORD }}
       USPOT_KEY_ALIAS: ${{ secrets.USPOT_KEY_ALIAS }}
       USPOT_KEY_PASSWORD: ${{ secrets.USPOT_KEY_PASSWORD }}
@@ -22,7 +26,7 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: "platform-tools platforms;android-34 build-tools;35.0.0"
-      - name: Restore saved signing key
+      - name: Restore existing signing key
         env:
           SIGNING_KEY: ${{ secrets.USPOT_SIGNING_KEYSTORE_BASE64 }}
         run: |
@@ -30,17 +34,10 @@ jobs:
           import base64, os, pathlib
           key = os.environ.get('SIGNING_KEY', '').strip()
           if not key:
-              raise SystemExit('Missing USPOT_SIGNING_KEYSTORE_BASE64. Use the existing app signing key; do not generate a replacement key for an update.')
+              raise SystemExit('Restore USPOT_SIGNING_KEYSTORE_BASE64 with the existing signing key. Do not generate a replacement for an update.')
           pathlib.Path(os.environ['USPOT_SIGNING_KEYSTORE']).write_bytes(base64.b64decode(''.join(key.split()), validate=True))
           PY
-      - name: Extract source
-        run: |
-          sha256sum USpot-build-69-source.zip
-          unzip -q USpot-build-69-source.zip -d build-source
-          grep -E 'version(Code|Name) =' build-source/Spotui-Modified/app/build.gradle.kts
-          grep -q 'versionCode = 69' build-source/Spotui-Modified/app/build.gradle.kts
       - name: Build and test
-        working-directory: build-source/Spotui-Modified
         run: |
           chmod +x gradlew
           ./gradlew :app:assembleDebug --no-daemon --max-workers=2
@@ -48,10 +45,27 @@ jobs:
       - name: Package APK and matching source
         run: |
           mkdir -p release
-          cp build-source/Spotui-Modified/app/build/outputs/apk/debug/*.apk release/
-          cp USpot-build-69-source.zip release/
-          cp build-source/Spotui-Modified/{LICENSE,NOTICE,SOURCE.md} release/
+          cp app/build/outputs/apk/debug/app-debug.apk release/USpot.apk
+          git archive --format=zip --prefix=USpot/ -o release/USpot-source.zip HEAD
+          cp LICENSE NOTICE SOURCE.md release/
+          python3 - <<'PY'
+          import os, pathlib, re
+          source = pathlib.Path('app/build.gradle.kts').read_text()
+          version = re.search(r'versionName = "([^"]+)"', source).group(1)
+          code = re.search(r'versionCode = (\d+)', source).group(1)
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              output.write(f'USPOT_TAG=v{version}-build-{code}\nUSPOT_TITLE=USpot {version} (build {code})\n')
+          PY
       - uses: actions/upload-artifact@v4
         with:
-          name: USpot-1.1-build-69-APK
+          name: USpot-APK-and-source
           path: release/*
+      - name: Publish latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$USPOT_TAG" >/dev/null 2>&1; then
+            echo 'Release already exists; increase versionCode before publishing another build.'
+            exit 0
+          fi
+          gh release create "$USPOT_TAG" release/* --target "$(git rev-parse HEAD)" --title "$USPOT_TITLE" --notes-file RELEASE_NOTES.md --latest

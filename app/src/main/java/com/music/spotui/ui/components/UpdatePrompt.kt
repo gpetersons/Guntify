@@ -32,7 +32,7 @@ fun UpdatePrompt() {
     AlertDialog(
         onDismissRequest = { update = null },
         title = { Text("Update available") },
-        text = { Text("spotui ${info.version} is available. You're on an older version — upgrade to get the latest fixes and features.") },
+        text = { Text("USpot ${info.version} is available. You're on an older version — upgrade to get the latest fixes and features.") },
         confirmButton = {
             TextButton(onClick = {
                 runCatching {

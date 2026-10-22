@@ -17,7 +17,7 @@ object UpdateChecker {
 
     private const val TAG = "UpdateChecker"
     private const val RELEASE_API =
-        "https://api.github.com/repos/Spotui/Spotui/releases/tags/Release"
+        "https://api.github.com/repos/rare621/USpot/releases/latest"
     private const val PREFS = "update_prefs"
     private const val KEY_SKIP = "skip_fingerprint"
 
@@ -55,7 +55,7 @@ object UpdateChecker {
         val conn = URL(RELEASE_API).openConnection() as HttpURLConnection
         conn.connectTimeout = 8000
         conn.readTimeout = 8000
-        conn.setRequestProperty("User-Agent", "Spotui-App")
+        conn.setRequestProperty("User-Agent", "USpot-App")
         conn.setRequestProperty("Accept", "application/vnd.github+json")
         try {
             if (conn.responseCode != 200) return null
@@ -65,6 +65,7 @@ object UpdateChecker {
             val version = extractVersion(json.optString("name"))
                 ?: extractVersion(json.optString("body"))
                 ?: return null
+            if (!json.optString("name").startsWith("USpot", ignoreCase = true)) return null
             val assets = json.optJSONArray("assets")
             val apkUrl = (0 until (assets?.length() ?: 0))
                 .asSequence()
@@ -72,7 +73,7 @@ object UpdateChecker {
                 .firstOrNull { it.optString("name").endsWith(".apk") }
                 ?.optString("browser_download_url")
             val page = json.optString("html_url")
-                .ifBlank { "https://github.com/Spotui/Spotui/releases/tag/Release" }
+                .ifBlank { "https://github.com/rare621/USpot/releases/latest" }
             return UpdateInfo(
                 version = version,
                 downloadUrl = apkUrl?.ifBlank { null } ?: page,

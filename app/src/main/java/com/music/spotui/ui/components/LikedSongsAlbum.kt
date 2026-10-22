@@ -106,11 +106,11 @@ fun LikedSongsScreen(
                         },
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "",
-                        tint = Color.White)
+                        tint = com.music.spotui.ui.theme.AppText)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = Color.White,
+                    containerColor = dominentColor,
+                    titleContentColor = com.music.spotui.ui.theme.AppText,
                 ),
                 title = {
                     Text(text = "")
@@ -176,12 +176,12 @@ fun LikedSongsScreen(
                     ) {
                         Text(modifier = Modifier,
                             text = "Liked Songs",
-                            color = Color.White,
+                            color = com.music.spotui.ui.theme.AppText,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold)
                         Text(modifier = Modifier,
                             text = " ${likedSongs.size} songs",
-                            color = Color.Gray,
+                            color = com.music.spotui.ui.theme.AppSecondary,
                             letterSpacing = 0.sp,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium)
@@ -231,12 +231,10 @@ fun LikedSongsScreen(
             if(likedSongs.isNotEmpty()){
                 repeat(likedSongs.size) {song ->
 
-                    var isLiked by remember {
-                        mutableStateOf(isSongLiked(context, likedSongs[song].id.toString()))
-                    }
+                    var isLiked by com.music.spotui.ui.components.rememberSongLiked(context, likedSongs[song].id.toString())
                     val songId = likedSongs[song].id
                     val currentPlayingIndicatorColor = if(songId == albumViewModel.currentSongId.value) Color(
-                        AppPalette.toArgb()) else Color.White
+                        AppPalette.toArgb()) else com.music.spotui.ui.theme.AppText
 
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -286,7 +284,7 @@ fun LikedSongsScreen(
                                 )
                                 Text(
                                     text = likedSongs[song].singer,
-                                    color = Color.Gray,
+                                    color = com.music.spotui.ui.theme.AppSecondary,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -305,7 +303,9 @@ fun LikedSongsScreen(
                                     } else {
                                         addLikedSongId(context, songId.toString())
                                     }
-                                    //isLiked = isSongLiked(context, songId.toString())
+                                    isLiked = isSongLiked(context, songId.toString())
+                                    val track = likedSongs[song]
+                                    com.music.spotui.data.api.SpotifySync.setTrackSaved(context, track.spotifyTrackId, isSongLiked(context, songId.toString()))
                                     albumViewModel.updateLikeState(!albumViewModel.likeState.value)
 
                                 },

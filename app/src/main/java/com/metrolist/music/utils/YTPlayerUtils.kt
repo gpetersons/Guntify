@@ -46,6 +46,19 @@ object YTPlayerUtils {
         .build()
 
     private val poTokenGenerator = PoTokenGenerator()
+    private val legacyLookup = com.music.spotui.audio.BlockingLookupGate()
+
+    // SongPlayer owns the candidate/overall deadline. A second four-second cutoff
+    // here rejected otherwise usable sources before their response arrived.
+    private suspend fun playerRequest(trace: com.music.spotui.audio.StreamFailureTrace? = null, block: suspend () -> Result<PlayerResponse>): PlayerResponse? =
+        block().onFailure { error ->
+            if(error is kotlinx.coroutines.CancellationException)throw error
+            trace?.endpoint(error)
+            // Ktor is an implementation detail of the InnerTube module, not an app dependency.
+            val detail=error.javaClass.simpleName
+            runCatching { com.music.spotui.data.preferences.PlaybackDiagnostics.record(CipherDeobfuscator.appContext,"YouTube endpoint failed",detail) }
+        }.getOrNull()
+
 
     // BitChord's fast path: current native YouTube Music returns direct URLs
     // without cookies, PoTokens, player JavaScript, or signature deciphering.
@@ -78,11 +91,15 @@ object YTPlayerUtils {
         audioQuality: AudioQuality,
         connectivityManager: ConnectivityManager,
     ): Result<PlaybackData> = runCatching {
+        val trace = com.music.spotui.audio.StreamFailureTrace()
         Timber.tag(TAG).d("=== PLAYER RESPONSE FOR PLAYBACK ===")
         Timber.tag(TAG).d("videoId: $videoId")
         Timber.tag(TAG).d("playlistId: $playlistId")
         Timber.tag(TAG).d("audioQuality: $audioQuality")
 
+
+        // Restore visitor initialization used by the earlier resolver. Native clients
+        // can require a consistent visitor context even when no web PoToken is needed.
         if (YouTube.visitorData.isNullOrBlank()) {
             YouTube.visitorData = YouTube.visitorData().getOrNull()
         }
@@ -97,9 +114,14 @@ object YTPlayerUtils {
             ?.any { it.substringBefore('=').trim() == "SAPISID" } == true
         Timber.tag(TAG).d("Authentication status: ${if (isLoggedIn) "LOGGED_IN" else "ANONYMOUS"}")
 
-        // Get signature timestamp (same as before for normal content)
-        val signatureTimestamp = getSignatureTimestampOrNull(videoId)
-        Timber.tag(logTag).d("Signature timestamp: ${signatureTimestamp.timestamp}")
+        // Native audio clients do not need player-JS extraction. In particular, never
+        // wait on NewPipe's process-wide synchronized JS lock before the fast path.
+        var signatureTimestamp: SignatureTimestampResult? = null
+        suspend fun timestampFor(client: YouTubeClient): Int? {
+            if (!client.useSignatureTimestamp) return null
+            if (signatureTimestamp == null) signatureTimestamp = getSignatureTimestampOrNull(videoId)
+            return signatureTimestamp?.timestamp
+        }
 
         // Generate PoToken only for a web client. The native fast path does not
         // use one and must remain anonymous.
@@ -107,7 +129,7 @@ object YTPlayerUtils {
         // Web BotGuard binds its streaming token to VISITOR_DATA. DATASYNC_ID is
         // an account synchronization identifier and produces a token that the
         // googlevideo CDN rejects even though minting itself succeeds.
-        val sessionId = YouTube.visitorData?.takeIf { it.isNotBlank() }
+        var sessionId = YouTube.visitorData?.takeIf { it.isNotBlank() }
         val mainClientNeedsPoToken = MAIN_CLIENT.useWebPoTokens
         if (mainClientNeedsPoToken && sessionId != null) {
             Timber.tag(logTag).d("Generating PoToken for WEB_REMIX with sessionId")
@@ -117,6 +139,7 @@ object YTPlayerUtils {
                     Timber.tag(logTag).d("PoToken generated successfully")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 Timber.tag(logTag).e(e, "PoToken generation failed: ${e.message}")
             }
         }
@@ -128,28 +151,28 @@ object YTPlayerUtils {
             Timber.tag(TAG).w("PoToken unavailable — skipping MAIN_CLIENT and using fallback chain directly")
         }
 
-        // Try WEB_REMIX with signature timestamp and poToken (same as before)
+        // Try the native client before any web-player fallback.
         Timber.tag(logTag).d("Attempting to get player response using MAIN_CLIENT: ${MAIN_CLIENT.clientName}")
         var initialResponseClient = MAIN_CLIENT
-        var mainPlayerResponse = YouTube.player(
+        var mainPlayerResponse = playerRequest(trace) { YouTube.player(
             videoId,
             playlistId,
             MAIN_CLIENT,
-            signatureTimestamp.timestamp,
+            timestampFor(MAIN_CLIENT),
             poToken?.playerRequestPoToken,
             authenticated = false,
-        ).getOrNull()
+        ) }
         if (mainPlayerResponse == null) {
             // An obsolete/refused identity can fail at HTTP level before a
             // playability body exists. BitChord walks on instead of aborting.
             for (candidate in STREAM_FALLBACK_CLIENTS) {
-                val response = YouTube.player(
+                val response = playerRequest(trace) { YouTube.player(
                     videoId,
                     playlistId,
                     candidate,
-                    signatureTimestamp.timestamp.takeIf { candidate.useSignatureTimestamp },
+                    timestampFor(candidate),
                     authenticated = false,
-                ).getOrNull()
+                ) }
                 if (response != null) {
                     initialResponseClient = candidate
                     mainPlayerResponse = response
@@ -157,7 +180,7 @@ object YTPlayerUtils {
                 }
             }
         }
-        var mainResponse = mainPlayerResponse ?: throw Exception("Every YouTube player endpoint failed")
+        var mainResponse = mainPlayerResponse ?: throw com.music.spotui.audio.StreamCandidateException(trace.summary())
 
         // Debug uploaded track response
         if (isUploadedTrack || playlistId?.contains("MLPT") == true) {
@@ -186,23 +209,28 @@ object YTPlayerUtils {
             // generation above intentionally skips it. WEB_REMIX does need one:
             // without both its player-request and streaming-data tokens YouTube
             // returns valid-looking signed URLs which the CDN rejects with 403.
+            if (sessionId == null) {
+                YouTube.visitorData = kotlinx.coroutines.withTimeoutOrNull(2_000L) { YouTube.visitorData().getOrNull() }
+                sessionId = YouTube.visitorData?.takeIf { it.isNotBlank() }
+            }
             if (poToken == null && sessionId != null) {
                 try {
                     Timber.tag(logTag).d("Generating PoToken for restricted WEB_REMIX")
                     poToken = poTokenGenerator.getWebClientPoToken(videoId, sessionId)
                     Timber.tag(logTag).d("Restricted WEB_REMIX PoToken available: ${poToken != null}")
                 } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                     Timber.tag(logTag).e(e, "Restricted WEB_REMIX PoToken generation failed")
                 }
             }
-            val creatorResponse = YouTube.player(
+            val creatorResponse = playerRequest(trace) { YouTube.player(
                 videoId,
                 playlistId,
                 WEB_REMIX,
-                signatureTimestamp.timestamp,
+                timestampFor(WEB_REMIX),
                 poToken?.playerRequestPoToken,
                 authenticated = true,
-            ).getOrNull()
+            ) }
             if (creatorResponse?.playabilityStatus?.status == "OK") {
                 Timber.tag(logTag).d("WEB_REMIX authenticated response is playable")
                 mainResponse = creatorResponse
@@ -219,6 +247,7 @@ object YTPlayerUtils {
         var streamUrl: String? = null
         var streamExpiresInSeconds: Int? = null
         var streamPlayerResponse: PlayerResponse? = null
+        var streamAccepted = false
         val retryMainPlayerResponse: PlayerResponse? = mainResponse
 
         // Check current status
@@ -276,16 +305,16 @@ object YTPlayerUtils {
                 // Only pass poToken for clients that support it
                 val clientPoToken = if (client.useWebPoTokens) poToken?.playerRequestPoToken else null
                 // Skip signature timestamp for age-restricted (faster), use it for normal content
-                val clientSigTimestamp = if (wasOriginallyAgeRestricted) null else signatureTimestamp.timestamp
+                val clientSigTimestamp = if (wasOriginallyAgeRestricted) null else timestampFor(client)
                 streamPlayerResponse =
-                    YouTube.player(
+                    playerRequest(trace) { YouTube.player(
                         videoId,
                         playlistId,
                         client,
                         clientSigTimestamp,
                         clientPoToken,
                         authenticated = false,
-                    ).getOrNull()
+                    ) }
             }
 
             // YouTube content substitution guard: a client with a mismatched
@@ -298,6 +327,7 @@ object YTPlayerUtils {
                     "Client ${if (clientIndex == -1) MAIN_CLIENT.clientName else STREAM_FALLBACK_CLIENTS[clientIndex].clientName} " +
                         "returned WRONG video: $returnedVideoId != $videoId — skipping",
                 )
+                trace.wrongVideo()
                 continue
             }
 
@@ -319,6 +349,7 @@ object YTPlayerUtils {
                     )
 
                 if (format == null) {
+                    trace.missingFormat()
                     Timber.tag(logTag).d("No suitable format found for client: ${if (clientIndex == -1) MAIN_CLIENT.clientName else STREAM_FALLBACK_CLIENTS[clientIndex].clientName}")
                     continue
                 }
@@ -332,6 +363,7 @@ object YTPlayerUtils {
                     skipNewPipe = wasOriginallyAgeRestricted,
                 )
                 if (streamUrl == null) {
+                    trace.missingUrl()
                     Timber.tag(logTag).d("Stream URL not found for format")
                     continue
                 }
@@ -398,6 +430,7 @@ object YTPlayerUtils {
                             Timber.tag(TAG).d("  Final URL length (with pot): ${streamUrl.length}")
                         }
                     } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                         Timber.tag(TAG).e(e, "N-transform or pot append failed: ${e.message}")
                         Timber.tag(TAG).e("Stack trace: ${e.stackTraceToString().take(500)}")
                         // Continue with original URL
@@ -417,21 +450,18 @@ object YTPlayerUtils {
                 // Check if this is a privately owned track (uploaded song)
                 val isPrivatelyOwned = streamPlayerResponse.videoDetails?.musicVideoType == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK"
 
-                if (clientIndex == STREAM_FALLBACK_CLIENTS.size - 1 || isPrivatelyOwned) {
-                    /** skip [validateStatus] for last client or private tracks */
-                    if (isPrivatelyOwned) {
-                        Timber.tag(logTag).d("Skipping validation for privately owned track: ${currentClient.clientName}")
-                        println("[PLAYBACK_DEBUG] Using stream without validation for PRIVATELY_OWNED_TRACK")
-                    } else {
-                        Timber.tag(logTag).d("Using last fallback client without validation: ${STREAM_FALLBACK_CLIENTS[clientIndex].clientName}")
-                    }
-                    Timber.tag(TAG)
-                        .i("Playback: client=${currentClient.clientName}, videoId=$videoId, private=$isPrivatelyOwned")
+                if (isPrivatelyOwned || clientIndex == STREAM_FALLBACK_CLIENTS.lastIndex) {
+                    // Restore the original last-resort player attempt. A probe and actual
+                    // playback can be treated differently by the CDN; ExoPlayer still
+                    // verifies the media and retains its buffering/error recovery.
+                    Timber.tag(logTag).d("Using original probe exemption for ${currentClient.clientName}")
+                    streamAccepted = true
                     break
                 }
 
-                if (validateStatus(streamUrl, format.contentLength)) {
+                if (validateStatus(streamUrl, format.contentLength, trace)) {
                     // working stream found
+                    streamAccepted = true
                     Timber.tag(logTag).d("Stream validated successfully with client: ${currentClient.clientName}")
                     // Log for release builds
                     Timber.tag(TAG).i("Playback: client=${currentClient.clientName}, videoId=$videoId")
@@ -440,10 +470,12 @@ object YTPlayerUtils {
                     Timber.tag(logTag).d("Stream validation failed for client: ${currentClient.clientName}")
                 }
             } else {
+                trace.response(streamPlayerResponse?.playabilityStatus?.status)
                 Timber.tag(logTag).d("Player response status not OK: ${streamPlayerResponse?.playabilityStatus?.status}, reason: ${streamPlayerResponse?.playabilityStatus?.reason}")
             }
         }
 
+        if (!streamAccepted) throw com.music.spotui.audio.StreamCandidateException(trace.summary())
         if (streamPlayerResponse == null) {
             Timber.tag(logTag).e("Bad stream player response - all clients failed")
             if (isUploadedTrack) {
@@ -493,6 +525,7 @@ object YTPlayerUtils {
             streamExpiresInSeconds,
         )
     }.onFailure { e ->
+        if (e is kotlinx.coroutines.CancellationException) throw e
         println("[PLAYBACK_DEBUG] EXCEPTION during playback for videoId=$videoId: ${e::class.simpleName}: ${e.message}")
         e.printStackTrace()
     }
@@ -541,55 +574,28 @@ object YTPlayerUtils {
      * Mirrors ExoPlayer's ranged request. When content length is known, probing the
      * final byte also rejects old-client URLs that only expose a short preview.
      *  - 2xx → valid
-     *  - 405 → valid (HEAD unsupported; ExoPlayer will use GET)
      *  - 403/410 → invalid; continue to the next client
-     *  - IOException (timeout/reset) → treat as valid; ExoPlayer has its own retry and
+     *  - IOException or a slow probe → let ExoPlayer try; it has its own retry and
      *    killing the client here just cascades us down the fallback chain for no reason
      *  - other HTTP codes (4xx/5xx) → invalid
      */
-    private fun validateStatus(url: String, contentLength: Long?): Boolean {
-        Timber.tag(logTag).d("Validating stream URL status")
-        try {
-            val range = if (contentLength != null && contentLength > 0) {
-                "bytes=${contentLength - 1}-${contentLength - 1}"
-            } else "bytes=0-${2 * 1024 * 1024 - 1}"
-            val requestBuilder = okhttp3.Request.Builder()
-                .get()
-                .url(url)
-                .addHeader("Range", range)
-            // A googlevideo URL is bound to the client identity that minted it.
-            YouTubeClient.forStreamUrl(url).mediaHeaders().forEach { (name, value) ->
-                requestBuilder.header(name, value)
-            }
-
-            httpClient.newCall(requestBuilder.build()).execute().use { response ->
-                val code = response.code
-                val mediaType = response.header("Content-Type").orEmpty()
-                val accepted = (response.isSuccessful || code == 416) &&
-                    (mediaType.startsWith("audio/") || mediaType.startsWith("video/")) &&
-                    (contentLength != null || response.body?.source()?.request(16 * 1024L) == true)
-                Timber.tag(logTag).d("Stream URL validation: code=$code type=$mediaType range=$range accepted=$accepted")
-                return accepted
-            }
-        } catch (e: java.io.IOException) {
-            // Network timeout / reset while HEAD-probing. The stream URL itself may still
-            // be fine — let ExoPlayer attempt GET rather than burning a fallback client.
-            Timber.tag(logTag).w(e, "Stream URL HEAD probe failed (IO); accepting optimistically")
-            return true
-        } catch (e: Exception) {
-            Timber.tag(logTag).e(e, "Stream URL validation failed with exception")
-            reportException(e)
-        }
-        return false
+    private suspend fun validateStatus(url: String, contentLength: Long?, trace: com.music.spotui.audio.StreamFailureTrace): Boolean {
+        val range = if (contentLength != null && contentLength > 0) {
+            "bytes=${contentLength - 1}-${contentLength - 1}"
+        } else "bytes=0-${2 * 1024 * 1024 - 1}"
+        val request = okhttp3.Request.Builder().get().url(url).addHeader("Range", range)
+        YouTubeClient.forStreamUrl(url).mediaHeaders().forEach { (name, value) -> request.header(name, value) }
+        return com.music.spotui.audio.StreamUrlProbe.check(httpClient.newCall(request.build()), contentLength, onRejected = trace::rejectedHttp)
     }
     data class SignatureTimestampResult(
         val timestamp: Int?,
         val isAgeRestricted: Boolean
     )
 
-    private fun getSignatureTimestampOrNull(videoId: String): SignatureTimestampResult {
+    private suspend fun getSignatureTimestampOrNull(videoId: String): SignatureTimestampResult {
         Timber.tag(logTag).d("Getting signature timestamp for videoId: $videoId")
-        val result = NewPipeExtractor.getSignatureTimestamp(videoId)
+        val result = legacyLookup.run(8_000L) { NewPipeExtractor.getSignatureTimestamp(videoId) }
+            ?: return SignatureTimestampResult(null, false)
         return result.fold(
             onSuccess = { timestamp ->
                 Timber.tag(logTag).d("Signature timestamp obtained: $timestamp")
@@ -628,7 +634,7 @@ object YTPlayerUtils {
         val signatureCipher = format.signatureCipher ?: format.cipher
         if (!signatureCipher.isNullOrEmpty()) {
             Timber.tag(logTag).d("Format has signatureCipher, using YouTube player JavaScript")
-            val jsSolvedUrl = NewPipeExtractor.getSignatureUrl(format, videoId)
+            val jsSolvedUrl = legacyLookup.run(8_000L) { NewPipeExtractor.getSignatureUrl(format, videoId) }
             if (jsSolvedUrl != null) {
                 Timber.tag(logTag).d("Signature solved via YouTube player JavaScript")
                 return jsSolvedUrl
@@ -651,7 +657,7 @@ object YTPlayerUtils {
         }
 
         // Try to get URL using NewPipeExtractor signature deobfuscation
-        val deobfuscatedUrl = NewPipeExtractor.getStreamUrl(format, videoId)
+        val deobfuscatedUrl = legacyLookup.run(8_000L) { NewPipeExtractor.getStreamUrl(format, videoId) }
         if (deobfuscatedUrl != null) {
             Timber.tag(logTag).d("Stream URL obtained via NewPipe deobfuscation")
             return deobfuscatedUrl
@@ -659,7 +665,7 @@ object YTPlayerUtils {
 
         // Fallback: try to get URL from StreamInfo
         Timber.tag(logTag).d("Trying StreamInfo fallback for URL")
-        val streamUrls = YouTube.getNewPipeStreamUrls(videoId)
+        val streamUrls = legacyLookup.run(8_000L) { YouTube.getNewPipeStreamUrls(videoId) }.orEmpty()
         if (streamUrls.isNotEmpty()) {
             val streamUrl = streamUrls.find { it.first == format.itag }?.second
             if (streamUrl != null) {

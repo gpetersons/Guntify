@@ -77,7 +77,7 @@ fun DeezerIntroScreen(navController: NavController) {
             Spacer(Modifier.height(28.dp))
             Text(
                 "Log in to Deezer",
-                color = Color.White,
+                color = com.music.spotui.ui.theme.AppText,
                 fontSize = 24.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -85,7 +85,7 @@ fun DeezerIntroScreen(navController: NavController) {
             Spacer(Modifier.height(8.dp))
             Text(
                 "Spotui streams your music from Deezer. Skip this and playback falls back to YouTube instead — slower to load, and some tracks come back censored or as a different edit.",
-                color = Color(0xFFB3B3B3),
+                color = com.music.spotui.ui.theme.AppSecondary,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center,
                 lineHeight = 20.sp,
@@ -112,7 +112,7 @@ fun DeezerIntroScreen(navController: NavController) {
             }
             Spacer(Modifier.height(10.dp))
             TextButton(onClick = goHome, modifier = Modifier.fillMaxWidth()) {
-                Text("Skip for now", color = Color(0xFFB3B3B3), fontSize = 14.sp)
+                Text("Skip for now", color = com.music.spotui.ui.theme.AppSecondary, fontSize = 14.sp)
             }
             Text(
                 "You can connect Deezer any time from Settings.",
@@ -138,7 +138,7 @@ private fun Benefit(title: String, subtitle: String) {
             modifier = Modifier.size(20.dp).padding(top = 2.dp),
         )
         Column(modifier = Modifier.padding(start = 12.dp)) {
-            Text(title, color = Color.White, fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+            Text(title, color = com.music.spotui.ui.theme.AppText, fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
             Text(subtitle, color = Color(0xFF9A9A9A), fontSize = 12.sp, lineHeight = 16.sp)
         }
     }

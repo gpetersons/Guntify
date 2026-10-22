@@ -19,6 +19,16 @@ sealed class HomeItem {
     abstract val name: String
     abstract val imageUrl: String
 
+    data class RecentTrack(val song: SongsModel) : HomeItem() {
+        override val name: String get() = song.title
+        override val imageUrl: String get() = song.coverUri
+    }
+
+    data class Radio(val seed: SongsModel) : HomeItem() {
+        override val name: String get() = if (seed.spotifyTrackId.startsWith("uspot-mix:")) seed.title else "${seed.title} Radio"
+        override val imageUrl: String get() = seed.coverUri
+    }
+
     data class Album(
         override val name: String,
         override val imageUrl: String,
@@ -37,5 +47,7 @@ sealed class HomeItem {
         override val imageUrl: String,
         val subtitle: String,
         val id: String = "",
+        val artistKey: String = "",
+        val mixedArtists: Boolean = false,
     ) : HomeItem()
 }

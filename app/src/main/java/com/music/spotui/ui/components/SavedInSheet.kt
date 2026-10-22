@@ -79,7 +79,7 @@ fun SavedInSheet(
     onLikedChanged: (Boolean) -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var liked by remember { mutableStateOf(isSongLiked(context, song.id.toString())) }
+    var liked by com.music.spotui.ui.components.rememberSongLiked(context, song.id.toString())
     var playlists by remember { mutableStateOf<List<SpotifyPlaylist>?>(null) }
     // playlistId → does it contain this track (filled lazily per row).
     val membership = remember { mutableStateMapOf<String, Boolean>() }
@@ -103,7 +103,9 @@ fun SavedInSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color(0xFF1A1A1A),
+        containerColor = com.music.spotui.ui.theme.AppSurface,
+        contentColor = com.music.spotui.ui.theme.AppText,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) {
         Column(modifier = Modifier.navigationBarsPadding().imePadding()) {
             Row(
@@ -113,7 +115,7 @@ fun SavedInSheet(
                     .fillMaxWidth()
                     .padding(20.dp, 4.dp, 20.dp, 12.dp),
             ) {
-                Text("Saved in", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Saved in", color = com.music.spotui.ui.theme.AppText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Text(
                     "New playlist",
                     color = SpotifyGreen,
@@ -131,14 +133,14 @@ fun SavedInSheet(
                     value = newName,
                     onValueChange = { newName = it },
                     singleLine = true,
-                    placeholder = { Text("Playlist name", color = Color.Gray) },
+                    placeholder = { Text("Playlist name", color = com.music.spotui.ui.theme.AppSecondary) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { createNow() }),
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFF2A2A2A),
-                        unfocusedContainerColor = Color(0xFF2A2A2A),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = com.music.spotui.ui.theme.AppRaised,
+                        unfocusedContainerColor = com.music.spotui.ui.theme.AppRaised,
+                        focusedTextColor = com.music.spotui.ui.theme.AppText,
+                        unfocusedTextColor = com.music.spotui.ui.theme.AppText,
                         cursorColor = SpotifyGreen,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
@@ -162,7 +164,7 @@ fun SavedInSheet(
                     Spacer(Modifier.width(24.dp))
                     Text(
                         "Cancel",
-                        color = Color.Gray,
+                        color = com.music.spotui.ui.theme.AppSecondary,
                         fontSize = 14.sp,
                         modifier = Modifier.clickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -187,7 +189,7 @@ fun SavedInSheet(
                                 Brush.linearGradient(listOf(Color(0xFF4A39EA), Color(0xFF868AE1)))
                             ),
                     ) {
-                        Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Favorite, contentDescription = null, tint = com.music.spotui.ui.theme.AppText, modifier = Modifier.size(20.dp))
                     }
                 },
             ) {
@@ -199,7 +201,7 @@ fun SavedInSheet(
             }
 
             when (val list = playlists) {
-                null -> Text("Loading playlists…", color = Color.Gray, fontSize = 14.sp, modifier = Modifier.padding(20.dp, 12.dp))
+                null -> Text("Loading playlists…", color = com.music.spotui.ui.theme.AppSecondary, fontSize = 14.sp, modifier = Modifier.padding(20.dp, 12.dp))
                 else -> LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
                     items(list.size) { i ->
                         val pl = list[i]
@@ -266,9 +268,9 @@ private fun SavedInRow(
                 .weight(1f)
                 .padding(start = 14.dp, end = 8.dp),
         ) {
-            Text(name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(name, color = com.music.spotui.ui.theme.AppText, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle.isNotBlank()) {
-                Text(subtitle, color = Color.Gray, fontSize = 13.sp, maxLines = 1)
+                Text(subtitle, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp, maxLines = 1)
             }
         }
         if (saved) {

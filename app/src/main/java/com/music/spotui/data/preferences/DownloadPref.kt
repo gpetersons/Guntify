@@ -48,6 +48,8 @@ private fun parse(json: String): Pair<SongsModel, String>? = runCatching {
 // query → file path, rebuilt after any change: downloadedPathForQuery runs on every play.
 @Volatile private var pathByQuery: Map<String, String>? = null
 
+fun invalidateDownloadCache() { pathByQuery = null }
+
 fun addDownload(context: Context, song: SongsModel, filePath: String) {
     context.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit()
         .putString(song.id.toString(), song.toJson(filePath))

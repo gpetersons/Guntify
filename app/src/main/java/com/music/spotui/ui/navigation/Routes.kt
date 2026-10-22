@@ -23,6 +23,7 @@ sealed class Routes(
     object Category : Routes(0, "Category", "category")
     object Login : Routes(0, "Login", "login")
     object Settings : Routes(0, "Settings", "settings")
+    object Radio : Routes(0, "Radio", "radio")
     object History : Routes(0, "History", "history")
     object DeezerLogin : Routes(0, "DeezerLogin", "deezerlogin")
     object DeezerIntro : Routes(0, "DeezerIntro", "deezerintro")
@@ -60,7 +61,7 @@ fun artistRoute(name: String, id: String = ""): String {
  * different artists resolve to the right one. The artist value is URL-encoded.
  */
 fun albumRoute(name: String, artist: String = ""): String {
-    val base = "${Routes.Album.route}/$name"
+    val base = "${Routes.Album.route}/${android.net.Uri.encode(name)}"
     return if (artist.isBlank()) base
     else "$base?artist=${android.net.Uri.encode(artist)}"
 }

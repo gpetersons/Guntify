@@ -145,7 +145,7 @@ fun LyricsScreen(
             .fillMaxSize()
             // Solid base first — the gradient's translucent middle stop let the
             // player screen bleed through, making the lyrics page look transparent.
-            .background(Color(0xFF121212))
+            .background(com.music.spotui.ui.theme.AppBackground)
             .background(
                 Brush.verticalGradient(
                     colors = listOf(accentColor, accentColor.copy(alpha = 0.55f), Color.Black),
@@ -174,7 +174,7 @@ fun LyricsScreen(
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = "Close",
-                    tint = Color.White,
+                    tint = com.music.spotui.ui.theme.AppText,
                     modifier = Modifier.size(30.dp),
                 )
             }
@@ -186,7 +186,7 @@ fun LyricsScreen(
             ) {
                 Text(
                     title,
-                    color = Color.White,
+                    color = com.music.spotui.ui.theme.AppText,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -194,7 +194,7 @@ fun LyricsScreen(
                 )
                 Text(
                     artist,
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = com.music.spotui.ui.theme.AppText.copy(alpha = 0.7f),
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -205,11 +205,11 @@ fun LyricsScreen(
         when (val s = state) {
             is LyricsViewModel.State.Loading ->
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color.White)
+                    CircularProgressIndicator(color = com.music.spotui.ui.theme.AppText)
                 }
             is LyricsViewModel.State.NotFound ->
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("Couldn't find lyrics for this track", color = Color.White.copy(alpha = 0.7f), fontSize = 15.sp)
+                    Text("Couldn't find lyrics for this track", color = com.music.spotui.ui.theme.AppText.copy(alpha = 0.7f), fontSize = 15.sp)
                 }
             is LyricsViewModel.State.Loaded -> {
                 val lyrics = s.lyrics
@@ -319,14 +319,14 @@ fun InlineLyrics(
             ) { onExpand() }
             .padding(20.dp)
     ) {
-        Text("Lyrics preview", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text("Lyrics preview", color = com.music.spotui.ui.theme.AppText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(12.dp))
 
         when (val s = state) {
             is LyricsViewModel.State.Loading ->
-                Text("Loading lyrics…", color = Color.White.copy(alpha = 0.7f), fontSize = 15.sp)
+                Text("Loading lyrics…", color = com.music.spotui.ui.theme.AppText.copy(alpha = 0.7f), fontSize = 15.sp)
             is LyricsViewModel.State.NotFound ->
-                Text("No lyrics found for this track", color = Color.White.copy(alpha = 0.7f), fontSize = 15.sp)
+                Text("No lyrics found for this track", color = com.music.spotui.ui.theme.AppText.copy(alpha = 0.7f), fontSize = 15.sp)
             is LyricsViewModel.State.Loaded -> {
                 val lyrics = s.lyrics
                 val activeIndex = activeIndexFor(lyrics, positionMs)
@@ -383,7 +383,7 @@ private fun TranslateButton(
     ) {
         if (loading) {
             CircularProgressIndicator(
-                color = Color.White,
+                color = com.music.spotui.ui.theme.AppText,
                 strokeWidth = 2.dp,
                 modifier = Modifier.size(18.dp),
             )
@@ -400,7 +400,7 @@ private fun TranslateButton(
                 Icon(
                     painter = painterResource(R.drawable.ic_translate_lyrics),
                     contentDescription = if (active) "Stop translating lyrics" else "Translate lyrics",
-                    tint = if (active) Color.Black else Color.White,
+                    tint = if (active) Color.Black else com.music.spotui.ui.theme.AppText,
                     modifier = Modifier.size(24.dp),
                 )
             }
@@ -446,8 +446,8 @@ private fun LyricsControlPanel(
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp),
         ) {
-            Text(formatLyricsTime(positionMs), color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
-            Text(formatLyricsTime(durationMs), color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
+            Text(formatLyricsTime(positionMs), color = com.music.spotui.ui.theme.AppText.copy(alpha = 0.72f), fontSize = 12.sp)
+            Text(formatLyricsTime(durationMs), color = com.music.spotui.ui.theme.AppText.copy(alpha = 0.72f), fontSize = 12.sp)
         }
         IconButton(
             onClick = {
@@ -532,13 +532,13 @@ private fun LyricsSeekBar(
         val centerY = size.height / 2f
         val corner = trackHeight / 2f
         drawRoundRect(
-            color = Color.White.copy(alpha = 0.3f),
+            color = com.music.spotui.ui.theme.AppText.copy(alpha = 0.3f),
             topLeft = Offset(0f, centerY - trackHeight / 2f),
             size = Size(size.width, trackHeight),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner),
         )
         drawRoundRect(
-            color = Color.White,
+            color = com.music.spotui.ui.theme.AppText,
             topLeft = Offset(0f, centerY - trackHeight / 2f),
             size = Size(size.width * value, trackHeight),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner),

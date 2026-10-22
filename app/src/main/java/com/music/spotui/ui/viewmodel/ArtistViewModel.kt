@@ -32,10 +32,19 @@ class ArtistViewModel @Inject constructor(private val repository: AppRepository,
     private val _overview : MutableStateFlow<Response<ArtistOverviewModel>> = MutableStateFlow(Response.Loading())
     val overview : StateFlow<Response<ArtistOverviewModel>> = _overview
 
-    fun updateQueue(songs: List<SongsModel>) = currentSongState.updateQueue(songs)
+    fun updateQueue(songs: List<SongsModel>) { currentSongState.updateQueue(songs); markCollection(songs) }
+    val shuffleState get() = currentSongState.shuffle
+    fun updateShuffleState(enabled: Boolean) = currentSongState.updateShuffleState(enabled)
+    fun startShuffled(songs: List<SongsModel>): SongsModel? { val first = currentSongState.startShuffled(songs); markCollection(songs); return first }
 
     fun updateSongState(coverUri: String, title: String, singer: String, playingState: Boolean, songId :Int, songIndex : Int = 0, album : String = "") {
         currentSongState.updateSongState(coverUri, title, singer, playingState, songId, songIndex, album)
+    }
+
+    val shuffleActive: Boolean get() = shuffleState.value && currentSongState.collection.value?.key == "artist:$loadedArtist"
+    private fun markCollection(songs: List<SongsModel>) {
+        currentSongState.collection.value = com.music.spotui.data.entity.PlaybackCollection(
+            "artist:$loadedArtist", "artist", loadedArtist.orEmpty(), loadedArtist.orEmpty(), songs.firstOrNull()?.coverUri.orEmpty())
     }
 
     val likeState = currentSongState.likeState

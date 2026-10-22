@@ -197,20 +197,23 @@ class PoTokenWebView private constructor(
         return withContext(Dispatchers.Main) {
             suspendCancellableCoroutine { cont ->
                 Timber.tag(TAG).d("generatePoToken() called")
-                addPoTokenEmitter(identifier, cont)
+                val requestKey = java.util.UUID.randomUUID().toString()
+                addPoTokenEmitter(requestKey, cont)
+                cont.invokeOnCancellation { popPoTokenContinuation(requestKey) }
                 // NOTE: obtainPoToken is now async, so we use .then()
                 webView.evaluateJavascript(
                     """try {
-                        identifier = "$identifier"
-                        u8Identifier = ${stringToU8(identifier)}
+                        const identifier = "$identifier";
+                        const requestKey = "$requestKey";
+                        const u8Identifier = ${stringToU8(identifier)};
                         obtainPoToken(u8Identifier).then(function(poTokenU8) {
-                            poTokenU8String = poTokenU8.join(",")
-                            $JS_INTERFACE.onObtainPoTokenResult(identifier, poTokenU8String)
+                            const poTokenU8String = poTokenU8.join(",")
+                            $JS_INTERFACE.onObtainPoTokenResult(requestKey, poTokenU8String)
                         }).catch(function(error) {
-                            $JS_INTERFACE.onObtainPoTokenError(identifier, error + "\n" + (error.stack || ''))
+                            $JS_INTERFACE.onObtainPoTokenError("$requestKey", error + "\n" + (error.stack || ''))
                         })
                     } catch (error) {
-                        $JS_INTERFACE.onObtainPoTokenError(identifier, error + "\n" + error.stack)
+                        $JS_INTERFACE.onObtainPoTokenError("$requestKey", error + "\n" + error.stack)
                     }""",
                     null
                 )
@@ -335,6 +338,9 @@ class PoTokenWebView private constructor(
             return withContext(Dispatchers.Main) {
                 suspendCancellableCoroutine { cont ->
                     val potWv = PoTokenWebView(context, cont)
+                    cont.invokeOnCancellation {
+                        android.os.Handler(android.os.Looper.getMainLooper()).post { potWv.close() }
+                    }
                     potWv.loadHtmlAndObtainBotguard()
                 }
             }

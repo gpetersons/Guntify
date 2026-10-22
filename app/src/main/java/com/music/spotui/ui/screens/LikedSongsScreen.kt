@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -98,6 +99,7 @@ fun LikedSongsScreen(navController: NavController) {
     val likedColor = Color(0xFF5038A0)
 
     Surface(
+        color = Color(AppBackground.toArgb()),
         modifier = Modifier
             .fillMaxSize()
             .background(Color(AppBackground.toArgb()))
@@ -110,25 +112,7 @@ fun LikedSongsScreen(navController: NavController) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                CenterAlignedTopAppBar(
-                    modifier = Modifier.padding(16.dp, 0.dp),
-                    navigationIcon = {
-                        Icon(
-                            modifier = Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { navController.navigateUp() },
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "",
-                            tint = Color.White
-                        )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                    ),
-                    title = { Text(text = "") }
-                )
+                com.music.spotui.ui.components.CollectionBackBar(likedColor) { navController.navigateUp() }
             }
         ) { innerPadding ->
             LazyColumn(
@@ -142,52 +126,28 @@ fun LikedSongsScreen(navController: NavController) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(440.dp)
+                            .heightIn(min = 160.dp)
                             .background(
                                 brush = Brush.verticalGradient(
-                                    colors = listOf(likedColor, Color(AppBackground.toArgb())),
-                                    startY = -100f,
+                                    colors = listOf(com.music.spotui.ui.theme.artworkHeader(likedColor), Color(AppBackground.toArgb())),
+                                    startY = 0f,
                                 ),
                             ),
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Spacer(modifier = Modifier.padding(25.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(230.dp)
-                                    .background(
-                                        brush = Brush.linearGradient(
-                                            colors = listOf(Color(0xFF8E6FE0), Color(0xFF3B2A82)),
-                                        )
-                                    ),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Favorite,
-                                    contentDescription = "",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(90.dp),
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.padding(5.dp))
                         Text(
                             modifier = Modifier.padding(20.dp, 5.dp, 0.dp, 0.dp),
                             text = "Liked Songs",
-                            color = Color.White,
-                            fontSize = 28.sp,
+                            color = com.music.spotui.ui.theme.AppText,
+                            fontSize = 30.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             modifier = Modifier.padding(20.dp, 4.dp, 20.dp, 0.dp),
                             text = "${songs.size} songs",
-                            color = Color.Gray,
+                            color = com.music.spotui.ui.theme.AppSecondary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -197,29 +157,18 @@ fun LikedSongsScreen(navController: NavController) {
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(52.dp)
+                                .heightIn(min = 56.dp)
                                 .padding(20.dp, 0.dp)
                         ) {
                             // Download all liked songs for offline playback.
                             var askDownloadAll by remember { mutableStateOf(false) }
-                            var likedDownloaded by remember(songs) {
-                                mutableStateOf(songs.isNotEmpty() && com.music.spotui.di.Downloads.allDownloaded(songs, context))
-                            }
+                            val likedDownloaded = com.music.spotui.ui.components.rememberCollectionDownloaded(songs, context)
                             if (songs.isNotEmpty()) {
-                                Icon(
-                                    imageVector = if (likedDownloaded)
-                                        Icons.Default.CheckCircle else ImageVector.vectorResource(R.drawable.ic_download),
-                                    tint = if (likedDownloaded) Color(AppPalette.toArgb()) else Color.White,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null,
-                                        ) {
+                                com.music.spotui.ui.components.CollectionAction(painter = painterResource(if (likedDownloaded) R.drawable.added else R.drawable.ic_download), label = "Download liked songs", active = likedDownloaded, enabled = songs.isNotEmpty()) {
+
                                             if (!likedDownloaded) askDownloadAll = true
-                                        },
-                                    contentDescription = "Download liked songs",
-                                )
+                                        
+                            }
                                 if (askDownloadAll) {
                                     com.music.spotui.ui.components.ConfirmDownloadAllDialog(
                                         songs.size, onDismiss = { askDownloadAll = false },
@@ -232,16 +181,10 @@ fun LikedSongsScreen(navController: NavController) {
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
                                 // Shuffle-play: start liked songs in random order.
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_player_shuffle),
-                                    tint = Color.White,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null,
-                                        ) {
-                                            likedSongsViewModel.startShuffled(songs)?.let { first ->
+                                com.music.spotui.ui.components.CollectionAction(painter = painterResource(R.drawable.ic_player_shuffle), label = "Shuffle play", active = likedSongsViewModel.shuffleActive, smart = likedSongsViewModel.smartShuffleActive, enabled = songs.isNotEmpty()) {
+
+                                            if (likedSongsViewModel.collectionActive) likedSongsViewModel.cycleShuffle()
+                                        else likedSongsViewModel.startShuffled(songs)?.let { first ->
                                                 SongPlayer.playSong(first.url, context)
                                                 likedSongsViewModel.updateSongState(
                                                     first.coverUri,
@@ -253,28 +196,18 @@ fun LikedSongsScreen(navController: NavController) {
                                                     "Liked Songs",
                                                 )
                                             }
-                                        },
-                                    contentDescription = "Shuffle play",
-                                )
+                                        
+                            }
                                 Spacer(modifier = Modifier.width(16.dp))
                             }
                             // Always visible: pause when playing, resume when this
                             // list's track is paused, otherwise start from the top.
                             if (songs.isNotEmpty()) {
-                                val playing = likedSongsViewModel.currentSongPlayingState.value
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(52.dp)
-                                        .clip(RoundedCornerShape(100.dp))
-                                        .background(Color.White)
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null
-                                        ) {
+                                val playing = likedSongsViewModel.collectionActive && likedSongsViewModel.currentSongPlayingState.value
+                                com.music.spotui.ui.components.CollectionPlayButton(playing = playing, onClick = {
                                             when {
                                                 playing -> likedSongsViewModel.setPlaying(false)
-                                                songs.any { it.id == likedSongsViewModel.currentSongId.value } ->
+                                                likedSongsViewModel.collectionActive ->
                                                     likedSongsViewModel.setPlaying(true)
                                                 else -> {
                                                     likedSongsViewModel.updateQueue(songs)
@@ -289,18 +222,9 @@ fun LikedSongsScreen(navController: NavController) {
                                                         "Liked Songs"
                                                     )
                                                 }
+                                            
                                             }
-                                        }
-                                ) {
-                                    Icon(
-                                        modifier = Modifier.size(25.dp),
-                                        tint = Color.Black,
-                                        painter = painterResource(
-                                            id = if (playing) R.drawable.ic_playing else R.drawable.play_svgrepo_com,
-                                        ),
-                                        contentDescription = if (playing) "Pause" else "Play"
-                                    )
-                                }
+                                })
                             }
                         }
                     }
@@ -309,14 +233,14 @@ fun LikedSongsScreen(navController: NavController) {
                 itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
                     com.music.spotui.ui.components.SwipeToQueue(song) {
                     val currentColor = if (song.id == likedSongsViewModel.currentSongId.value)
-                        Color(AppPalette.toArgb()) else Color.White
+                        Color(AppPalette.toArgb()) else com.music.spotui.ui.theme.AppText
 
                     Row(
                         horizontalArrangement = Arrangement.Start,
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp, 8.dp)
+                            .padding(20.dp, 5.dp).clip(RoundedCornerShape(14.dp)).background(com.music.spotui.ui.theme.AppSurface).padding(10.dp)
                             .combinedClickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -339,7 +263,7 @@ fun LikedSongsScreen(navController: NavController) {
                         GlideImage(
                             modifier = Modifier
                                 .size(48.dp)
-                                .clip(RoundedCornerShape(4.dp)),
+                                .clip(RoundedCornerShape(12.dp)),
                             model = song.coverUri,
                             failure = placeholder(R.drawable.placeholder),
                             contentScale = ContentScale.Crop,
@@ -355,7 +279,7 @@ fun LikedSongsScreen(navController: NavController) {
                             )
                             Text(
                                 text = song.singer,
-                                color = Color.Gray,
+                                color = com.music.spotui.ui.theme.AppSecondary,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1

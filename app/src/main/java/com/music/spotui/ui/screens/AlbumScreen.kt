@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -187,30 +188,9 @@ fun SumUpAlbumScreen(
 
     Log.d("color", dominentColor.toString())
     Scaffold(
-        containerColor = Color.Transparent,
+        containerColor = Color(AppBackground.toArgb()),
         topBar = {
-            CenterAlignedTopAppBar(
-                modifier = Modifier.padding(16.dp, 0.dp),
-                navigationIcon = {
-                    Icon(
-                        modifier = Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) {
-                            navController.navigateUp()
-                        },
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "",
-                        tint = Color.White)
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = Color.White,
-                ),
-                title = {
-                    Text(text = "")
-                }
-            )
+            com.music.spotui.ui.components.CollectionBackBar(dominentColor) { navController.navigateUp() }
         }
     ) { innerPadding ->
 
@@ -219,18 +199,18 @@ fun SumUpAlbumScreen(
             .fillMaxSize()
             .background(Color(AppBackground.toArgb()))
             .consumeWindowInsets(innerPadding)
-            .padding(bottom = innerPadding.calculateBottomPadding())
+            .padding(top = innerPadding.calculateTopPadding(), bottom = innerPadding.calculateBottomPadding())
             .verticalScroll(rememberScrollState())
         ) {
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(460.dp)
+                    .heightIn(min = 380.dp)
                     .background(
                         brush = Brush.verticalGradient(
-                            colors = listOf(dominentColor, Color(AppBackground.toArgb())),
-                            startY = -100f,
+                            colors = listOf(com.music.spotui.ui.theme.artworkHeader(dominentColor), Color(AppBackground.toArgb())),
+                            startY = 0f,
 
                             ),
 
@@ -239,38 +219,26 @@ fun SumUpAlbumScreen(
                 verticalArrangement = Arrangement.Center,
                // horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.padding(25.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    GlideImage(
-                        modifier = Modifier.size(230.dp),
-                        model = album[0].coverUri,
-                        failure = placeholder(R.drawable.placeholder),
-                        //loading = placeholder(R.drawable.album),
-                        //contentScale = ContentScale.Crop,
-                        contentDescription = "",
-                    )
-                }
+                com.music.spotui.ui.components.CollectionArtwork(album[0].coverUri, "Collection artwork")
                 Spacer(modifier = Modifier.padding(5.dp))
                 Text(modifier = Modifier
                     .padding(20.dp, 5.dp, 0.dp, 0.dp),
                     text = albumName,
-                    color = Color.White,
+                    color = com.music.spotui.ui.theme.AppText,
                     fontSize = 23.sp,
                     fontWeight = FontWeight.Bold)
                 Text(modifier = Modifier
                     .padding(20.dp, 0.dp, 0.dp, 0.dp),
                     text = album[0].artists.ifBlank { albumSongs.firstOrNull()?.singer ?: "" },
-                    color = Color.White,
+                    color = com.music.spotui.ui.theme.AppText,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium)
                 Text(modifier = Modifier
                     .padding(20.dp, 0.dp, 0.dp, 0.dp),
                     text = "Album : ${album[0].time}",
-                    color = Color.Gray,
+                    color = com.music.spotui.ui.theme.AppSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -279,7 +247,7 @@ fun SumUpAlbumScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp)
+                        .heightIn(min = 56.dp)
                         .padding(20.dp, 0.dp)
                 ){
 
@@ -335,29 +303,18 @@ fun SumUpAlbumScreen(
                                     Color(AppPalette.toArgb())
                                 }
                                 else{
-                                    Color.White
+                                    com.music.spotui.ui.theme.AppText
                                 },
                                 contentDescription = ""
                             )
                             // Download the whole album (all tracks) for offline playback.
                             var askDownloadAll by remember { mutableStateOf(false) }
-                            var albumDownloaded by remember(albumSongs) {
-                                mutableStateOf(com.music.spotui.di.Downloads.allDownloaded(albumSongs, context))
-                            }
-                            Icon(
-                                imageVector = if (albumDownloaded)
-                                    Icons.Default.CheckCircle else ImageVector.vectorResource(R.drawable.ic_download),
-                                tint = if (albumDownloaded) Color(AppPalette.toArgb()) else Color.White,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                    ) {
+                            val albumDownloaded = com.music.spotui.ui.components.rememberCollectionDownloaded(albumSongs, context)
+                            com.music.spotui.ui.components.CollectionAction(painter = painterResource(if (albumDownloaded) R.drawable.added else R.drawable.ic_download), label = "Download album", active = albumDownloaded, enabled = albumSongs.isNotEmpty()) {
+
                                         if (!albumDownloaded && albumSongs.isNotEmpty()) askDownloadAll = true
-                                    },
-                                contentDescription = "Download album",
-                            )
+                                    
+                            }
                             if (askDownloadAll) {
                                 com.music.spotui.ui.components.ConfirmDownloadAllDialog(
                                     albumSongs.size, onDismiss = { askDownloadAll = false },
@@ -369,16 +326,11 @@ fun SumUpAlbumScreen(
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             // Shuffle-play: start the album in random order.
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_player_shuffle),
-                                tint = Color.White,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                    ) {
-                                        albumViewModel.startShuffled(albumSongs)?.let { first ->
+                            com.music.spotui.ui.components.CollectionAction(painter = painterResource(R.drawable.ic_player_shuffle), label = "Shuffle play", active = albumViewModel.shuffleActive, smart = albumViewModel.smartShuffleActive, enabled = albumSongs.isNotEmpty()) {
+
+                                        if (albumViewModel.collectionActive) albumViewModel.cycleShuffle()
+                                        else albumViewModel.startShuffled(albumSongs)?.let { first ->
+                                            com.music.spotui.data.preferences.HomeFrequency.played(context, "album", albumName + "|" + album[0].artists, albumName, first.coverUri, album[0].artists)
                                             SongPlayer.playSong(first.url, context)
                                             albumViewModel.updateSongState(
                                                 first.coverUri,
@@ -390,32 +342,23 @@ fun SumUpAlbumScreen(
                                                 albumName,
                                             )
                                         }
-                                    },
-                                contentDescription = "Shuffle play",
-                            )
+                                    
+                            }
                         }
 
 
                         // Always visible: pause when playing, resume when this
                         // album's track is paused, otherwise start from the top.
                         if (albumSongs.isNotEmpty()) {
-                            val playing = albumViewModel.currentSongPlayingState.value
-                            androidx.compose.foundation.layout.Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(52.dp)
-                                    .clip(RoundedCornerShape(100.dp))
-                                    .background(Color.White)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null
-                                    ) {
+                            val playing = albumViewModel.collectionActive && albumViewModel.currentSongPlayingState.value
+                            com.music.spotui.ui.components.CollectionPlayButton(playing = playing, onClick = {
                                         when {
                                             playing -> albumViewModel.setPlaying(false)
-                                            albumSongs.any { it.id == albumViewModel.currentSongId.value } ->
+                                            albumViewModel.collectionActive ->
                                                 albumViewModel.setPlaying(true)
                                             else -> {
                                                 albumViewModel.updateQueue(albumSongs)
+                                                com.music.spotui.data.preferences.HomeFrequency.played(context, "album", albumName + "|" + album[0].artists, albumName, albumSongs[0].coverUri, album[0].artists)
                                                 SongPlayer.playSong(albumSongs[0].url, context)
                                                 albumViewModel.updateSongState(
                                                     albumSongs[0].coverUri,
@@ -427,18 +370,9 @@ fun SumUpAlbumScreen(
                                                     albumName
                                                 )
                                             }
-                                        }
-                                    }
-                            ) {
-                                Icon(
-                                    modifier = Modifier
-                                        .size(25.dp),
-                                    tint = Color.Black,
-                                    painter = painterResource(
-                                        id = if (playing) R.drawable.ic_playing else R.drawable.play_svgrepo_com,
-                                    ),
-                                    contentDescription = if (playing) "Pause" else "Play")
-                            }
+                                        
+                                            }
+                                })
                         }
                     }
 
@@ -449,23 +383,18 @@ fun SumUpAlbumScreen(
 
             }
 
-//            Spacer(modifier = Modifier.padding(25.dp))
+//            Spacer(modifier = Modifier.height(8.dp))
 
             if(albumSongs.isNotEmpty()){
                 repeat(albumSongs.size) {song ->
                     com.music.spotui.ui.components.SwipeToQueue(albumSongs[song]) {
 
 
-                    var isLiked by remember {
-                        mutableStateOf(isSongLiked(context, albumSongs[song].id.toString()))
-                    }
+                    var isLiked by com.music.spotui.ui.components.rememberSongLiked(context, albumSongs[song].id.toString())
                     val likeState = albumViewModel.likeState.value
-                    LaunchedEffect(likeState){
-                        isLiked = isSongLiked(context, albumSongs[song].id.toString())
-                    }
                     val songId = albumSongs[song].id
 
-                    val currentPlayingIndicatorColor = if(songId == albumViewModel.currentSongId.value) Color(AppPalette.toArgb()) else Color.White
+                    val currentPlayingIndicatorColor = if(songId == albumViewModel.currentSongId.value) Color(AppPalette.toArgb()) else com.music.spotui.ui.theme.AppText
 
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -479,6 +408,7 @@ fun SumUpAlbumScreen(
                                 onLongClick = { menuSong = albumSongs[song] },
                                 onClick = {
                                     albumViewModel.updateQueue(albumSongs)
+                                    com.music.spotui.data.preferences.HomeFrequency.played(context, "album", albumName + "|" + album[0].artists, albumName, albumSongs[song].coverUri, album[0].artists)
                                     SongPlayer.playSong(albumSongs[song].url, context)
                                     albumViewModel.updateSongState(
                                         albumSongs[song].coverUri,
@@ -515,7 +445,7 @@ fun SumUpAlbumScreen(
                                 )
                                 Text(
                                     text = albumSongs[song].singer,
-                                    color = Color.Gray,
+                                    color = com.music.spotui.ui.theme.AppSecondary,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
                                     maxLines = 1,
@@ -537,6 +467,8 @@ fun SumUpAlbumScreen(
                                         addLikedSongId(context, songId.toString())
                                     }
                                     isLiked = isSongLiked(context, songId.toString())
+                                    val track = albumSongs[song]
+                                    com.music.spotui.data.api.SpotifySync.setTrackSaved(context, track.spotifyTrackId, isSongLiked(context, songId.toString()))
                                     albumViewModel.updateLikeState(!albumViewModel.likeState.value)
 
                                 },

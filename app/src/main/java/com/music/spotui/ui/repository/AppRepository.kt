@@ -9,13 +9,19 @@ class AppRepository @Inject constructor(private val api : Api) {
 
     suspend fun provideHomeFeed() = api.getHomeFeed()
 
+    fun cachedHomeDiscoveries() = api.cachedHomeDiscoveries()
+
+    suspend fun discoverHomeCollections() = api.discoverHomeCollections()
+
+    suspend fun provideFollowingFeed(onUpdate: (com.music.spotui.data.entity.FollowingFeed) -> Unit = {}) = api.getFollowingFeed(onUpdate)
+
     suspend fun provideArtists() = api.getArtists()
 
     suspend fun provideSongs() = api.getSongs()
 
     suspend fun searchSongs(query: String) = api.searchTracks(query)
 
-    suspend fun searchEverything(query: String) = api.searchEverything(query)
+    suspend fun searchEverything(query: String, offset: Int = 0) = api.searchEverything(query, offset)
 
     suspend fun provideAlbumSongs(albumName: String, artist: String = "") = api.getAlbumSongs(albumName, artist)
 
@@ -36,6 +42,8 @@ class AppRepository @Inject constructor(private val api : Api) {
     suspend fun provideFollowedArtists() = api.getFollowedArtists()
 
     suspend fun provideCategoryPlaylists(genre: String) = api.getCategoryPlaylists(genre)
+
+    suspend fun provideRadioRecommendations(original: String, evolving: String) = api.getRadioRecommendations(original, evolving)
 
     suspend fun provideRecommendations(seedTrackIds: List<String>) = api.getRecommendations(seedTrackIds)
 

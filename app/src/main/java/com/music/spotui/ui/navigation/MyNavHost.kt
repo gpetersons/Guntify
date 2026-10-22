@@ -50,9 +50,9 @@ fun MyNavHost(
 ) {
 
     val playerViewModel : PlayerViewModel = hiltViewModel()
-    val playerState by playerViewModel.currentSongTitle
+    val playerState = playerViewModel.currentSongTitle
 
-    Log.d("player", playerState.toString())
+
 
 //    val context = LocalContext.current
 //    var player : ExoPlayer? = null
@@ -74,10 +74,16 @@ fun MyNavHost(
     LaunchedEffect(Unit) {
         if (playerViewModel.currentSongTitle.value.isBlank()) {
             com.music.spotui.data.preferences.loadLastPlayback(context)?.let { (song, positionMs) ->
-                playerViewModel.updateQueue(listOf(song))
+                val snapshot = com.music.spotui.data.preferences.loadPlaybackQueue(context)
+                if (snapshot != null && snapshot.songs.any { it.id == song.id }) playerViewModel.restoreQueue(snapshot)
+                else playerViewModel.updateQueue(listOf(song))
                 playerViewModel.updateSongState(
-                    song.coverUri, song.title, song.singer, false, song.id, 0, song.album)
+                    song.coverUri, song.title, song.singer, false, song.id, playerViewModel.queue.value.indexOfFirst { it.id == song.id }.coerceAtLeast(0), song.album)
+                com.music.spotui.di.SongPlayer.ensureCreated(context)
                 com.music.spotui.di.SongPlayer.setRestorePoint(song.url, positionMs)
+                if (com.music.spotui.data.preferences.wasPlaybackActive(context)) {
+                    com.music.spotui.di.SongPlayer.playSong(song.url, context)
+                }
             }
         }
     }
@@ -99,36 +105,36 @@ fun MyNavHost(
             SpotifyLoginScreen(navHostController)
         }
         composable(Routes.Home.route){
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
                 HomeScreen(navHostController)
         }
         composable(Routes.Search.route){
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             SearchScreen(navHostController)
         }
         composable(Routes.Library.route) {
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             LibraryScreen(navHostController)
         }
         composable(Routes.Player.route){
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = false
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             PlayerScreen(navHostController)
         }
 
         composable(Routes.Queue.route){
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = false
                 bottomBarPlayerState.value = false
             }
@@ -136,33 +142,40 @@ fun MyNavHost(
         }
 
         composable(Routes.Liked.route){
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             LikedSongsScreen(navHostController)
         }
 
         composable(Routes.Downloads.route){
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             DownloadsScreen(navHostController)
         }
 
         composable(Routes.Settings.route){
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             SettingsScreen(navHostController)
         }
 
-        composable(Routes.History.route){
-            LaunchedEffect(playerState) {
+        composable("${Routes.Radio.route}/{seedId}") { entry ->
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
+            }
+            com.music.spotui.ui.screens.RadioScreen(navHostController, entry.arguments?.getString("seedId").orEmpty())
+        }
+        composable(Routes.History.route){
+            LaunchedEffect(playerState.value) {
+                bottomBarState.value = true
+                bottomBarPlayerState.value = playerState.value != ""
             }
             HistoryScreen(navHostController)
         }
@@ -171,9 +184,9 @@ fun MyNavHost(
             "${Routes.DeezerLogin.route}?next={next}",
             arguments = listOf(navArgument("next") { defaultValue = "" }),
         ) { navBackStackEntry ->
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = false
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             DeezerLoginScreen(
                 navHostController,
@@ -182,9 +195,9 @@ fun MyNavHost(
         }
 
         composable(Routes.DeezerIntro.route){
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = false
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             DeezerIntroScreen(navHostController)
         }
@@ -209,9 +222,9 @@ fun MyNavHost(
         }
 
         composable(Routes.LocalFiles.route){
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             LocalFilesScreen(navHostController)
         }
@@ -220,9 +233,9 @@ fun MyNavHost(
             "${Routes.SpotiflacVerify.route}?next={next}",
             arguments = listOf(navArgument("next") { defaultValue = "" }),
         ) { navBackStackEntry ->
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = false
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             SpotiflacVerifyScreen(
                 navHostController,
@@ -234,9 +247,9 @@ fun MyNavHost(
             "${Routes.Category.route}/{genre}?title={title}",
             arguments = listOf(navArgument("title") { defaultValue = "" }),
         ) { navBackStackEntry ->
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             val genre = navBackStackEntry.arguments?.getString("genre").orEmpty()
             val title = navBackStackEntry.arguments?.getString("title").orEmpty()
@@ -247,9 +260,9 @@ fun MyNavHost(
             "${Routes.Album.route}/{uString}?artist={artist}",
             arguments = listOf(navArgument("artist") { defaultValue = "" }),
         ) { navBackStackEntry ->
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
 
             /* Extracting the id from the route */
@@ -265,9 +278,9 @@ fun MyNavHost(
             "${Routes.Playlist.route}/{pId}?name={name}",
             arguments = listOf(navArgument("name") { defaultValue = "" }),
         ) { navBackStackEntry ->
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             val pId = navBackStackEntry.arguments?.getString("pId")
             val name = navBackStackEntry.arguments?.getString("name").orEmpty()
@@ -278,9 +291,9 @@ fun MyNavHost(
             "${Routes.Show.route}/{sId}?name={name}",
             arguments = listOf(navArgument("name") { defaultValue = "" }),
         ) { navBackStackEntry ->
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             val sId = navBackStackEntry.arguments?.getString("sId")
             val name = navBackStackEntry.arguments?.getString("name").orEmpty()
@@ -288,9 +301,9 @@ fun MyNavHost(
         }
 
         composable("${Routes.ArtistReleases.route}/{aString}") { navBackStackEntry ->
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
             val aId = navBackStackEntry.arguments?.getString("aString")
             aId?.let { ArtistReleasesScreen(navHostController, it) }
@@ -300,9 +313,9 @@ fun MyNavHost(
             "${Routes.Artist.route}/{aString}?id={artistId}",
             arguments = listOf(navArgument("artistId") { defaultValue = "" }),
         ) { navBackStackEntry ->
-            LaunchedEffect(playerState) {
+            LaunchedEffect(playerState.value) {
                 bottomBarState.value = true
-                bottomBarPlayerState.value = playerState != ""
+                bottomBarPlayerState.value = playerState.value != ""
             }
 
             /* Extracting the id from the route */

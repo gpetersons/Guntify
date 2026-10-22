@@ -21,3 +21,9 @@ keystore.properties
 *.jks
 *.keystore
 /release/
+
+# Local build/release/signing outputs
+/release/
+/*.keystore
+/keystore.properties
+/local.properties

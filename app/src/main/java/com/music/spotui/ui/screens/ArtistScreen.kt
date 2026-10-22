@@ -180,7 +180,7 @@ private fun ArtistOverviewContent(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "",
-                    tint = Color.White,
+                    tint = com.music.spotui.ui.theme.AppText,
                     modifier = Modifier
                         .statusBarsPadding()
                         .padding(16.dp, 12.dp)
@@ -192,7 +192,7 @@ private fun ArtistOverviewContent(
                 )
                 Text(
                     text = displayName,
-                    color = Color.White,
+                    color = com.music.spotui.ui.theme.AppText,
                     fontSize = 42.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 2,
@@ -216,16 +216,16 @@ private fun ArtistOverviewContent(
                         .background(Color(0xFF4A90E2)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("✓", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("✓", color = com.music.spotui.ui.theme.AppText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.width(6.dp))
-                    Text("Verified Artist", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Text("Verified Artist", color = com.music.spotui.ui.theme.AppText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                 }
             }
             overview.monthlyListeners?.let {
                 Text(
                     text = "${grouped(it)} monthly listeners",
-                    color = Color.Gray,
+                    color = com.music.spotui.ui.theme.AppSecondary,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(16.dp, 2.dp, 16.dp, 0.dp),
                 )
@@ -260,7 +260,7 @@ private fun ArtistOverviewContent(
                     ) {
                         Text(
                             text = if (following) "Following" else "Follow",
-                            color = Color.White,
+                            color = com.music.spotui.ui.theme.AppText,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -277,14 +277,20 @@ private fun ArtistOverviewContent(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_player_shuffle),
-                        contentDescription = "",
-                        tint = Color.White,
+                        contentDescription = "Shuffle",
+                        tint = if (artistViewModel.shuffleActive) Color(0xFF1DB954) else com.music.spotui.ui.theme.AppText,
                         modifier = Modifier
                             .size(26.dp)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                            ) { if (tracks.isNotEmpty()) playTrackAt(tracks.indices.random()) },
+                            ) {
+                                if (artistViewModel.shuffleActive) artistViewModel.updateShuffleState(false)
+                                else artistViewModel.startShuffled(tracks.map { it.song })?.let { first ->
+                                    SongPlayer.playSong(first.url, context)
+                                    artistViewModel.updateSongState(first.coverUri, first.title, first.singer, true, first.id, 0, first.album)
+                                }
+                            },
                     )
                     Spacer(Modifier.width(20.dp))
                     Box(modifier = Modifier
@@ -313,7 +319,7 @@ private fun ArtistOverviewContent(
             item {
                 Text(
                     text = "Popular",
-                    color = Color.White,
+                    color = com.music.spotui.ui.theme.AppText,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(16.dp, 8.dp, 16.dp, 4.dp),
@@ -372,7 +378,7 @@ private fun ArtistOverviewContent(
                         overview.monthlyListeners?.let {
                             Text(
                                 text = "${grouped(it)} monthly listeners",
-                                color = Color.White,
+                                color = com.music.spotui.ui.theme.AppText,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(14.dp, 12.dp, 14.dp, 4.dp),
@@ -380,7 +386,7 @@ private fun ArtistOverviewContent(
                         }
                         Text(
                             text = overview.biography.orEmpty(),
-                            color = Color.Gray,
+                            color = com.music.spotui.ui.theme.AppSecondary,
                             fontSize = 13.sp,
                             modifier = Modifier.padding(14.dp, 4.dp, 14.dp, 16.dp),
                         )
@@ -434,11 +440,10 @@ private fun PopularTrackRow(
 ) {
     val context = LocalContext.current
     val song = item.song
-    var isLiked by remember { mutableStateOf(isSongLiked(context, song.id.toString())) }
+    var isLiked by com.music.spotui.ui.components.rememberSongLiked(context, song.id.toString())
     val likeState = artistViewModel.likeState.value
-    LaunchedEffect(likeState) { isLiked = isSongLiked(context, song.id.toString()) }
     val titleColor =
-        if (song.id == artistViewModel.currentSongId.value) Color(AppPalette.toArgb()) else Color.White
+        if (song.id == artistViewModel.currentSongId.value) Color(AppPalette.toArgb()) else com.music.spotui.ui.theme.AppText
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -454,7 +459,7 @@ private fun PopularTrackRow(
     ) {
         Text(
             text = "${index + 1}",
-            color = Color.Gray,
+            color = com.music.spotui.ui.theme.AppSecondary,
             fontSize = 15.sp,
             modifier = Modifier.width(24.dp),
         )
@@ -472,8 +477,8 @@ private fun PopularTrackRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(text = song.title, color = titleColor, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
             item.playcount?.let {
-                Text(text = grouped(it), color = Color.Gray, fontSize = 12.sp, maxLines = 1)
-            } ?: Text(text = song.singer, color = Color.Gray, fontSize = 12.sp, maxLines = 1)
+                Text(text = grouped(it), color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, maxLines = 1)
+            } ?: Text(text = song.singer, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, maxLines = 1)
         }
         Icon(
             painter = if (isLiked) painterResource(id = R.drawable.added) else painterResource(id = R.drawable.ic_add),
@@ -488,6 +493,7 @@ private fun PopularTrackRow(
                     if (isLiked) removeLikedSongId(context, song.id.toString())
                     else addLikedSongId(context, song.id.toString())
                     isLiked = isSongLiked(context, song.id.toString())
+                    com.music.spotui.data.api.SpotifySync.setTrackSaved(context, song.spotifyTrackId, isLiked)
                     artistViewModel.updateLikeState(!artistViewModel.likeState.value)
                 },
         )
@@ -498,7 +504,7 @@ private fun PopularTrackRow(
 private fun SectionHeader(title: String) {
     Text(
         text = title,
-        color = Color.White,
+        color = com.music.spotui.ui.theme.AppText,
         fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(16.dp, 20.dp, 16.dp, 8.dp),
@@ -528,10 +534,10 @@ private fun ReleaseCard(album: AlbumsModel, onClick: () -> Unit) {
             contentDescription = "",
         )
         Spacer(Modifier.height(6.dp))
-        Text(text = album.name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+        Text(text = album.name, color = com.music.spotui.ui.theme.AppText, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1)
         Text(
             text = album.time.ifBlank { album.artists }.let { if (album.time.isNotBlank()) "${album.time} • Album" else it },
-            color = Color.Gray,
+            color = com.music.spotui.ui.theme.AppSecondary,
             fontSize = 11.sp,
             maxLines = 1,
         )
@@ -563,12 +569,12 @@ private fun ReleaseRow(album: AlbumsModel, onClick: () -> Unit) {
         )
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = album.name, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(text = album.name, color = com.music.spotui.ui.theme.AppText, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             val kind = album.type.replaceFirstChar { it.uppercase() }.ifBlank { "" }
             val year = releaseYear(album)
             Text(
                 text = listOf(year, kind).filter { it.isNotBlank() }.joinToString(" • "),
-                color = Color.Gray,
+                color = com.music.spotui.ui.theme.AppSecondary,
                 fontSize = 13.sp,
                 maxLines = 1,
                 modifier = Modifier.padding(top = 2.dp),
@@ -589,7 +595,7 @@ private fun ShowAllButton(onClick: () -> Unit) {
         ) { onClick() }
         .padding(20.dp, 8.dp),
     ) {
-        Text(text = "Show all", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = "Show all", color = com.music.spotui.ui.theme.AppText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -640,8 +646,8 @@ fun ArtistReleasesScreen(navController: NavController, artistName: String) {
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "",
-                        tint = Color.White,
+                        contentDescription = "Shuffle",
+                        tint = if (artistViewModel.shuffleActive) Color(0xFF1DB954) else com.music.spotui.ui.theme.AppText,
                         modifier = Modifier
                             .size(26.dp)
                             .clickable(
@@ -652,7 +658,7 @@ fun ArtistReleasesScreen(navController: NavController, artistName: String) {
                     Spacer(Modifier.width(16.dp))
                     Text(
                         text = "Releases",
-                        color = Color.White,
+                        color = com.music.spotui.ui.theme.AppText,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -711,7 +717,7 @@ fun ArtistReleasesScreen(navController: NavController, artistName: String) {
 private fun ReleaseSectionHeader(title: String) {
     Text(
         text = title,
-        color = Color.White,
+        color = com.music.spotui.ui.theme.AppText,
         fontSize = 22.sp,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(16.dp, 18.dp, 16.dp, 8.dp),
@@ -723,7 +729,7 @@ private fun ReleaseFilterChip(label: String, selected: Boolean, onClick: () -> U
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) Color.White else Color(0xFF2A2A2A))
+            .background(if (selected) Color.White else com.music.spotui.ui.theme.AppRaised)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -732,7 +738,7 @@ private fun ReleaseFilterChip(label: String, selected: Boolean, onClick: () -> U
     ) {
         Text(
             text = label,
-            color = if (selected) Color.Black else Color.White,
+            color = if (selected) Color.Black else com.music.spotui.ui.theme.AppText,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
         )
@@ -763,7 +769,7 @@ private fun RelatedArtistCard(artist: ArtistsModel, onClick: () -> Unit) {
             contentDescription = "",
         )
         Spacer(Modifier.height(6.dp))
-        Text(text = artist.name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-        Text(text = "Artist", color = Color.Gray, fontSize = 11.sp)
+        Text(text = artist.name, color = com.music.spotui.ui.theme.AppText, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+        Text(text = "Artist", color = com.music.spotui.ui.theme.AppSecondary, fontSize = 11.sp)
     }
 }

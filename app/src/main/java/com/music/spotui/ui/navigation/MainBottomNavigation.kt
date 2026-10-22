@@ -22,6 +22,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -44,8 +45,26 @@ class NoRippleInteractionSource : MutableInteractionSource {
     override fun tryEmit(interaction: Interaction) = true
 }
 
+const val HOME_RESET_REQUEST = "uspot_open_main_home"
+
+private fun NavHostController.openMainHome() {
+    val homeEntry = runCatching { getBackStackEntry(Routes.Home.route) }.getOrNull()
+    if (homeEntry != null) {
+        homeEntry.savedStateHandle[HOME_RESET_REQUEST] = true
+        popBackStack(Routes.Home.route, inclusive = false)
+    } else {
+        // Do not restore a saved nested playlist as the destination of Home.
+        navigate(Routes.Home.route) {
+            popUpTo(graph.startDestinationId) { saveState = true }
+            launchSingleTop = true
+            restoreState = false
+        }
+        currentBackStackEntry?.savedStateHandle?.set(HOME_RESET_REQUEST, true)
+    }
+}
+
 @Composable
-fun MainBottomNavigation(navController: NavHostController, bottomBarState: MutableState<Boolean>, bottomBarPlayerState : MutableState<Boolean>) {
+fun MainBottomNavigation(navController: NavHostController, bottomBarState: MutableState<Boolean>, bottomBarPlayerState : MutableState<Boolean>, onHeightChanged: (Int) -> Unit = {}) {
 
     val navItems = listOf(
         Routes.Home,
@@ -54,6 +73,7 @@ fun MainBottomNavigation(navController: NavHostController, bottomBarState: Mutab
     )
     AnimatedVisibility(
         visible = bottomBarState.value,
+        modifier = Modifier.onSizeChanged { onHeightChanged(it.height) },
         enter = slideInVertically(initialOffsetY = { it }),
         exit = slideOutVertically(targetOffsetY = { it }),
         content = {
@@ -65,7 +85,7 @@ fun MainBottomNavigation(navController: NavHostController, bottomBarState: Mutab
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Color.Black
+                                com.music.spotui.ui.theme.AppBackground
                             ),
                             startY = 0f
                         )
@@ -108,19 +128,20 @@ fun MainBottomNavigation(navController: NavHostController, bottomBarState: Mutab
                                 },
                                 label = {
                                     if (currentRoute == item.route) {
-                                        Text(color = Color.White, text = item.label, fontSize = 11.sp)
+                                        Text(color = com.music.spotui.ui.theme.AppText, text = item.label, fontSize = 11.sp)
                                     } else {
                                         Text(
-                                            color = Color.Gray,
+                                            color = com.music.spotui.ui.theme.AppSecondary,
                                             text = item.label,
                                             fontSize = 11.sp
                                         )
                                     }
                                 },
                                 onClick = {
-                                    navController.navigate(item.route) {
+                                    if (item == Routes.Home) navController.openMainHome()
+                                    else navController.navigate(item.route) {
                                         navController.graph.startDestinationRoute?.let {
-                                            popUpTo(item.route)
+                                            popUpTo(navController.graph.startDestinationId) { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true
                                         }
@@ -129,7 +150,7 @@ fun MainBottomNavigation(navController: NavHostController, bottomBarState: Mutab
                                 alwaysShowLabel = true,
                                 interactionSource = NoRippleInteractionSource(),
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color.White,
+                                    selectedIconColor = com.music.spotui.ui.theme.AppText,
                                     unselectedIconColor = Color.Gray,
                                     indicatorColor = Color.Transparent
                                 )

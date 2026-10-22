@@ -113,13 +113,13 @@ fun MusicPlayerController(
             ) {
                 Text(
                     text = "0:00",
-                    color = Color.Gray,
+                    color = com.music.spotui.ui.theme.AppSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
                     text = "0:00",
-                    color = Color.Gray,
+                    color = com.music.spotui.ui.theme.AppSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
                 )

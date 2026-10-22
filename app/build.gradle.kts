@@ -14,12 +14,12 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.music.spotui"
+        applicationId = "com.music.spotui.modified"
         minSdk = 26
         targetSdk = 34
         // Must exceed every published build: 1.5 shipped as versionCode 14 ("1.4").
-        versionCode = 16
-        versionName = "1.6"
+        versionCode = 70
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -33,6 +33,15 @@ android {
     val releaseKeys = rootProject.file("keystore.properties").takeIf { it.exists() }
         ?.let { f -> Properties().apply { f.inputStream().use { load(it) } } }
     signingConfigs {
+        // CI supplies the saved key. Never generate a different key for each USpot update.
+        getByName("debug") {
+            System.getenv("USPOT_SIGNING_KEYSTORE")?.takeIf { it.isNotBlank() }?.let { key ->
+                storeFile = file(key)
+                storePassword = System.getenv("USPOT_STORE_PASSWORD")?.takeIf { it.isNotBlank() } ?: "android"
+                keyAlias = System.getenv("USPOT_KEY_ALIAS")?.takeIf { it.isNotBlank() } ?: "androiddebugkey"
+                keyPassword = System.getenv("USPOT_KEY_PASSWORD")?.takeIf { it.isNotBlank() } ?: "android"
+            }
+        }
         if (releaseKeys != null) create("release") {
             storeFile = rootProject.file(releaseKeys.getProperty("storeFile"))
             storePassword = releaseKeys.getProperty("storePassword")
@@ -85,10 +94,13 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
     // Spotify metadata + YouTube streaming, ported from Meld (replaces Firebase data layer)
     implementation(project(":spotify"))
     implementation(project(":innertube"))
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.06.00"))

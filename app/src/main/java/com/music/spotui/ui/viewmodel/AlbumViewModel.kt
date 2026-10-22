@@ -31,9 +31,14 @@ class AlbumViewModel @Inject constructor(private val repository: AppRepository, 
 
     val queue: State<List<SongsModel>> get() = currentSongState.queue
 
-    fun updateQueue(songs: List<SongsModel>) = currentSongState.updateQueue(songs)
+    fun updateQueue(songs: List<SongsModel>) { currentSongState.updateQueue(songs); markCollection(songs) }
 
-    fun startShuffled(songs: List<SongsModel>) = currentSongState.startShuffled(songs)
+    val shuffleState get() = currentSongState.shuffle
+    fun updateShuffleState(enabled: Boolean) = currentSongState.updateShuffleState(enabled)
+    fun cycleShuffle() = currentSongState.cycleShuffle()
+    val smartShuffleActive: Boolean get() = shuffleActive && currentSongState.smartShuffle.value
+
+    fun startShuffled(songs: List<SongsModel>): SongsModel? { val first = currentSongState.startShuffled(songs); markCollection(songs); return first }
 
     /** Pause/resume global playback (the header play button stays visible while playing). */
     fun setPlaying(playing: Boolean) {
@@ -43,6 +48,17 @@ class AlbumViewModel @Inject constructor(private val repository: AppRepository, 
 
     fun updateSongState(coverUri: String, title: String, singer: String, playingState: Boolean, songId: Int, songIndex : Int = 0, album : String = "") {
         currentSongState.updateSongState(coverUri, title, singer, playingState, songId, songIndex, album)
+    }
+
+    val collectionActive: Boolean get() = com.music.spotui.audio.CollectionPlaybackPolicy.active("album:$albumKey", currentSongState.collection.value?.key, currentSongId.value, currentSongState.queue.value.map { it.id })
+    val shuffleActive: Boolean get() = shuffleState.value && collectionActive
+    private fun markCollection(songs: List<SongsModel>) {
+        val id = albumKey ?: return
+        val name = id.substringBefore('|')
+        val artist = id.substringAfter('|').ifBlank { songs.firstOrNull()?.singer.orEmpty() }
+        com.music.spotui.data.preferences.HomeHiddenItems.beginReplay(com.music.spotui.MyApplication.instance, "album", "$name|$artist")
+        currentSongState.collection.value = com.music.spotui.data.entity.PlaybackCollection(
+            "album:$id", "album", "$name|$artist", name, songs.firstOrNull()?.coverUri.orEmpty(), artist)
     }
 
     val likeState = currentSongState.likeState

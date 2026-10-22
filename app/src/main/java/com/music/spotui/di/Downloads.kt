@@ -172,9 +172,11 @@ object Downloads {
     fun downloadSong(
         song: com.music.spotui.data.entity.SongsModel,
         context: Context,
+        automatic: Boolean = false,
         onComplete: (Boolean) -> Unit = {},
     ) {
         val appContext = context.applicationContext
+        if (!automatic) com.music.spotui.data.preferences.SmartDownloads.markManual(appContext, song.id.toString())
         val query = song.url
         if (query.isBlank() ||
             com.music.spotui.data.preferences.isDownloaded(appContext, song.id.toString()) ||
@@ -193,7 +195,7 @@ object Downloads {
             downloadProgress.remove(query)
             downloadingSongs.remove(query)
             withContext(Dispatchers.Main) {
-                if (!ok) {
+                if (!ok && !automatic) {
                     android.widget.Toast.makeText(
                         appContext,
                         "Download failed: ${lastDownloadError ?: "unknown reason"}",
@@ -205,6 +207,8 @@ object Downloads {
             }
         }
     }
+
+    fun cancelSong(query: String) { jobs[query]?.cancel() }
 
     private suspend fun downloadToFile(
         song: com.music.spotui.data.entity.SongsModel,

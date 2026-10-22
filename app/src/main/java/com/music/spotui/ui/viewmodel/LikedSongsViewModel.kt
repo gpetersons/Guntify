@@ -27,10 +27,22 @@ class LikedSongsViewModel @Inject constructor(
     val currentSongId: State<Int> get() = currentSongState.songId
 
     val queue: State<List<SongsModel>> get() = currentSongState.queue
-    fun updateQueue(songs: List<SongsModel>) = currentSongState.updateQueue(songs)
+    fun updateQueue(songs: List<SongsModel>) { currentSongState.updateQueue(songs); markCollection(songs) }
 
-    fun startShuffled(songs: List<SongsModel>) = currentSongState.startShuffled(songs)
+    val shuffleState get() = currentSongState.shuffle
+    fun updateShuffleState(enabled: Boolean) = currentSongState.updateShuffleState(enabled)
+    fun cycleShuffle() = currentSongState.cycleShuffle()
+    val smartShuffleActive: Boolean get() = shuffleActive && currentSongState.smartShuffle.value
 
+    fun startShuffled(songs: List<SongsModel>): SongsModel? { val first = currentSongState.startShuffled(songs); markCollection(songs); return first }
+
+    val collectionActive: Boolean get() = com.music.spotui.audio.CollectionPlaybackPolicy.active("playlist:liked-songs", currentSongState.collection.value?.key, currentSongId.value, currentSongState.queue.value.map { it.id })
+    val shuffleActive: Boolean get() = shuffleState.value && collectionActive
+    private fun markCollection(songs: List<SongsModel>) {
+        com.music.spotui.data.preferences.HomeHiddenItems.beginReplay(com.music.spotui.MyApplication.instance, "playlist", "liked-songs")
+        currentSongState.collection.value = com.music.spotui.data.entity.PlaybackCollection(
+            "playlist:liked-songs", "playlist", "liked-songs", "Liked Songs", songs.firstOrNull()?.coverUri.orEmpty(), "Playlist")
+    }
     /** Pause/resume global playback (the header play button stays visible while playing). */
     fun setPlaying(playing: Boolean) {
         if (playing) com.music.spotui.di.SongPlayer.play() else com.music.spotui.di.SongPlayer.pause()

@@ -164,7 +164,7 @@ fun SpotiflacVerifyScreen(navController: NavController, next: String = "") {
         if (message.isNotEmpty()) {
             Text(
                 message,
-                color = Color.White,
+                color = com.music.spotui.ui.theme.AppText,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.align(Alignment.Center).padding(24.dp),
             )
@@ -175,8 +175,8 @@ fun SpotiflacVerifyScreen(navController: NavController, next: String = "") {
                 .navigationBarsPadding().height(56.dp).background(Color.Black),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            TextButton(onClick = { attempt++ }) { Text("Retry", color = Color.White) }
-            TextButton(onClick = leave) { Text("Skip for now", color = Color.White) }
+            TextButton(onClick = { attempt++ }) { Text("Retry", color = com.music.spotui.ui.theme.AppText) }
+            TextButton(onClick = leave) { Text("Skip for now", color = com.music.spotui.ui.theme.AppText) }
         }
 
         Box(

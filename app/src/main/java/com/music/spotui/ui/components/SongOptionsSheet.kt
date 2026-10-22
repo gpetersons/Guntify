@@ -2,6 +2,8 @@ package com.music.spotui.ui.components
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
@@ -80,7 +84,7 @@ fun SongOptionsSheet(
     val playerViewModel: com.music.spotui.ui.viewmodel.PlayerViewModel =
         androidx.hilt.navigation.compose.hiltViewModel()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var liked by remember { mutableStateOf(isSongLiked(context, song.id.toString())) }
+    var liked by com.music.spotui.ui.components.rememberSongLiked(context, song.id.toString())
     var downloaded by remember { mutableStateOf(com.music.spotui.data.preferences.isDownloaded(context, song.id.toString())) }
     var downloadingNow by remember { mutableStateOf(com.music.spotui.di.Downloads.isDownloading(song.url)) }
     var downloadPct by remember { mutableStateOf(com.music.spotui.di.Downloads.downloadProgress(song.url)) }
@@ -107,9 +111,11 @@ fun SongOptionsSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color(0xFF1A1A1A),
+        containerColor = com.music.spotui.ui.theme.AppSurface,
+        contentColor = com.music.spotui.ui.theme.AppText,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) {
-        Column(modifier = Modifier.navigationBarsPadding()) {
+        Column(modifier = Modifier.navigationBarsPadding().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(bottom = 16.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -118,26 +124,47 @@ fun SongOptionsSheet(
             ) {
                 GlideImage(
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(4.dp)),
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(14.dp)),
                     model = song.coverUri,
                     contentScale = ContentScale.Crop,
                     contentDescription = ""
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text(song.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(song.singer, color = Color.Gray, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(song.title, color = com.music.spotui.ui.theme.AppText, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(song.singer, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-            HorizontalDivider(color = Color(0xFF2A2A2A))
+            HorizontalDivider(color = com.music.spotui.ui.theme.AppRaised)
 
+            SongMenuRow(Icons.Default.PlayArrow, "Start Radio") {
+                playerViewModel.startRadioFromSong(song, context)
+                onDismiss()
+            }
+            SongMenuRow(Icons.Default.ThumbDown, "Less like this in Radio") {
+                com.music.spotui.data.preferences.RadioTaste.dislike(context, song)
+                playerViewModel.applyRadioExclusions()
+                onDismiss()
+            }
+            SongMenuRow(Icons.Default.Block, "Don't play this artist in Radio") {
+                com.music.spotui.data.preferences.RadioTaste.block(context, song)
+                playerViewModel.applyRadioExclusions()
+                onDismiss()
+            }
+            if (downloaded && song.id.toString() in com.music.spotui.data.preferences.SmartDownloads.owned(context)) {
+                SongMenuRow(Icons.Default.CheckCircle, "Keep downloaded") {
+                    com.music.spotui.data.preferences.SmartDownloads.markManual(context, song.id.toString())
+                    onDismiss()
+                }
+            }
             SongMenuRow(Icons.Default.PlayArrow, "Play next") {
                 playerViewModel.playNext(song)
                 onDismiss()
             }
             SongMenuRow(Icons.AutoMirrored.Filled.List, "Add to queue") {
-                playerViewModel.addToQueue(song)
+                val added = playerViewModel.addToQueue(song)
+                QueueFeedback.added(added)
                 onDismiss()
             }
             SongMenuRow(
@@ -147,9 +174,9 @@ fun SongOptionsSheet(
                 showSavedIn = true
             }
             SongMenuRow(
-                icon = if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                icon = null,
                 label = if (liked) "Remove from Liked Songs" else "Add to Liked Songs",
-                iconTint = if (liked) Color(AppPalette.toArgb()) else Color.White,
+                iconTint = if (liked) Color(AppPalette.toArgb()) else com.music.spotui.ui.theme.AppText,
             ) {
                 if (liked) removeLikedSongId(context, song.id.toString())
                 else addLikedSongId(context, song.id.toString())
@@ -158,13 +185,13 @@ fun SongOptionsSheet(
                 com.music.spotui.data.api.SpotifySync.setTrackSaved(context, song.spotifyTrackId, liked)
             }
             SongMenuRow(
-                icon = if (downloaded) Icons.Default.CheckCircle else ImageVector.vectorResource(R.drawable.ic_download),
+                icon = null,
                 label = when {
                     downloaded -> "Downloaded — remove"
                     downloadingNow -> if (downloadPct in 1..99) "Downloading… $downloadPct%" else "Downloading…"
                     else -> "Download"
                 },
-                iconTint = if (downloaded) Color(AppPalette.toArgb()) else Color.White,
+                iconTint = if (downloaded) Color(AppPalette.toArgb()) else com.music.spotui.ui.theme.AppText,
                 enabled = !downloadingNow,
             ) {
                 if (downloaded) {
@@ -231,9 +258,9 @@ fun SongOptionsSheet(
 
 @Composable
 private fun SongMenuRow(
-    icon: ImageVector,
+    icon: ImageVector?,
     label: String,
-    iconTint: Color = Color.White,
+    iconTint: Color = com.music.spotui.ui.theme.AppText,
     enabled: Boolean = true,
     trailingArrow: Boolean = false,
     onClick: () -> Unit,
@@ -242,10 +269,11 @@ private fun SongMenuRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxWidth().padding(horizontal = 12.dp, vertical = 3.dp).clip(RoundedCornerShape(14.dp)).background(com.music.spotui.ui.theme.AppRaised.copy(alpha = 0.5f))
             .then(if (enabled) Modifier.clickable { onClick() } else Modifier)
             .padding(16.dp, 14.dp)
     ) {
+        if (icon != null) {
         Icon(
             imageVector = icon,
             contentDescription = label,
@@ -253,9 +281,10 @@ private fun SongMenuRow(
             modifier = Modifier.size(22.dp)
         )
         Spacer(modifier = Modifier.width(18.dp))
+        }
         Text(
             text = label,
-            color = if (enabled) Color.White else Color.Gray.copy(alpha = 0.4f),
+            color = if (enabled) com.music.spotui.ui.theme.AppText else Color.Gray.copy(alpha = 0.4f),
             fontSize = 15.sp,
             modifier = Modifier.weight(1f)
         )

@@ -9,6 +9,15 @@ val Pink80 = Color(0xFFEFB8C8)
 val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
-val AppBackground = Color(0xFF0B0B0F)
-val GridBackground = Color(0xFF2A2A2A)
+val AppBackground: Color get() = if (AppearanceSettings.effectiveDark) Color.Black else Color(0xFFF7F7F7)
+val GridBackground: Color get() = if (AppearanceSettings.effectiveDark) Color(0xFF2A2A2A) else Color(0xFFEAEAEA)
 val AppPalette = Color(0xFF618DFF)
+val AppText: Color get() = if (AppearanceSettings.effectiveDark) Color.White else Color(0xFF171717)
+val AppSecondary: Color get() = if (AppearanceSettings.effectiveDark) Color(0xFFB3B3B3) else Color(0xFF626262)
+val AppSurface: Color get() = if (AppearanceSettings.effectiveDark) Color(0xFF202020) else Color.White
+val AppRaised: Color get() = if (AppearanceSettings.effectiveDark) Color(0xFF333333) else Color(0xFFE5E5E5)
+
+fun artworkHeader(color: Color): Color = if (AppearanceSettings.effectiveDark) color else androidx.compose.ui.graphics.lerp(AppBackground, color, 0.16f)
+
+val PlayerText: Color get() = if (AppearanceSettings.artworkScreen.value) Color.White else AppText
+val PlayerSecondary: Color get() = if (AppearanceSettings.artworkScreen.value) Color(0xFFB3B3B3) else AppSecondary
