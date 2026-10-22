@@ -61,8 +61,6 @@ class MainActivity : ComponentActivity() {
                 // A surface container using the 'background' color from the theme
                     App()
 
-                // New-release check (GitHub): prompts Upgrade / Dismiss / Don't show again.
-                com.music.spotui.ui.components.UpdatePrompt()
             }
         }
 

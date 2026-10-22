@@ -541,7 +541,7 @@ fun SettingsScreen(navController: NavController) {
                     context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
                         android.net.Uri.parse("https://github.com/Spotui/Spotui")))
                 }.padding(vertical = 10.dp))
-            Text("Modified fork · Updated October 21, 2026", color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp)
+            Text("Modified fork · Updated October 22, 2026", color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp)
             Text("Original Spotui work remains credited to its authors and contributors.",
                 color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp)
             Text("GNU GPL version 3 · You may redistribute and modify this app under that license. Provided without warranty; see the license for details.",

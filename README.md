@@ -12,7 +12,7 @@
   · <a href="https://github.com/rare621/USpot/releases/latest/download/USpot-source.zip">Source code</a>
 </p>
 
-**Version 1.1 · build 70 · Android 8.0 or newer**
+**Version 1.1 · build 71 · Android 8.0 or newer**
 
 USpot builds on [Spotui](https://github.com/Spotui/Spotui), adding a Home that learns from your listening, saved radio stations, radio mixes and more ways to make the player your own. Spotify supplies catalog and account information; music playback uses the existing YouTube and alternative-source integrations.
 
@@ -118,7 +118,7 @@ chmod +x gradlew
 
 The [workflow](.github/workflows/build-spotui-modified.yml) runs on pushes to `main` and manual runs. After successful checks it publishes **USpot.apk**, **USpot-source.zip**, **LICENSE**, **NOTICE** and **SOURCE.md**. Source archives come from the same commit used for the APK.
 
-The application ID remains `com.music.spotui.modified`. Existing installations need the same signing key and a higher versionCode to update; build 70 uses versionName `1.1` and versionCode `70`. Never commit private signing material or replace the official key just to make a build succeed. Local debug builds may use a different key.
+The application ID remains `com.music.spotui.modified`. Existing installations need the same signing key and a higher versionCode to update; build 71 uses versionName `1.1` and versionCode `71`. Never commit private signing material or replace the official key just to make a build succeed. Local debug builds may use a different key.
 
 See [SOURCE.md](SOURCE.md) for signing configuration and corresponding-source information. Older source versions remain in Git history.
 

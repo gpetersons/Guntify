@@ -69,3 +69,13 @@ jobs:
             exit 0
           fi
           gh release create "$USPOT_TAG" release/* --target "$(git rev-parse HEAD)" --title "$USPOT_TITLE" --notes-file RELEASE_NOTES.md --latest
+      - name: Retire previous release after publication
+        if: env.USPOT_TAG == 'v1.1-build-71'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$USPOT_TAG" --json assets --jq '.assets[].name' | grep -qx 'USpot.apk'
+          gh release view "$USPOT_TAG" --json assets --jq '.assets[].name' | grep -qx 'USpot-source.zip'
+          if gh release view v1.1-build-70 >/dev/null 2>&1; then
+            gh release delete v1.1-build-70 --yes
+          fi
