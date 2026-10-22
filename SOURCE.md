@@ -22,6 +22,6 @@ CI restores the existing production key from `USPOT_SIGNING_KEYSTORE_BASE64`. Op
 
 The public release keeps application ID `com.music.spotui.modified`, versionName `1.1`, versionCode `74`. The workflow checks the signed APK against the previous public release's certificate, application ID and version before publication. It also requires assembly, app unit tests and browser interaction checks to pass. Existing release tags are retained rather than relabeled.
 
-`-PuspotWebPreview=true` is an optional developer setting for the separately installed `com.music.spotui.modified.desktoppreview` app. It is not used for the public APK and does not update regular USpot installations.
+Public builds use the normal Gradle command without preview flags. The release workflow rejects APKs with a different application ID or signing certificate, protecting in-place updates.
 
 Original GPL version 3 licensing and third-party notices are retained. Original project: https://github.com/Spotui/Spotui . Desktop & Browser uses NanoHTTPD under its bundled BSD 3-Clause notice.

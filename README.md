@@ -104,7 +104,7 @@ Audio plays on the computer. Qualified browser listening updates the connected a
 
 This is an **optional experimental interface**. The phone must stay connected and running in the background. Anyone on the same Wi-Fi can connect while desktop mode is running, so use trusted networks and stop it when finished. Don't expose the address or port to the internet. Some formats depend on browser support, and desktop layouts are still being refined.
 
-Regular USpot and USpot Desktop Preview are separate Android installations. Browser changes belong to whichever installation is hosting the connection; they do not automatically cross between the two apps.
+**Desktop & Browser is built into the regular USpot app.** Download the latest `USpot.apk` and install it over your existing USpot. It keeps the same application ID and signing key; you do not need a second app. Browser listening history and saved Radio data are stored in that same app.
 
 ## 🔒 Your data stays yours
 
