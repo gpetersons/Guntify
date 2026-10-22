@@ -1,63 +1,94 @@
-# USpot
+<p align="center">
+  <img src="app/src/main/res/drawable-nodpi/uspot_logo.png" width="140" alt="USpot logo" />
+</p>
 
-A Spotify-inspired Android music player built from [Spotui](https://github.com/Spotui/Spotui), with listening-based personalization, continuous radio, offline downloads and Android Auto support.
+<h1 align="center">USpot</h1>
 
-**USpot 1.1 · build 70** · Android 8.0+
+<p align="center">Your music. Your listening habits. Your radio.</p>
 
-[Download APK](https://github.com/rare621/USpot/releases/latest/download/USpot.apk) · [Latest release](https://github.com/rare621/USpot/releases/latest) · [Complete source ZIP](https://github.com/rare621/USpot/releases/latest/download/USpot-source.zip) · [Build status](https://github.com/rare621/USpot/actions/workflows/build-spotui-modified.yml)
+<p align="center">
+  <strong><a href="https://github.com/rare621/USpot/releases/latest/download/USpot.apk">Download USpot for Android</a></strong>
+  · <a href="https://github.com/rare621/USpot/releases/latest">What's new</a>
+  · <a href="https://github.com/rare621/USpot/releases/latest/download/USpot-source.zip">Source code</a>
+</p>
 
-Downloads appear after a successful build, unit-test run and release publication. The files in this repository are the current integrated source; old packages remain available through Git history.
+**Version 1.1 · build 70 · Android 8.0 or newer**
 
-## Your music, your Home
+USpot builds on [Spotui](https://github.com/Spotui/Spotui), adding a Home that learns from your listening, saved radio stations, radio mixes and more ways to make the player your own. Spotify supplies catalog and account information; music playback uses the existing YouTube and alternative-source integrations.
 
-- Spotify catalog search with filters for songs, albums, artists and playlists.
-- A compact Home with eight collection shortcuts, separate recent songs, personalized albums and recommended Spotify playlists.
-- Spotify content provides the starting point for new users. Qualified listening in USpot gradually informs local recommendations, with configurable personalization strength up to 100%.
-- Local taste selection uses up to **15 top songs and five top artists**, with a default 30-day window and extra weight on the last week. A play must reach **30 seconds of audible listening** to qualify.
-- Following brings together releases and popular tracks from followed artists. Stats and History show local listening activity with playable tracks.
-- Cached Home content helps preserve your personalized layout while fresh content loads.
+## Get started
 
-Catalog coverage, available account data and recommendation results vary. Personalization changes the selection and ranking of content; it does not create new Spotify-owned mixes or train Spotify's recommendation system.
+1. **Download and install** the APK using the button above. Android may ask you to allow installation from your browser.
+2. **Sign in to Spotify** to load the account content available to the app.
+3. **Play your music.** Home starts with available Spotify content and gradually learns what you enjoy in USpot.
 
-## USpot Radio and Radio Mix
+Already using USpot? Install the new APK **over your current app**. Export a backup in Settings first, and avoid uninstalling if you want to keep your local data. Updates require the same signing key; official builds keep using the repository's existing key.
 
-Create a station from one song, or blend **up to five songs** into a Radio Mix. Saved stations keep their identity, playback progress and queue state locally.
+Downloads become available when the build and unit tests pass and the release is published.
 
-- Continuous recommendation-based queues, radio-only refresh and Stay close / Balanced / Explore more tuning.
-- Original-song context combined with changing playback context as a station develops.
-- Recent-play weighting reduces repeated sequences without permanently banning familiar songs; radio memory is bounded to 90 days.
-- Queue controls, song actions, shuffle and relevant Smart Shuffle additions.
-- Radio creation supports Spotify song search and selection from your playlists and Liked Songs.
+## What USpot adds to Spotui
 
-**USpot Radio is different from a Spotify radio playlist.** Spotify catalog radio entries open as collections of tracks; USpot stations generate and extend their own queues using the recommendation sources available to this app. They are not Spotify's official live radio service.
+These are additions and refinements in this fork. Spotify search, playlists, likes, lyrics, followed artists, history, downloads and recommendation-based autoplay already formed part of Spotui's foundation.
 
-## Library, playback and offline listening
+| Area | What's added or improved in USpot |
+| --- | --- |
+| **Personalized Home** | Listening-based albums and recommended Spotify playlists, a personalized Made for section, artist variety and saved Home content that appears while fresh recommendations load. |
+| **Your rotation** | Eight collection shortcuts for playlists, albums and radios, with separate recently played songs and local Home removal controls. |
+| **USpot Radio** | Saved stations with their own name, artwork, queue and playback progress; continuous queue filling and a radio-only refresh control. |
+| **Radio Mix** | Blend up to **five songs** into one station. Choose songs together using Spotify search, your playlists or Liked Songs. |
+| **Radio tuning** | **Stay close**, **Balanced** and **Explore more**, plus **Less like this** and **Don't play this artist** controls for Radio. |
+| **Less repetition** | Recent-play weighting and saved station sessions help avoid replaying the same sequences, while still allowing familiar songs to return. |
+| **Following tab** | A dedicated place for new releases, popular tracks and a combined selection from artists you follow. |
+| **Stats and History** | Local listening statistics, top songs and artists, listening history and playable tracks. |
+| **Smarter shuffle** | Playback-context indicators and a diamond Smart Shuffle option that can add relevant songs to a collection's queue. |
+| **Queue controls** | Manually queued songs go ahead of the remaining automatic queue, an added-to-queue message, per-song actions and an animated now-playing indicator. |
+| **Library refinements** | Swipe-to-remove confirmations, playlist creation and song suggestions, and artwork collages for playlist covers. Spotify operations remain subject to account/service support. |
+| **Smart Downloads** | Optional automatic downloads based on your listening. **Off by default**; starts with a target of **20 songs** when you enable it, adjustable in Settings. |
+| **Equalizer** | On/off controls, presets and manual sound adjustment connected to the player's audio session. |
+| **Appearance** | USpot branding, refreshed Home/Library/player/menu designs, playing-context highlights, and light/dark appearance that can follow your device. |
+| **Backup and restore** | Export and import local app data from Settings. |
+| **Playback resilience** | Upcoming-stream preparation, retry/backoff handling, recovery controls and sanitized local playback diagnostics. |
+| **Android Auto** | Expanded Recent and Recent radios browsing, plus media-search/voice-request handling. Availability depends on Android, the car and the assistant. |
+| **Project updates** | Current source directly in the repository, one build workflow, and APK releases accompanied by their matching source and notices. |
 
-- Spotify account/profile information, library browsing, playlist creation and saved-song actions through the existing integrations, where supported by the account and service.
-- Manual queue additions play ahead of the remaining automatic queue, with an added-to-queue message.
-- Stream preparation for upcoming tracks, bounded lookup retries, recovery backoff and local playback diagnostics.
-- Offline downloads and **optional Smart Downloads**, disabled by default. When enabled, the default target is 20 songs and can be changed in Settings.
-- Equalizer presets and manual adjustment, plus existing audio settings.
-- Full-screen player, animated playing indicators and playback-context highlighting.
-- Android Auto browsing, recent-radio entries and media search/voice-request handling. Bluetooth resume depends on Android, the vehicle and the app's service state.
+These features are present in the source. Build/test status and account/device limitations are explained below; this list is not a claim that every feature has been tested on every device.
 
-## Appearance and your data
+## How Home learns your taste
 
-Follow the device theme or choose light/dark appearance manually. Settings also include personalization controls, downloads, backup export/import and diagnostics.
+A song needs **30 seconds of audible listening** before it influences local listening features. Skipping quickly through tracks does not train Home the same way as listening to them.
 
-Local listening records are kept on the device. The app can read authorized Spotify history and use Spotify catalog queries for recommendations; it does **not submit local USpot plays to Spotify to influence Spotify recommendations**. Signing in and using online features still sends the requests required by the respective services.
+Home uses up to **15 top songs and five top artists**. The default window is **30 days**, with extra weight on the last week, so changing preferences can show up over time. Settings let you adjust personalization strength up to **100%**. Catalog availability and variety rules also affect the cards you see.
 
-## Install or update
+New users start with the Spotify content available to their account. As qualified local history grows, USpot uses it to find and rank relevant catalog content. USpot's listening history does **not** train Spotify's own mixes or recommendations.
 
-1. Open the [latest release](https://github.com/rare621/USpot/releases/latest) and download **USpot.apk**.
-2. Allow installation from your browser or file manager when Android asks.
-3. Install over your existing USpot installation when possible.
+## Which radio is which?
 
-The application ID remains `com.music.spotui.modified`. An in-place update requires the **same signing key** and a higher internal versionCode. This build uses versionCode 70. Back up your data in Settings before changing installations; uninstalling can erase local history and settings. Do not replace the saved signing key to resolve a build error.
+**Spotify radio entries** are catalog playlists: open one and you get its track collection. Spotui already included Spotify recommendation-based autoplay.
 
-## Build from source
+**USpot Radio** is a saved station whose queue the app generates and extends. Start with one song, or choose up to five for **Radio Mix**. The station can combine its original songs with changing playback context as you listen. Stay close limits exploration; Balanced and Explore more allow broader influence. Similarity is not a guarantee that every song stays in one genre.
 
-Use Java 17, Android SDK platform 34 and build-tools 35.0.0. The Gradle wrapper is included.
+Radio memory is bounded to **90 days**. Recent songs are less likely to return immediately, rather than being permanently blocked.
+
+## Your data stays yours
+
+Local listening records and personalization are stored on your device. The app can read authorized Spotify history and make catalog/recommendation requests, but it **does not upload local USpot plays to influence Spotify's listening profile**. Online features still send the requests needed by Spotify, YouTube and any selected stream providers.
+
+Use **Settings → export/import** to keep a backup. Uninstalling can erase local data; retaining the application ID and signing key is important for in-place updates.
+
+## Status and help
+
+A published build confirms that APK assembly and unit tests passed. It does not confirm every Spotify account operation, Bluetooth device or Android Auto setup. Intermittent stream-lookup failures remain under investigation; a restart improving playback does not establish their root cause.
+
+For a problem report, include the build number, Android version, what you were playing and sanitized playback diagnostics. Never share passwords, tokens, signing keys or private stream URLs.
+
+[Release notes](RELEASE_NOTES.md) · [Validation details](MODIFIED_VERIFICATION.md) · [Build status](https://github.com/rare621/USpot/actions/workflows/build-spotui-modified.yml)
+
+<details>
+<summary><strong>For developers: build USpot</strong></summary>
+
+The repository contains the current source directly. You do not need to upload or extract an old source ZIP to build it.
+
+Use **Java 17**, **Android SDK platform 34** and **build-tools 35.0.0**, with the included Gradle wrapper:
 
 ```sh
 chmod +x gradlew
@@ -65,20 +96,18 @@ chmod +x gradlew
 ./gradlew :app:testDebugUnitTest --no-daemon --max-workers=2
 ```
 
-The [GitHub Actions workflow](.github/workflows/build-spotui-modified.yml) builds the checked-out source on pushes to `main` or a manual run, runs unit tests and publishes **USpot.apk** with the exact corresponding **USpot-source.zip**, license and notices. No versioned source ZIP needs to be uploaded for future code changes.
+The [workflow](.github/workflows/build-spotui-modified.yml) runs on pushes to `main` and manual runs. After successful checks it publishes **USpot.apk**, **USpot-source.zip**, **LICENSE**, **NOTICE** and **SOURCE.md**. Source archives come from the same commit used for the APK.
 
-Official updates require the repository's existing signing secrets. Local debug builds normally use your local debug key and may not update an officially signed installation. See [SOURCE.md](SOURCE.md).
+The application ID remains `com.music.spotui.modified`. Existing installations need the same signing key and a higher versionCode to update; build 70 uses versionName `1.1` and versionCode `70`. Never commit private signing material or replace the official key just to make a build succeed. Local debug builds may use a different key.
 
-## Status and reporting problems
+See [SOURCE.md](SOURCE.md) for signing configuration and corresponding-source information. Older source versions remain in Git history.
 
-This is a community fork. Features listed above are present in the source; a successful release confirms APK assembly and unit tests, not every account/device scenario. See [validation notes](MODIFIED_VERIFICATION.md) and [current release notes](RELEASE_NOTES.md).
+</details>
 
-Intermittent stream-lookup failures remain under investigation. A network reconnection or restart can change the behavior, but the root cause has not been conclusively identified. Spotify account mutations, YouTube source availability, Bluetooth recovery and Android Auto voice routing need testing with the actual account and device. Voice commands must target an app Android recognizes; USpot cannot impersonate Spotify.
+## Thank you, Spotui
 
-When [reporting an issue](https://github.com/rare621/USpot/issues), include the app build, Android version, what you were playing and sanitized playback diagnostics. Do not post credentials, tokens, signing keys or private stream URLs.
+**Thank you to Spotui's original creators and contributors for making such a good app and sharing it as open source.** Your work gave USpot its foundation: the player, Spotify integrations, lyrics, downloads and the Compose interface that made these additions possible.
 
-## Credits and license
+USpot also retains credits for **Meld**, **Neptune**, **SpotiFLAC**, **SimpMusic** and the other projects and dependencies acknowledged in [NOTICE](NOTICE) and the source files.
 
-USpot is a modified fork of **Spotui**, credited to its original authors and contributors, distributed under [GNU GPL version 3](LICENSE). Credits for Meld, Neptune, SpotiFLAC, SimpMusic and imported dependencies are retained in [NOTICE](NOTICE) and the source files. Each APK release includes corresponding source and license information.
-
-USpot is not affiliated with or endorsed by Spotify or YouTube. Their names, services and content remain subject to their respective rights and terms. The source-code license does not grant rights to music or third-party trademarks.
+USpot is a modified fork distributed under [GNU GPL version 3](LICENSE). Keep the license, attribution notices and corresponding source with redistributed builds. USpot is not affiliated with or endorsed by Spotify or YouTube; the code license does not grant rights to their trademarks, services or music.
