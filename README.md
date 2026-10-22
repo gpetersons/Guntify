@@ -92,6 +92,12 @@ Radio memory is bounded to **90 days**. Recent songs are less likely to return i
 
 ## 🖥️ Listen from your computer
 
+<p align="center">
+  <img src="assets/screenshots/desktop-browser.png" width="100%" alt="Early USpot desktop browser preview showing Home, Your rotation, the player and upcoming queue" />
+</p>
+
+<sub>Early desktop preview supplied by a user. The interface is still being refined; some layout details differ in the current build.</sub>
+
 Open **Settings → Desktop & Browser → Start desktop mode** on your phone, then enter the displayed `http://...:8765/` address in your computer's browser. Keep both devices on the same trusted router; Ethernet on the computer works too.
 
 Audio plays on the computer. Qualified browser listening updates the connected app's local history, Stats and personalization. Likes and saved radio data use the phone's integrations; playback queues, volume, EQ and some browser preferences remain separate. Refresh a page to pick up data changed on the other screen.
