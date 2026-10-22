@@ -13,7 +13,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
-      USPOT_SIGNING_KEYSTORE: ${{ runner.temp }}/uspot-signing.keystore
+      USPOT_SIGNING_KEYSTORE: ${{ github.workspace }}/uspot-signing.keystore
       USPOT_STORE_PASSWORD: ${{ secrets.USPOT_STORE_PASSWORD }}
       USPOT_KEY_ALIAS: ${{ secrets.USPOT_KEY_ALIAS }}
       USPOT_KEY_PASSWORD: ${{ secrets.USPOT_KEY_PASSWORD }}
