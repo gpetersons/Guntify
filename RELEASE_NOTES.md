@@ -1,12 +1,16 @@
-# 💚 A fresh feel for your music · USpot build 82
+# Guntify 1.0.0 Beta 1: First independent release
 
-- **Move through your music.** New transitions across pages, Home tabs, Library and Settings, with lighter player updates and revised video handling when minimizing.
-- **Keep favorites close.** Pin playlists, albums and USpot radios in Library.
-- **Find it faster.** Grouped search results, a top result, saved searches and quick Radio creation.
-- **Take control of downloads.** See progress and storage use, cancel an active download, or retry unfinished ones.
-- **A cleaner Home and player.** Less repeated artwork, clearer playback status in the existing source line, and tidier menus and controls.
-- **Enjoy it on your computer.** Matching updates to the browser interface, including menus, pages and Settings.
+First Guntify-branded build based on USpot and Spotui.
 
-Install **USpot.apk** over your existing USpot to keep your data. You can export a backup from Settings first. If you tried **USpot Preview**, your regular USpot and preview keep separate local data; export and import a backup if you want to bring preview history across.
+- Guntify name and new app / desktop icon.
+- Independent Android application ID: `lv.guntify.player`.
+- Experimental YouTube audio fallback and playback recovery changes.
+- Independent GitHub Actions with Guntify signing credentials; no USpot release automation.
+- In-app update links now point only to `gpetersons/Guntify`.
+- Existing Android Auto and music functionality retained in the codebase.
 
-Thank you to [Spotui’s creators and contributors](https://github.com/Spotui/Spotui) for the app that made this possible. 🎧
+**This is a first release before security and privacy patches.** A full independent security audit and real-device network traffic assessment have not been completed.
+
+Guntify installs alongside USpot and will not automatically inherit USpot's app data. Keep any working installation and export a backup before experimenting.
+
+**Thank you, [Spotui](https://github.com/Spotui/Spotui) and [USpot](https://github.com/rare621/USpot)** for their work. Original GPLv3 copyright and attribution notices are preserved in LICENSE and NOTICE.

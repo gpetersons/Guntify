@@ -49,10 +49,10 @@ fun UpdateUiHost() {
         AlertDialog(
             onDismissRequest = { AppUpdates.cancel(context) },
             containerColor = AppSurface,
-            title = { Text("A new USpot is ready", color = AppText, fontWeight = FontWeight.Bold) },
+            title = { Text("A new Guntify is ready", color = AppText, fontWeight = FontWeight.Bold) },
             text = {
                 Column(Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("USpot ${release.version} · build ${release.code}", color = UpdateGreen)
+                    Text("Guntify ${release.version} · build ${release.code}", color = UpdateGreen)
                     Text("Install over your current app to keep your music, history and settings. Android will ask you to confirm installation.", color = AppSecondary)
                     if (state.downloading) {
                         LinearProgressIndicator(progress = { state.progress / 100f }, color = UpdateGreen, modifier = Modifier.fillMaxWidth())
@@ -86,8 +86,8 @@ fun UpdateSettings() {
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 160.dp)) {
         Text("Keep your music moving", color = AppText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text("Installed: USpot ${BuildConfig.VERSION_NAME} · build ${BuildConfig.VERSION_CODE}", color = AppSecondary)
-        Text("Updates come from the official USpot GitHub releases. USpot checks each time it starts. While it stays open, returning to it checks at most once an hour. Cancel dismisses a release until you check manually or a newer release arrives.", color = AppSecondary)
+        Text("Installed: Guntify ${BuildConfig.VERSION_NAME} · build ${BuildConfig.VERSION_CODE}", color = AppSecondary)
+        Text("Updates come from the Guntify GitHub releases. Guntify checks each time it starts. While it stays open, returning to it checks at most once an hour. Cancel dismisses a release until you check manually or a newer release arrives.", color = AppSecondary)
         Button(onClick = { scope.launch { AppUpdates.check(context, manual = true) } }, enabled = !state.checking && !state.downloading,
             colors = ButtonDefaults.buttonColors(containerColor = UpdateGreen, contentColor = androidx.compose.ui.graphics.Color.Black)) {
             Text(if (state.checking) "Checking…" else "Check for updates")
@@ -99,8 +99,8 @@ fun UpdateSettings() {
         }
         if (state.checked && state.release == null && state.error.isBlank()) Text("You're up to date.", color = UpdateGreen)
         if (state.error.isNotBlank()) Text(state.error, color = AppText)
-        Text("You may need to allow 'Install unknown apps' for USpot once. Installation always needs your confirmation; your current app stays installed.", color = AppSecondary)
-        TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/rare621/USpot/releases/latest"))) }) {
+        Text("You may need to allow 'Install unknown apps' for Guntify once. Installation always needs your confirmation; your current app stays installed.", color = AppSecondary)
+        TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/gpetersons/Guntify/releases"))) }) {
             Text("View GitHub release notes", color = UpdateGreen)
         }
     }

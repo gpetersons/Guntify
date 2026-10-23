@@ -19,7 +19,7 @@ fun SmartDownloadSettings() {
     Column(Modifier.fillMaxWidth()) {
         Text("Smart Downloads", color = AppText, fontSize = 23.sp)
         Text(status, color = AppPalette, modifier = Modifier.padding(vertical = 8.dp))
-        Text("Keep your most-played songs ready offline. Uses recent USpot listening, with a small boost for liked songs.", color = AppSecondary, modifier = Modifier.padding(vertical = 12.dp))
+        Text("Keep your most-played songs ready offline. Uses recent Guntify listening, with a small boost for liked songs.", color = AppSecondary, modifier = Modifier.padding(vertical = 12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Enable Smart Downloads", color = AppText)
             Switch(config.first, { SmartDownloads.setEnabled(context, it) })
@@ -30,6 +30,6 @@ fun SmartDownloadSettings() {
             Text("Unmetered networks only", color = AppText)
             Switch(config.third, { SmartDownloads.setWifi(context, it) })
         }
-        Text("Updates as you listen and when you reopen USpot. Automatic files rotate with your taste; manual downloads are kept. Turning this off stops updates and leaves downloaded songs available.", color = AppSecondary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp))
+        Text("Updates as you listen and when you reopen Guntify. Automatic files rotate with your taste; manual downloads are kept. Turning this off stops updates and leaves downloaded songs available.", color = AppSecondary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp))
     }
 }

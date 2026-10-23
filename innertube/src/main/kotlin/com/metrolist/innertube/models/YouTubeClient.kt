@@ -91,6 +91,17 @@ data class YouTubeClient(
             origin = ORIGIN_YOUTUBE_MUSIC,
         )
 
+        /** Limited fallback: works only for videos whose owner allows embedding. */
+        val WEB_EMBEDDED_PLAYER = YouTubeClient(
+            clientName = "WEB_EMBEDDED_PLAYER",
+            clientVersion = "2.20260722.01.00",
+            clientId = "56",
+            userAgent = USER_AGENT_WEB,
+            isEmbedded = true,
+            useSignatureTimestamp = true,
+            origin = "https://www.youtube.com",
+        )
+
         val TVHTML5 = YouTubeClient(
             clientName = "TVHTML5",
             clientVersion = "7.20260707.07.00",
@@ -173,6 +184,7 @@ data class YouTubeClient(
                 name.startsWith("IOS") -> if (version == IOS_RECENT.clientVersion) IOS_RECENT else IOS
                 name.startsWith("TVHTML5") -> TVHTML5
                 name == "WEB_REMIX" -> WEB_REMIX
+                name == "WEB_EMBEDDED_PLAYER" -> WEB_EMBEDDED_PLAYER
                 else -> IOS
             }
         }

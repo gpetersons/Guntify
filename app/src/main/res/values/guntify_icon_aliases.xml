@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item type="drawable" name="logo">@drawable/guntify_logo</item>
+    <item type="mipmap" name="ic_launcher">@drawable/guntify_logo</item>
+    <item type="mipmap" name="ic_launcher_round">@drawable/guntify_logo</item>
+    <item type="mipmap" name="ic_launcher_foreground">@drawable/guntify_logo</item>
+</resources>

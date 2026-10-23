@@ -8,7 +8,7 @@ data class AppRelease(val code: Long, val version: String, val tag: String, val 
 
 /** Accept only a stable, versioned APK from our own repository. Never compare display versions. */
 object UpdatePolicy {
-    const val REPO = "rare621/USpot"
+    const val REPO = "gpetersons/Guntify"
     const val API = "https://api.github.com/repos/$REPO/releases/latest"
     const val MAX_APK_BYTES = 150L * 1024 * 1024
     fun parse(raw: String): AppRelease? {
@@ -22,11 +22,11 @@ object UpdatePolicy {
         require(j.getString("html_url") == page) { "Unexpected release repository." }
         val assets = j.getJSONArray("assets")
         val apks = (0 until assets.length()).map { assets.getJSONObject(it) }
-            .filter { it.optString("name") == "USpot.apk" && it.optString("state") == "uploaded" }
+            .filter { it.optString("name") == "Guntify.apk" && it.optString("state") == "uploaded" }
         require(apks.size == 1) { "The release APK is not ready yet." }
         val asset = apks.single()
         val apk = asset.getString("browser_download_url")
-        require(apk == "https://github.com/$REPO/releases/download/$tag/USpot.apk") { "Unexpected update download address." }
+        require(apk == "https://github.com/$REPO/releases/download/$tag/Guntify.apk") { "Unexpected update download address." }
         val uri = URI(apk)
         require(uri.scheme == "https" && uri.host == "github.com" && uri.userInfo == null && uri.query == null && uri.fragment == null)
         val digest = Regex("^sha256:([a-fA-F0-9]{64})$").matchEntire(asset.optString("digest"))

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108" role="img" aria-label="Guntify icon">
+  <rect width="108" height="108" rx="22" fill="#0b1318"/>
+  <rect x="4" y="4" width="100" height="100" rx="21" fill="none" stroke="#2185a2" stroke-width="1.7"/>
+  <path d="M35 25 C30 22 26 25 26 32 L26 77 C26 84 31 87 37 83 L80 59 C86 56 86 51 80 48 Z"
+    fill="none" stroke="#47f2a2" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M41 46 V62 M52 38 V70 M63 47 V61" stroke="#47f2a2" stroke-width="4" stroke-linecap="round"/>
+</svg>

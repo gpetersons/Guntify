@@ -78,7 +78,7 @@ fun StatsContent(navController: NavController) {
     val playable = songs.map { it.song }.filter { it.url.isNotBlank() }
     val period = when (days) { 7 -> "week"; 30 -> "month"; else -> "all time" }
     val source = PlaybackCollection("stats:$days", "playlist", "stats:$days", "Your top songs • $period",
-        playable.firstOrNull()?.coverUri.orEmpty(), "Your USpot listening")
+        playable.firstOrNull()?.coverUri.orEmpty(), "Your Guntify listening")
     val active = player.activeCollection.value?.key == source.key
     val playing = active && player.currentSongPlayingState.value
     var menuSong by remember { mutableStateOf<SongsModel?>(null) }
@@ -223,7 +223,7 @@ fun StatsContent(navController: NavController) {
             }
         }
         item {
-            Text("Only your listening in USpot counts here. Recorded time is approximate; older history may include only the first qualifying seconds.",
+            Text("Only your listening in Guntify counts here. Recorded time is approximate; older history may include only the first qualifying seconds.",
                 color = AppSecondary, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp))
         }
     }

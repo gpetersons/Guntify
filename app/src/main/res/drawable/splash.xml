@@ -1,31 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- spotui logo: green disc with a dark equalizer mark (login screen, fallbacks). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0"
-        android:fillColor="#1ED760" />
-    <path
-        android:pathData="M40.5,48 L40.5,60"
-        android:strokeColor="#121212"
-        android:strokeWidth="7"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M50,39 L50,69"
-        android:strokeColor="#121212"
-        android:strokeWidth="7"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M59.5,44 L59.5,64"
-        android:strokeColor="#121212"
-        android:strokeWidth="7"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M69,49.5 L69,58.5"
-        android:strokeColor="#121212"
-        android:strokeWidth="7"
-        android:strokeLineCap="round" />
+    <path android:fillColor="#0B1318"
+        android:pathData="M20,12 L88,12 Q96,12 96,20 L96,88 Q96,96 88,96 L20,96 Q12,96 12,88 L12,20 Q12,12 20,12 Z"/>
+    <path android:fillColor="@android:color/transparent"
+        android:strokeColor="#47F2A2" android:strokeWidth="4.4"
+        android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M35,25 C30,22 26,25 26,32 L26,77 C26,84 31,87 37,83 L80,59 C86,56 86,51 80,48 Z"/>
+    <path android:strokeColor="#47F2A2" android:strokeWidth="4"
+        android:strokeLineCap="round" android:pathData="M41,46 L41,62"/>
+    <path android:strokeColor="#47F2A2" android:strokeWidth="4"
+        android:strokeLineCap="round" android:pathData="M52,38 L52,70"/>
+    <path android:strokeColor="#47F2A2" android:strokeWidth="4"
+        android:strokeLineCap="round" android:pathData="M63,47 L63,61"/>
 </vector>

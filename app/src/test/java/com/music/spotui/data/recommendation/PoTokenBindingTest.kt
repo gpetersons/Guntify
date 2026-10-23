@@ -18,6 +18,9 @@ class PoTokenBindingTest {
         assertEquals("session-proof", first.streamingDataPoToken)
         assertEquals(first.streamingDataPoToken, second.streamingDataPoToken)
         assertNotEquals(first.playerRequestPoToken, first.streamingDataPoToken)
+        assertEquals("proof-for-video-A", first.videoBoundStreamingDataPoToken)
+        assertEquals("proof-for-video-B", second.videoBoundStreamingDataPoToken)
+        assertNotEquals(first.videoBoundStreamingDataPoToken, second.videoBoundStreamingDataPoToken)
     }
     @Test fun failedVideoMintMustNotSubstituteTheSessionProof() = runBlocking {
         var returned = false

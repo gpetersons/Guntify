@@ -487,24 +487,24 @@ fun SettingsScreen(navController: NavController) {
             }
             if (shownCategory == "Home") {
             SectionTitle("Home personalization")
-            Text("Rank Spotify playlists, albums and artists using songs played in USpot. Spotify's existing recommendations remain the starting point.",
+            Text("Rank Spotify playlists, albums and artists using songs played in Guntify. Spotify's existing recommendations remain the starting point.",
                 color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
-            SettingsSwitchRow("Personalize Spotify Home rows", "Use local USpot listening history", personalizeHome) {
+            SettingsSwitchRow("Personalize Spotify Home rows", "Use local Guntify listening history", personalizeHome) {
                 personalizeHome = it; homePersonalization.setEnabled(context, it)
             }
             Text("Local personalization target: ${personalizeStrength.toInt()}%", color = com.music.spotui.ui.theme.AppText, fontSize = 14.sp)
             Slider(value = personalizeStrength, onValueChange = { personalizeStrength = it },
                 onValueChangeFinished = { homePersonalization.setStrength(context, personalizeStrength.toInt()) },
                 valueRange = 0f..100f, steps = 9, enabled = personalizeHome)
-            Text("Gradually reaches your target as you listen. At 100%, all recommendation cards can come from USpot history. Spotify fills gaps when local recommendations are unavailable.",
+            Text("Gradually reaches your target as you listen. At 100%, all recommendation cards can come from Guntify history. Spotify fills gaps when local recommendations are unavailable.",
                 color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
             androidx.compose.material3.TextButton(onClick = {
                 homePersonalization.revision.value++
-                android.widget.Toast.makeText(context, "Refreshing your USpot recommendations", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, "Refreshing your Guntify recommendations", android.widget.Toast.LENGTH_SHORT).show()
             }) { Text("Refresh recommendations", color = AppPalette) }
             val localListens = com.music.spotui.data.recommendation.ListeningTastePolicy.qualified(
                 com.music.spotui.data.preferences.getListeningHistory(context), System.currentTimeMillis(), personalizeWindow).size
-            Text("Learning from $localListens USpot listens. New recommendations appear as your listening grows.",
+            Text("Learning from $localListens Guntify listens. New recommendations appear as your listening grows.",
                 color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
             Text("Listening history window", color = com.music.spotui.ui.theme.AppText, fontSize = 14.sp)
             listOf(30 to "30 days", 90 to "90 days", 0 to "All history").forEach { (days, label) ->
@@ -521,7 +521,7 @@ fun SettingsScreen(navController: NavController) {
             Text("Artist-based playlist rows use 30 days of qualified listening, weighted toward the last week, and rotate daily among your top three artists. At least three plays across two days are needed.", color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp)
             }
             SectionTitle("Home history")
-            Text("The top eight cards show playlists, albums and USpot radios. Recently played below shows individual songs after 30 seconds of listening.",
+            Text("The top eight cards show playlists, albums and Guntify radios. Recently played below shows individual songs after 30 seconds of listening.",
                 color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
             SettingsSwitchRow("Show recently played playlists", "Open the playlist when tapped", showRecentPlaylists) {
                 showRecentPlaylists = it; homeRecents.setPlaylists(context, it)
@@ -554,7 +554,7 @@ fun SettingsScreen(navController: NavController) {
             if (shownCategory == "About") {
             Spacer(Modifier.height(12.dp))
                         SectionTitle("About")
-            Text("USpot ${com.music.spotui.BuildConfig.VERSION_NAME} (${com.music.spotui.BuildConfig.VERSION_CODE})", color = com.music.spotui.ui.theme.AppText, fontSize = 16.sp,
+            Text("Guntify ${com.music.spotui.BuildConfig.VERSION_NAME} (${com.music.spotui.BuildConfig.VERSION_CODE})", color = com.music.spotui.ui.theme.AppText, fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold)
             Text("Original app: Spotui · Credit to its creators and contributors", color = AppPalette, fontSize = 14.sp,
                 modifier = Modifier.fillMaxWidth().clickable {
