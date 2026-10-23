@@ -58,13 +58,13 @@ object AppUpdates {
             val release = withContext(Dispatchers.IO) {
                 withTimeout(15_000L) {
                     val request = Request.Builder().url(UpdatePolicy.API).header("Accept", "application/vnd.github+json")
-                        .header("User-Agent", "Guntify/${BuildConfig.VERSION_NAME} build-${BuildConfig.VERSION_CODE}")
+                        .header("User-Agent", "SprotiFy/${BuildConfig.VERSION_NAME} build-${BuildConfig.VERSION_CODE}")
                         .apply { p.getString("etag", null)?.let { header("If-None-Match", it) } }.build()
                     val call = checkClient.newCall(request)
                     val handle = currentCoroutineContext().job.invokeOnCompletion { if (it is CancellationException) call.cancel() }
                     try {
                         call.execute().use { response ->
-                            // A beta-only repository has no "latest" stable release yet.
+                            // Missing or inaccessible release lists have no available update.
                             if (response.code == 404) return@use null
                             if (response.code == 403 || response.code == 429) {
                                 val reset = response.header("X-RateLimit-Reset")?.toLongOrNull()?.times(1000)
@@ -76,7 +76,7 @@ object AppUpdates {
                                 ?: error("Check again to refresh release information.") else {
                                 kotlin.check(response.isSuccessful) { "Could not check GitHub releases (HTTP ${response.code})." }
                                 val body = response.body ?: error("Empty GitHub response.")
-                                require(!body.source().request(256 * 1024L + 1)) { "Release response is too large." }
+                                require(!body.source().request(1024 * 1024L + 1)) { "Release response is too large." }
                                 body.string()
                             }
                             val parsed = UpdatePolicy.parse(raw)
@@ -111,7 +111,7 @@ object AppUpdates {
         if (mutable.value.downloading) return false
         val c = context.applicationContext
         val release = mutable.value.release ?: return false
-        readyFile?.takeIf { it.isFile && it.name == "Guntify-${release.code}.apk" }?.let { return true }
+        readyFile?.takeIf { it.isFile && it.name == "SprotiFy-${release.code}.apk" }?.let { return true }
         downloadJob = currentCoroutineContext().job
         mutable.update { it.copy(downloading = true, progress = 0, error = "") }
         var partial: File? = null
@@ -121,7 +121,7 @@ object AppUpdates {
                     val dir = File(c.cacheDir, "updates").apply { mkdirs() }
                     dir.listFiles()?.forEach { it.delete() }
                     val part = File(dir, "update.part"); partial = part
-                    val call = client.newCall(Request.Builder().url(release.apk).header("User-Agent", "Guntify updater").build())
+                    val call = client.newCall(Request.Builder().url(release.apk).header("User-Agent", "SprotiFy updater").build())
                     activeDownload = call
                     val handle = currentCoroutineContext().job.invokeOnCompletion { if (it is CancellationException) call.cancel() }
                     try {
@@ -144,7 +144,7 @@ object AppUpdates {
                             require(total == release.bytes && digest.digest().hex() == release.sha256) { "The update checksum did not match. Please try again." }
                         }
                     } finally { handle.dispose(); call.cancel() }
-                    val target = File(dir, "Guntify-${release.code}.apk")
+                    val target = File(dir, "SprotiFy-${release.code}.apk")
                     kotlin.check(part.renameTo(target)) { "Cannot prepare the update file." }
                     try { verifyApk(c, target, release.code) } catch (e: Exception) { target.delete(); throw e }
                     target
@@ -173,13 +173,13 @@ object AppUpdates {
             return signatures.orEmpty().map { MessageDigest.getInstance("SHA-256").digest(it.toByteArray()).hex() }.toSet()
         }
         require(UpdatePolicy.compatible(context.packageName, archive.packageName, code(installed), code(archive), expectedCode, signers(installed), signers(archive))) {
-            "This APK cannot update the installed Guntify: its package, build or signing key differs. Keep your app installed."
+            "This APK cannot update the installed ŠprotiFy: its package, build or signing key differs. Keep your app installed."
         }
     }
 
     fun openInstaller(context: Context) {
         try {
-            kotlin.check(context.packageManager.canRequestPackageInstalls()) { "Allow updates from Guntify in Android's install-permission settings, then tap Install again." }
+            kotlin.check(context.packageManager.canRequestPackageInstalls()) { "Allow updates from ŠprotiFy in Android's install-permission settings, then tap Install again." }
             val file = readyFile?.takeIf { it.isFile } ?: error("Download the update again before installing.")
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.updates", file)
             context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
