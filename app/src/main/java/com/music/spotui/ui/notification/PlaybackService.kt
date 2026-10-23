@@ -494,7 +494,9 @@ class PlaybackService : MediaLibraryService() {
                     return@launch
                 }
                 currentSongState.updateQueue(currentSongState.queue.value + if (currentSongState.activeRadioSeed != null) fresh.take(10) else fresh, preserveSession = true)
-                currentSongState.queue.value.getOrNull(liveIndex + 1)?.let {
+                // We are about to start the next track. Only prefetch the one
+                // after it, so competing lookups do not slow the audible switch.
+                currentSongState.queue.value.getOrNull(liveIndex + 2)?.let {
                     SongPlayer.prefetch(it.url, applicationContext)
                 }
                 advance(forward = true)
@@ -579,8 +581,11 @@ class PlaybackService : MediaLibraryService() {
                 val failedCurrent = streamRecovery.isRecovering &&
                     !SongPlayer.isPlaying() && SongPlayer.isCurrentRequest(current.url)
                 currentSongState.replaceRadioQueue(next)
-                next.getOrNull(nextCurrent + 1)?.let { SongPlayer.prefetch(it.url, applicationContext) }
-                if (!currentSongState.repeat.value && (ended || failedCurrent)) {
+                val willAdvance = !currentSongState.repeat.value && (ended || failedCurrent)
+                next.getOrNull(nextCurrent + if (willAdvance) 2 else 1)?.let {
+                    SongPlayer.prefetch(it.url, applicationContext)
+                }
+                if (willAdvance) {
                     if (failedCurrent) streamRecovery.recovered()
                     advance(forward = true)
                 }
