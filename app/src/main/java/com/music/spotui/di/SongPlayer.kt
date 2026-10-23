@@ -269,6 +269,7 @@ object SongPlayer {
         appCtx = appContext
         if (tryPlayPrepared(song)) return
         currentRequest = song
+        com.music.spotui.audio.PlaybackPresentation.set(com.music.spotui.audio.PlaybackPresentation.Stage.CONNECTING)
         com.music.spotui.data.preferences.PlaybackDiagnostics.record(appContext,"Lookup started")
         playbackVisit++
         trackEndGate.reset()
@@ -384,6 +385,7 @@ object SongPlayer {
     private fun streamFailed(song: String, appContext: Context) {
         if (currentRequest != song) return
         com.music.spotui.data.preferences.PlaybackDiagnostics.record(appContext,"Lookup failed","No playable source or deadline reached")
+        com.music.spotui.audio.PlaybackPresentation.set(com.music.spotui.audio.PlaybackPresentation.Stage.RETRYING)
         val visit = playbackVisit
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             if (currentRequest == song && visit == playbackVisit) onStreamFailed?.invoke(song)
@@ -1507,6 +1509,7 @@ object SongPlayer {
 
     private val midPlayErrorListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if(isPlaying)com.music.spotui.audio.PlaybackPresentation.set(com.music.spotui.audio.PlaybackPresentation.Stage.PLAYING)
             boundState?.updatePlayingState(isPlaying)
             if (isPlaying) appCtx?.let { com.music.spotui.data.preferences.savePlaybackActive(it, true) }
         }
@@ -1546,6 +1549,11 @@ object SongPlayer {
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            com.music.spotui.audio.PlaybackPresentation.set(when(playbackState) {
+                Player.STATE_BUFFERING -> com.music.spotui.audio.PlaybackPresentation.Stage.BUFFERING
+                Player.STATE_READY -> if(player?.playWhenReady == true)com.music.spotui.audio.PlaybackPresentation.Stage.PLAYING else com.music.spotui.audio.PlaybackPresentation.Stage.PAUSED
+                else -> com.music.spotui.audio.PlaybackPresentation.state.value
+            })
             if (playbackState == Player.STATE_READY) { appCtx?.let { com.music.spotui.data.preferences.PlaybackDiagnostics.record(it,"Player ready") }; bufferingRecoveryFor = null; trackEndGate.reset() }
             updateBufferingWatch()
             // Mid-crossfade the outgoing player may end first; the blend advances itself.
@@ -1632,6 +1640,7 @@ object SongPlayer {
     }
 
     fun pause() {
+        com.music.spotui.audio.PlaybackPresentation.set(com.music.spotui.audio.PlaybackPresentation.Stage.PAUSED)
         recoveryAllowed = false
         onPlaybackRequestChanged?.invoke()
         // Pause must also stop an unresolved Play request, otherwise audio could

@@ -1,5 +1,7 @@
 package com.music.spotui.ui.components
 
+import com.music.spotui.ui.components.menuReveal
+import com.music.spotui.ui.components.motionClick
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -85,6 +87,7 @@ fun SongOptionsSheet(
     val playerViewModel: com.music.spotui.ui.viewmodel.PlayerViewModel =
         androidx.hilt.navigation.compose.hiltViewModel()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val dismiss = com.music.spotui.ui.components.rememberSheetDismiss(sheetState, onDismiss)
     var liked by com.music.spotui.ui.components.rememberSongLiked(context, song.id.toString())
     var downloaded by remember { mutableStateOf(com.music.spotui.data.preferences.isDownloaded(context, song.id.toString())) }
     var downloadingNow by remember { mutableStateOf(com.music.spotui.di.Downloads.isDownloading(song.url)) }
@@ -103,20 +106,20 @@ fun SongOptionsSheet(
         SavedInSheet(
             song = song,
             context = context,
-            onDismiss = { showSavedIn = false; onDismiss() },
+            onDismiss = { showSavedIn = false; dismiss() },
             onLikedChanged = { liked = it },
         )
         return
     }
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = dismiss,
         sheetState = sheetState,
         containerColor = com.music.spotui.ui.theme.AppSurface,
         contentColor = com.music.spotui.ui.theme.AppText,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) {
-        Column(modifier = Modifier.navigationBarsPadding().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(bottom = 16.dp)) {
+        Column(modifier = Modifier.menuReveal().navigationBarsPadding().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(bottom = 16.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -142,32 +145,32 @@ fun SongOptionsSheet(
             if (onRemoveFromPlaylist != null) SongMenuRow(null, "Remove from this playlist") { onRemoveFromPlaylist() }
             SongMenuRow(Icons.Default.PlayArrow, "Start Radio") {
                 playerViewModel.startRadioFromSong(song, context)
-                onDismiss()
+                dismiss()
             }
             SongMenuRow(Icons.Default.ThumbDown, "Less like this in Radio") {
                 com.music.spotui.data.preferences.RadioTaste.dislike(context, song)
                 playerViewModel.applyRadioExclusions()
-                onDismiss()
+                dismiss()
             }
             SongMenuRow(Icons.Default.Block, "Don't play this artist in Radio") {
                 com.music.spotui.data.preferences.RadioTaste.block(context, song)
                 playerViewModel.applyRadioExclusions()
-                onDismiss()
+                dismiss()
             }
             if (downloaded && song.id.toString() in com.music.spotui.data.preferences.SmartDownloads.owned(context)) {
                 SongMenuRow(Icons.Default.CheckCircle, "Keep downloaded") {
                     com.music.spotui.data.preferences.SmartDownloads.markManual(context, song.id.toString())
-                    onDismiss()
+                    dismiss()
                 }
             }
             SongMenuRow(Icons.Default.PlayArrow, "Play next") {
                 playerViewModel.playNext(song)
-                onDismiss()
+                dismiss()
             }
             SongMenuRow(Icons.AutoMirrored.Filled.List, "Add to queue") {
                 val added = playerViewModel.addToQueue(song)
                 QueueFeedback.added(added)
-                onDismiss()
+                dismiss()
             }
             SongMenuRow(
                 Icons.Default.Add, "Add to playlist",
@@ -212,7 +215,7 @@ fun SongOptionsSheet(
                     icon = ImageVector.vectorResource(R.drawable.ic_download),
                     label = "Export to Music",
                 ) {
-                    onDismiss()
+                    dismiss()
                     // Detached scope + app context so the copy + toast survive the
                     // sheet closing (a rememberCoroutineScope would be cancelled).
                     val app = context.applicationContext
@@ -235,11 +238,11 @@ fun SongOptionsSheet(
                 playerViewModel.goToArtist(song.spotifyTrackId, song.singer) { route ->
                     navController.navigate(route)
                 }
-                onDismiss()
+                dismiss()
             }
             SongMenuRow(Icons.Default.Add, "Go to album", enabled = song.album.isNotBlank(), trailingArrow = true) {
                 navController.navigate(albumRoute(song.album, song.singer))
-                onDismiss()
+                dismiss()
             }
             SongMenuRow(Icons.Default.Share, "Share") {
                 // Share the real Spotify track link when we know the id.
@@ -251,7 +254,7 @@ fun SongOptionsSheet(
                     putExtra(Intent.EXTRA_TEXT, shareText)
                 }
                 context.startActivity(Intent.createChooser(send, "Share"))
-                onDismiss()
+                dismiss()
             }
             Spacer(modifier = Modifier.padding(8.dp))
         }
@@ -272,7 +275,7 @@ private fun SongMenuRow(
         horizontalArrangement = Arrangement.Start,
         modifier = Modifier
             .fillMaxWidth().padding(horizontal = 12.dp, vertical = 3.dp).clip(RoundedCornerShape(14.dp)).background(com.music.spotui.ui.theme.AppRaised.copy(alpha = 0.5f))
-            .then(if (enabled) Modifier.clickable { onClick() } else Modifier)
+            .then(if (enabled) Modifier.motionClick { onClick() } else Modifier)
             .padding(16.dp, 14.dp)
     ) {
         if (icon != null) {

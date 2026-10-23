@@ -1,5 +1,7 @@
 package com.music.spotui.ui.components
 
+import com.music.spotui.ui.components.menuReveal
+import com.music.spotui.ui.components.motionClick
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -79,6 +81,7 @@ fun SavedInSheet(
     onLikedChanged: (Boolean) -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val dismiss = com.music.spotui.ui.components.rememberSheetDismiss(sheetState, onDismiss)
     var liked by com.music.spotui.ui.components.rememberSongLiked(context, song.id.toString())
     var playlists by remember { mutableStateOf<List<SpotifyPlaylist>?>(null) }
     // playlistId → does it contain this track (filled lazily per row).
@@ -97,17 +100,17 @@ fun SavedInSheet(
         creating = false
         newName = ""
         SpotifySync.createPlaylistWithTrack(context, name, song.spotifyTrackId)
-        onDismiss()
+        dismiss()
     }
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = dismiss,
         sheetState = sheetState,
         containerColor = com.music.spotui.ui.theme.AppSurface,
         contentColor = com.music.spotui.ui.theme.AppText,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) {
-        Column(modifier = Modifier.navigationBarsPadding().imePadding()) {
+        Column(modifier = Modifier.menuReveal().navigationBarsPadding().imePadding()) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,

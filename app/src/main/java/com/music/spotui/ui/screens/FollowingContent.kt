@@ -66,7 +66,7 @@ fun FollowingContent(navController: NavController, response: Response<FollowingF
                 player.updateSongState(track.coverUri, track.title, track.singer, true, track.id, if (shuffle) 0 else index, track.album)
                 SongPlayer.playSong(track.url, context)
             }
-            LazyColumn(state = listState, contentPadding = PaddingValues(bottom = 130.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            LazyColumn(state = listState, contentPadding = PaddingValues(bottom = com.music.spotui.ui.navigation.LocalBottomOverlayInset.current + 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {

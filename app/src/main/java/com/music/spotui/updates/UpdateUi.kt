@@ -83,6 +83,7 @@ fun UpdateSettings() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val state by AppUpdates.state.collectAsState()
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 160.dp)) {
         Text("Keep your music moving", color = AppText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Text("Installed: USpot ${BuildConfig.VERSION_NAME} · build ${BuildConfig.VERSION_CODE}", color = AppSecondary)

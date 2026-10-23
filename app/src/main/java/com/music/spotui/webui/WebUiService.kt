@@ -82,7 +82,7 @@ class WebUiService : Service() {
             WebUiController.state.value = WebUiState(true,"http://$ip:$port/")
             handler.post(watch); handler.postDelayed(renew,15*60_000L)
         } catch(e:Exception) {
-            WebUiController.state.value = WebUiState(error = "Couldn't start desktop mode. Check Wi-Fi, then try again; port 8765 may be in use.")
+            WebUiController.state.value = WebUiState(error = "Couldn't start desktop mode. Check Wi-Fi, then try again; the local port may be in use.")
             stopSelf()
         }
         return START_NOT_STICKY

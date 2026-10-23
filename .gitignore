@@ -27,3 +27,6 @@ keystore.properties
 /*.keystore
 /keystore.properties
 /local.properties
+
+# Local browser test dependencies
+node_modules/

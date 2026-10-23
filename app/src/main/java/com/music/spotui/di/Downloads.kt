@@ -186,24 +186,21 @@ object Downloads {
         downloadProgress[query] = 0
         onDownloadsChanged?.invoke()
         lastDownloadError = null
+        com.music.spotui.data.preferences.FailedDownloads.dismiss(appContext,song.id)
         jobs[query] = scope.launch {
-            val ok = runCatching { downloadSlots.withPermit { downloadToFile(song, appContext) } }
-                .onFailure { if (it !is kotlinx.coroutines.CancellationException) lastDownloadError = it.message ?: "Unexpected error" }
-                .getOrDefault(false)
-            jobs.remove(query)
-            downloading.remove(query)
-            downloadProgress.remove(query)
-            downloadingSongs.remove(query)
-            withContext(Dispatchers.Main) {
-                if (!ok && !automatic) {
-                    android.widget.Toast.makeText(
-                        appContext,
-                        "Download failed: ${lastDownloadError ?: "unknown reason"}",
-                        android.widget.Toast.LENGTH_LONG,
-                    ).show()
+            var ok=false
+            var cancelled=false
+            try {
+                ok=downloadSlots.withPermit { downloadToFile(song,appContext) }
+            } catch(e:kotlinx.coroutines.CancellationException) { cancelled=true;throw e
+            } catch(e:Exception) { lastDownloadError=e.message
+            } finally {
+                jobs.remove(query);downloading.remove(query);downloadProgress.remove(query);downloadingSongs.remove(query)
+                if(!ok && !cancelled)com.music.spotui.data.preferences.FailedDownloads.record(appContext,song)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) {
+                    if(!ok && !cancelled && !automatic)com.music.spotui.ui.components.ActionFeedback.show("Download needs attention. Open Downloads to retry.")
+                    onDownloadsChanged?.invoke();onComplete(ok)
                 }
-                onDownloadsChanged?.invoke()
-                onComplete(ok)
             }
         }
     }

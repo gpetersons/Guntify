@@ -86,7 +86,8 @@ fun DownloadsScreen(navController: NavController) {
     androidx.compose.runtime.LaunchedEffect(Unit) {
         while (true) {
             val snap = com.music.spotui.di.Downloads.downloadingSnapshot()
-            if (snap.size != inProgress.size) songs = getDownloadedSongs(context)
+            val completed=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){getDownloadedSongs(context)}
+            if(completed != songs)songs=completed
             inProgress = snap
             kotlinx.coroutines.delay(400)
         }
@@ -151,6 +152,7 @@ fun DownloadsScreen(navController: NavController) {
                     )
                 }
 
+                com.music.spotui.ui.components.DownloadManagerPanel()
                 if (songs.isNotEmpty()) {
                     val collectionActive = com.music.spotui.audio.CollectionPlaybackPolicy.active("local:downloads",
                         playerViewModel.activeCollection.value?.key, playerViewModel.currentSongId.value, playerViewModel.queue.value.map { it.id })
@@ -269,6 +271,7 @@ fun DownloadsScreen(navController: NavController) {
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(start = 12.dp),
                         )
+                        androidx.compose.material3.TextButton(onClick={com.music.spotui.di.Downloads.cancelSong(song.url)}) { Text("Cancel",color=com.music.spotui.ui.theme.AppSecondary) }
                     }
                 }
 

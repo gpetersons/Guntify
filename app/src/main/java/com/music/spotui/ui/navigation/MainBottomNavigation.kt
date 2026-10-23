@@ -84,7 +84,7 @@ fun MainBottomNavigation(navController: NavHostController, bottomBarState: Mutab
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color.Transparent,
+                                com.music.spotui.ui.theme.AppBackground,
                                 com.music.spotui.ui.theme.AppBackground
                             ),
                             startY = 0f
@@ -107,10 +107,9 @@ fun MainBottomNavigation(navController: NavHostController, bottomBarState: Mutab
 
                     NavigationBar(
                         modifier = Modifier
-                            .offset(y = 10.dp)
-                            .padding(30.dp, 0.dp)
+                            .padding(horizontal = 12.dp)
                             .fillMaxWidth(),
-                        containerColor = Color.Transparent,
+                        containerColor = com.music.spotui.ui.theme.AppBackground,
                         windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0)
                     ) {
                         val navStack by navController.currentBackStackEntryAsState()
@@ -123,7 +122,7 @@ fun MainBottomNavigation(navController: NavHostController, bottomBarState: Mutab
                                     Icon(
                                         painter = painterResource(
                                             id = item.icon
-                                        ), contentDescription = "home"
+                                        ), contentDescription = item.label
                                     )
                                 },
                                 label = {
@@ -151,7 +150,7 @@ fun MainBottomNavigation(navController: NavHostController, bottomBarState: Mutab
                                 interactionSource = NoRippleInteractionSource(),
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = com.music.spotui.ui.theme.AppText,
-                                    unselectedIconColor = Color.Gray,
+                                    unselectedIconColor = com.music.spotui.ui.theme.AppSecondary,
                                     indicatorColor = Color.Transparent
                                 )
                             )

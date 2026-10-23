@@ -1,5 +1,7 @@
 package com.music.spotui.ui.screens
 
+import com.music.spotui.ui.components.motionClick
+import androidx.compose.foundation.layout.*
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -138,7 +140,7 @@ fun SettingsScreen(navController: NavController) {
         containerColor = AppBackground,
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(category ?: "Settings", color = com.music.spotui.ui.theme.AppText, fontWeight = FontWeight.Bold) },
+                title = { androidx.compose.animation.Crossfade(targetState = category ?: "Settings", animationSpec = androidx.compose.animation.core.tween(150), label = "Settings title") { title -> Text(title, color = com.music.spotui.ui.theme.AppText, fontWeight = FontWeight.Bold) } },
                 navigationIcon = {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -146,34 +148,44 @@ fun SettingsScreen(navController: NavController) {
                         tint = com.music.spotui.ui.theme.AppText,
                         modifier = Modifier
                             .padding(start = 8.dp)
-                            .size(26.dp)
-                            .clickable { if (category != null) category = null else navController.popBackStack() }
+                            .size(48.dp)
+                            .clickable { if (category != null) category = null else navController.popBackStack() }.padding(11.dp)
                     )
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = AppBackground)
             )
         }
     ) { padding ->
+        com.music.spotui.ui.components.PageMotion(category, Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) { shownCategory ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .consumeWindowInsets(padding)
+            modifier = Modifier.fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            if (category == null) {
+            if (shownCategory == null) {
                 SettingsProfileHeader()
-                listOf("Updates", "Desktop & Browser", "Playback", "Appearance", "Smart Downloads", "Data & backup", "Music sources", "Home", "Account", "About").forEach { name ->
-                    Text(name + "  ›", color = com.music.spotui.ui.theme.AppText, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { category = name }.padding(vertical = 18.dp))
+                val summaries=mapOf("Advanced" to "Troubleshooting and Radio reset", "Updates" to "Check for the latest version", "Desktop & Browser" to "Listen on your computer", "Playback" to "Sound, transitions and controls", "Appearance" to if(com.music.spotui.ui.theme.AppearanceSettings.followDevice.value)"Follow device"else if(com.music.spotui.ui.theme.AppearanceSettings.effectiveDark)"Dark"else"Light", "Smart Downloads" to "Optional offline favorites", "Data & backup" to "Export or restore your music data", "Music sources" to "Connections and audio quality", "Home" to "Personalization and history", "Account" to "Your connected services", "About" to "Credits and app information")
+                listOf(listOf("Playback","Appearance","Home"),listOf("Smart Downloads","Data & backup","Desktop & Browser"),listOf("Music sources","Account","Advanced","Updates","About")).forEach { group ->
+                    androidx.compose.material3.Surface(color=com.music.spotui.ui.theme.AppSurface,shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),modifier=Modifier.padding(vertical=6.dp)) {
+                        Column {
+                            group.forEach { name ->
+                                Row(Modifier.fillMaxWidth().motionClick {category=name}.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(name,color=com.music.spotui.ui.theme.AppText,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+                                        Text(summaries[name].orEmpty(),color=com.music.spotui.ui.theme.AppSecondary,fontSize=12.sp)
+                                    }
+                                    Text("›",color=com.music.spotui.ui.theme.AppSecondary,fontSize=22.sp)
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            if (category == "Updates") com.music.spotui.updates.UpdateSettings()
-            if (category == "Desktop & Browser") com.music.spotui.webui.WebUiSettings()
-            if (category == "Data & backup") BackupControls()
-            if (category == "Smart Downloads") SmartDownloadSettings()
-            if (category == "Appearance") {
+            if (shownCategory == "Updates") com.music.spotui.updates.UpdateSettings()
+            if (shownCategory == "Desktop & Browser") com.music.spotui.webui.WebUiSettings()
+            if (shownCategory == "Data & backup") BackupControls()
+            if (shownCategory == "Smart Downloads") SmartDownloadSettings()
+            if (shownCategory == "Appearance") {
                 SettingsSwitchRow("Follow device theme", "Use your device's light or dark appearance", com.music.spotui.ui.theme.AppearanceSettings.followDevice.value) {
                     com.music.spotui.ui.theme.AppearanceSettings.setFollowDevice(context, it)
                 }
@@ -183,11 +195,13 @@ fun SettingsScreen(navController: NavController) {
                     com.music.spotui.ui.theme.AppearanceSettings.setDarkMode(context, it)
                 }
             }
-            if (category == "Playback") {
-            com.music.spotui.ui.components.PlaybackDiagnosticsControls()
-            androidx.compose.material3.TextButton(onClick = { com.music.spotui.data.preferences.RadioTaste.reset(context) }) {
-                Text("Reset Radio tuning and excluded songs/artists", color = AppPalette)
+            if(shownCategory=="Advanced") {
+                com.music.spotui.ui.components.PlaybackDiagnosticsControls()
+                var confirmReset by remember{mutableStateOf(false)}
+                androidx.compose.material3.TextButton(onClick={confirmReset=true}) {Text("Reset Radio preferences",color=AppPalette)}
+                if(confirmReset)androidx.compose.material3.AlertDialog(onDismissRequest={confirmReset=false},title={Text("Reset Radio preferences?")},text={Text("This clears your Radio tuning and excluded songs and artists. Your saved stations and listening history stay.")},confirmButton={androidx.compose.material3.TextButton(onClick={com.music.spotui.data.preferences.RadioTaste.reset(context);confirmReset=false;com.music.spotui.ui.components.ActionFeedback.show("Radio preferences reset")}){Text("Reset",color=AppPalette)}},dismissButton={androidx.compose.material3.TextButton(onClick={confirmReset=false}){Text("Cancel")}})
             }
+            if (shownCategory == "Playback") {
             EqualizerControls()
             SectionTitle("Audio quality")
             QualityPicker(
@@ -333,7 +347,7 @@ fun SettingsScreen(navController: NavController) {
             )
             Spacer(Modifier.height(12.dp))
             }
-            if (category == "Music sources") {
+            if (shownCategory == "Music sources") {
             SectionTitle("Music source")
             SourceSettingRow(
                 title = "YouTube Music",
@@ -450,7 +464,7 @@ fun SettingsScreen(navController: NavController) {
 
             Spacer(Modifier.height(12.dp))
             }
-            if (category == "Account") {
+            if (shownCategory == "Account") {
             SectionTitle("Account")
             Text(
                 text = "Log out",
@@ -471,7 +485,7 @@ fun SettingsScreen(navController: NavController) {
             )
             Spacer(Modifier.height(12.dp))
             }
-            if (category == "Home") {
+            if (shownCategory == "Home") {
             SectionTitle("Home personalization")
             Text("Rank Spotify playlists, albums and artists using songs played in USpot. Spotify's existing recommendations remain the starting point.",
                 color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
@@ -501,7 +515,11 @@ fun SettingsScreen(navController: NavController) {
                     }.padding(vertical = 7.dp))
             }
             Spacer(Modifier.height(12.dp))
+            var details by remember { mutableStateOf(false) }
+            androidx.compose.material3.TextButton(onClick={details=!details}) {Text(if(details)"Hide personalization details"else"How personalization works",color=AppPalette)}
+            if(details) {
             Text("Artist-based playlist rows use 30 days of qualified listening, weighted toward the last week, and rotate daily among your top three artists. At least three plays across two days are needed.", color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp)
+            }
             SectionTitle("Home history")
             Text("The top eight cards show playlists, albums and USpot radios. Recently played below shows individual songs after 30 seconds of listening.",
                 color = com.music.spotui.ui.theme.AppSecondary, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
@@ -533,7 +551,7 @@ fun SettingsScreen(navController: NavController) {
                 )
             }
             }
-            if (category == "About") {
+            if (shownCategory == "About") {
             Spacer(Modifier.height(12.dp))
                         SectionTitle("About")
             Text("USpot ${com.music.spotui.BuildConfig.VERSION_NAME} (${com.music.spotui.BuildConfig.VERSION_CODE})", color = com.music.spotui.ui.theme.AppText, fontSize = 16.sp,
@@ -555,6 +573,7 @@ fun SettingsScreen(navController: NavController) {
                 modifier = Modifier.padding(vertical = 10.dp))
             }
             Spacer(Modifier.height(com.music.spotui.ui.navigation.LocalBottomOverlayInset.current + 24.dp))
+        }
         }
     }
 }

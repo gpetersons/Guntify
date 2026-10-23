@@ -42,6 +42,7 @@ fun RadioScreen(navController: NavController, seedId: String, player: PlayerView
     var prepared by remember(seedId) { mutableStateOf<List<SongsModel>>(emptyList()) }
     var savedShuffle by remember(seedId){mutableStateOf(false)}
     var loading by remember(seedId) { mutableStateOf(true) }
+    var showDetails by remember(seedId) { mutableStateOf(false) }
     var askDownload by remember { mutableStateOf(false) }
     val active = player.activeCollection.value?.key == "radio:$seedId"
     val shuffled = active && player.shuffleState.value
@@ -78,8 +79,13 @@ fun RadioScreen(navController: NavController, seedId: String, player: PlayerView
             }
         } else com.music.spotui.ui.components.CollectionArtwork(seed?.coverUri.orEmpty(), "Radio artwork", Modifier)
         Text(seed?.let { RadioSessions.stationName(it) } ?: "USpot Radio", color = com.music.spotui.ui.theme.AppText, fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 24.dp))
-        Text("USpot Radio • Continuous recommendations", color = com.music.spotui.ui.theme.AppPalette)
-        Text(if(mix)"${anchors.size} songs blended into one continuous station." else "Starts with ${seed?.title ?: "this song"}. Tune how closely Spotify suggestions follow this song below.", color = com.music.spotui.ui.theme.AppSecondary, fontSize = 15.sp, modifier = Modifier.padding(vertical = 16.dp))
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Text("USpot Radio • Continuous music", color = com.music.spotui.ui.theme.AppPalette,modifier=Modifier.weight(1f))
+            com.music.spotui.ui.components.PinButton("radio:$seedId")
+        }
+        Text(if(mix)"${anchors.size} songs blended" else seed?.singer.orEmpty(),color=com.music.spotui.ui.theme.AppSecondary,modifier=Modifier.padding(vertical=8.dp))
+        TextButton(onClick={showDetails=!showDetails}) {Text(if(showDetails)"Hide station details"else"About this station",color=com.music.spotui.ui.theme.AppPalette)}
+        if(showDetails)Text("Continuous suggestions shaped by your starting songs and Radio tuning. Your station keeps its name and remembers where you left off.",color=com.music.spotui.ui.theme.AppSecondary)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             com.music.spotui.ui.components.CollectionAction(painterResource(R.drawable.ic_player_shuffle), "Shuffle radio", shuffled, stationSongs.isNotEmpty()) {
                 if (active) player.updateShuffleState(!shuffled)
@@ -98,7 +104,7 @@ fun RadioScreen(navController: NavController, seedId: String, player: PlayerView
                     } else seed?.let { player.resumeRadio(it, prepared, context, savedShuffle = savedShuffle) }
                 })
         }
-        if(mix) {
+        if(showDetails && mix) {
             Text("IN THIS MIX",color=com.music.spotui.ui.theme.AppSecondary,fontSize=11.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=20.dp,bottom=8.dp))
             anchors.forEach { Text("${it.title} · ${it.singer}",color=com.music.spotui.ui.theme.AppSecondary,fontSize=12.sp,modifier=Modifier.padding(bottom=5.dp)) }
         }
@@ -108,6 +114,6 @@ fun RadioScreen(navController: NavController, seedId: String, player: PlayerView
         else if(active && refreshMessage.isNotBlank())Text(refreshMessage,color=com.music.spotui.ui.theme.AppSecondary,modifier=Modifier.padding(top=8.dp))
         if (!loading && stationSongs.isEmpty()) Text(if(com.music.spotui.data.preferences.RadioTaste.mode(context,seedId)=="close")"No direct Spotify suggestions returned. Try again or choose Balanced for broader suggestions." else "Recommendations are unavailable. Try again when connected.", color = com.music.spotui.ui.theme.AppSecondary, modifier = Modifier.padding(top = 20.dp))
         if(!loading && stationSongs.isEmpty())TextButton(onClick={loadRevision++}) { Text("Try again",color=com.music.spotui.ui.theme.AppPalette) }
-        Text("Open the queue in the full-screen player to see the songs coming next.", color = com.music.spotui.ui.theme.AppSecondary, modifier = Modifier.padding(top = 24.dp, bottom = 140.dp))
+        Spacer(Modifier.height(com.music.spotui.ui.navigation.LocalBottomOverlayInset.current + 24.dp))
     }
 }

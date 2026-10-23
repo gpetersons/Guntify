@@ -1,5 +1,6 @@
 package com.music.spotui.ui.components
 
+import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -62,25 +63,14 @@ import com.music.spotui.ui.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
 
 @Composable
-fun Loader() {
-    Column(Modifier
-        .background(Color(AppBackground.toArgb())),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        CircularProgressIndicator(
-            modifier = Modifier
-                .size(45.dp),
-            color = Color(0xFF4A4AC4)
-        )
-    }
-
-}
+fun Loader() { LoadingRows(count = 4) }
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun MiniPlayer(navController: NavHostController) {
     val miniPlayerViewModel : PlayerViewModel = hiltViewModel()
+    val playbackStage by com.music.spotui.audio.PlaybackPresentation.state.collectAsState()
+    val playbackLabel = com.music.spotui.audio.PlaybackPresentation.label(playbackStage)
     val songTitle = miniPlayerViewModel.currentSongTitle.value
     val songSinger = miniPlayerViewModel.currentSongSinger.value
     val songCoverUri = miniPlayerViewModel.currentSongCoverUri.value
@@ -109,10 +99,7 @@ fun MiniPlayer(navController: NavHostController) {
                 }
                 delay(300L) // update every .00 second
 
-                if (songProgress > 0f && songProgress >= 1f && currentRoute != Routes.Player.route) {
-                    navController.navigate(Routes.Player.route)
-                    songPlayingState = false
-                }
+
         }
     }
 
@@ -121,8 +108,10 @@ fun MiniPlayer(navController: NavHostController) {
     var darkVibrantColor by remember {
         mutableStateOf(Color(GridBackground.toArgb()))
     }
-    Palette().extractFirstColorFromImageUrl(context = context, songCoverUri){ color ->
-        darkVibrantColor = color
+    androidx.compose.runtime.DisposableEffect(songCoverUri) {
+        var active=true
+        Palette().extractFirstColorFromImageUrl(context = context,songCoverUri) { color -> if(active)darkVibrantColor=color }
+        onDispose { active=false }
     }
 
     var isLiked by com.music.spotui.ui.components.rememberSongLiked(context, songId.toString())
@@ -147,7 +136,7 @@ fun MiniPlayer(navController: NavHostController) {
 
             .padding(13.dp, 0.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(if (com.music.spotui.ui.theme.AppearanceSettings.effectiveDark) darkVibrantColor else com.music.spotui.ui.theme.AppRaised)
+            .background(if (com.music.spotui.ui.theme.AppearanceSettings.effectiveDark) androidx.compose.ui.graphics.lerp(com.music.spotui.ui.theme.AppRaised, darkVibrantColor, 0.25f) else com.music.spotui.ui.theme.AppRaised)
             .padding(8.dp, 0.dp)
             .clipToBounds()
 
@@ -169,7 +158,7 @@ fun MiniPlayer(navController: NavHostController) {
             Row(horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .width(260.dp)
+                    .weight(1f)
                     .clipToBounds()
             ) {
                 GlideImage(
@@ -189,7 +178,7 @@ fun MiniPlayer(navController: NavHostController) {
                         .widthIn(Dp.Unspecified, 200.dp)
                 ) {
                     Text(text = songTitle, color = com.music.spotui.ui.theme.AppText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis )
-                    Text(text = songSinger, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Text(text = playbackLabel.ifBlank { songSinger }, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 }
             }
 

@@ -1,5 +1,6 @@
 package com.music.spotui.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -110,12 +111,12 @@ fun SumUpSearchScreen(
     val loadingMore by searchViewModel.loadingMore.collectAsState()
     val pageError by searchViewModel.pageError.collectAsState()
 
-    var text by remember {
+    var text by androidx.compose.runtime.saveable.rememberSaveable {
         mutableStateOf("")
     }
     // Recents are the *items opened from results* (songs/artists/albums), not the
     // typed queries, and only appear once the user taps into the search bar.
-    var searchFocused by remember { mutableStateOf(false) }
+    var searchFocused by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var recents by remember {
         mutableStateOf(com.music.spotui.data.preferences.getRecentItems(context))
     }
@@ -135,14 +136,25 @@ fun SumUpSearchScreen(
     }
     // Live Spotify search results for the current query.
     var selectedFilter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("All") }
-    val filteredResults = com.music.spotui.data.recommendation.SearchFilterPolicy.filter(results, selectedFilter)
+    val filteredResults = if(selectedFilter=="USpot Radios")SearchResults() else com.music.spotui.data.recommendation.SearchFilterPolicy.filter(results, selectedFilter)
     val searchedList = filteredResults.songs
     // One relevance-mixed list (songs, artists, albums interleaved) instead of
     // separate type sections — matches how most music apps present search.
-    val mixed = remember(results, selectedFilter) { mixSearchResults(filteredResults) }
+    val mixed = remember(results, selectedFilter) {
+        val original = mixSearchResults(filteredResults)
+        if(selectedFilter == "All" && original.isNotEmpty()) listOf(original.first()) + original.drop(1).sortedBy { when(it) { is SearchRow.Song->0; is SearchRow.Artist->1; is SearchRow.Album->2; is SearchRow.Playlist->3 } } else original
+    }
+    var radioMode by remember { mutableStateOf<Boolean?>(null) }
+    radioMode?.let { mode -> com.music.spotui.ui.components.RadioCreatorDialog(mix=mode,onDismiss={radioMode=null},onCreated={id->radioMode=null;navController.navigate("radio/"+android.net.Uri.encode(id))}) }
+    val radioMatches = com.music.spotui.data.preferences.RadioSessions.get(context).filter { seed ->
+        text.isNotBlank() && (com.music.spotui.data.preferences.RadioSessions.stationName(seed).contains(text,true) || seed.singer.contains(text,true))
+    }
 
+
+    val searchListState = androidx.compose.foundation.lazy.rememberLazyListState()
     LazyColumn(
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 130.dp),
+        state = searchListState,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = com.music.spotui.ui.navigation.LocalBottomOverlayInset.current + 24.dp),
         modifier = Modifier
             .fillMaxSize()
             .background(Color(AppBackground.toArgb()))
@@ -154,12 +166,12 @@ fun SumUpSearchScreen(
         }
         stickyHeader {
             Column(Modifier.fillMaxWidth().background(com.music.spotui.ui.theme.AppBackground)) {
-                SearchStickyBar(text, onFocusChange = { searchFocused = it }) {
+                SearchStickyBar(text, onFocusChange = { searchFocused = it },onBack={if(text.isBlank())navController.navigateUp()else{text="";searchViewModel.search("")}}) {
                     text = it
                     searchViewModel.search(it)
                 }
                 if (text.isNotBlank()) Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("All", "Songs", "Playlists", "Albums", "Artists").forEach { label ->
+                    listOf("All", "Songs", "Playlists", "Albums", "Artists", "USpot Radios").forEach { label ->
                         com.music.spotui.ui.components.ThemeFilterPill(label, selectedFilter == label) { selectedFilter = label }
                     }
                 }
@@ -167,7 +179,7 @@ fun SumUpSearchScreen(
         }
 
         if (text.isBlank()) {
-            if (searchFocused && recents.isNotEmpty()) {
+            if (recents.isNotEmpty()) {
                 // ── Recent searches: the items the user opened (Spotify-style),
                 // shown only once the search bar is focused ──
                 item {
@@ -193,8 +205,10 @@ fun SumUpSearchScreen(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
                             ) {
+                                val previous=recents.toList()
                                 com.music.spotui.data.preferences.clearRecentItems(context)
                                 recents = emptyList()
+                                com.music.spotui.ui.components.ActionFeedback.show("Recent searches cleared",undo={previous.asReversed().forEach{com.music.spotui.data.preferences.addRecentItem(context,it)};recents=com.music.spotui.data.preferences.getRecentItems(context)})
                             },
                         )
                     }
@@ -238,6 +252,7 @@ fun SumUpSearchScreen(
                         onRemove = {
                             com.music.spotui.data.preferences.removeRecentItem(context, item)
                             recents = com.music.spotui.data.preferences.getRecentItems(context)
+                            com.music.spotui.ui.components.ActionFeedback.show("Removed from recent searches",undo={com.music.spotui.data.preferences.addRecentItem(context,item);recents=com.music.spotui.data.preferences.getRecentItems(context)})
                         },
                     )
                 }
@@ -252,20 +267,44 @@ fun SumUpSearchScreen(
                 }
             }
         } else {
-            when (val response = searchViewModel.results.value) {
-                is Response.Loading -> item { Text("Searching Spotify…", color = com.music.spotui.ui.theme.AppSecondary, modifier = Modifier.padding(20.dp)) }
-                is Response.Error -> item { Text(response.error, color = com.music.spotui.ui.theme.AppSecondary, modifier = Modifier.padding(20.dp)) }
+            if(selectedFilter!="USpot Radios") when (val response = searchViewModel.results.value) {
+                is Response.Loading -> item { com.music.spotui.ui.components.LoadingRows() }
+                is Response.Error -> item { com.music.spotui.ui.components.RetryPanel("Couldn’t search right now. Check your connection.") { searchViewModel.search(text) } }
                 is Response.Success -> Unit
             }
-            if (mixed.isEmpty() && filteredResults.shows.isEmpty() && filteredResults.episodes.isEmpty() && searchViewModel.results.value is Response.Success) {
+            if (mixed.isEmpty() && radioMatches.isEmpty() && filteredResults.shows.isEmpty() && filteredResults.episodes.isEmpty() && searchViewModel.results.value is Response.Success) {
                 item { Text("No matches in this category.", color = com.music.spotui.ui.theme.AppSecondary, modifier = Modifier.padding(20.dp)) }
             }
-            items(mixed.size) { i ->
+            item {
+                Row(Modifier.fillMaxWidth().padding(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.TextButton(onClick={radioMode=false}) {Text("Create Radio",color=com.music.spotui.ui.theme.AppPalette)}
+                    androidx.compose.material3.TextButton(onClick={radioMode=true}) {Text("Create Radio Mix",color=com.music.spotui.ui.theme.AppPalette)}
+                }
+            }
+            if(selectedFilter in listOf("All","USpot Radios") && radioMatches.isNotEmpty()) {
+                item { SearchSectionHeader("Your USpot Radios") }
+                items(radioMatches.size) { index ->
+                    val seed=radioMatches[index]
+                    Row(Modifier.fillMaxWidth().clickable {navController.navigate("radio/"+android.net.Uri.encode(seed.spotifyTrackId.ifBlank{seed.id.toString()}))}.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
+                        GlideImage(model=seed.coverUri,contentDescription=null,modifier=Modifier.size(52.dp).clip(RoundedCornerShape(10.dp)),contentScale=ContentScale.Crop)
+                        Column(Modifier.weight(1f).padding(start=12.dp)) {
+                            Text(com.music.spotui.data.preferences.RadioSessions.stationName(seed),color=com.music.spotui.ui.theme.AppText,fontWeight=FontWeight.Bold)
+                            Text("USpot Radio",color=com.music.spotui.ui.theme.AppSecondary,fontSize=12.sp)
+                        }
+                    }
+                }
+            }
+            items(if(selectedFilter=="USpot Radios")0 else mixed.size) { i ->
+                val kind = when(mixed[i]){is SearchRow.Song->"Songs";is SearchRow.Artist->"Artists";is SearchRow.Album->"Albums";is SearchRow.Playlist->"Spotify playlists"}
+                val previous = mixed.getOrNull(i-1)?.javaClass
+                if(i==0) SearchSectionHeader(if(selectedFilter=="All")"Top result"else kind)
+                else if(i==1 || previous != mixed[i].javaClass)SearchSectionHeader(kind)
+                Column(Modifier.fillMaxWidth().then(if(i==0 && selectedFilter=="All")Modifier.padding(horizontal=12.dp,vertical=8.dp).clip(RoundedCornerShape(18.dp)).background(com.music.spotui.ui.theme.AppSurface)else Modifier)) {
                 when (val row = mixed[i]) {
                     is SearchRow.Song -> com.music.spotui.ui.components.SwipeToQueue(row.song) {
                         SearchSongRow(row.song, searchedList, searchViewModel, onPlayed = {
                             recordRecent(row.song.toRecentItem())
-                        }, onLongClick = { menuSong = row.song })
+                        }, onLongClick = { menuSong = row.song }, featured = i==0 && selectedFilter=="All")
                     }
                     is SearchRow.Artist -> SearchArtistRow(row.artist) {
                         recordRecent(com.music.spotui.data.preferences.RecentItem(
@@ -295,7 +334,8 @@ fun SumUpSearchScreen(
                     }
                 }
             }
-            if (results.nextOffset != null || pageError.isNotBlank()) {
+            }
+            if (selectedFilter!="USpot Radios" && (results.nextOffset != null || pageError.isNotBlank())) {
                 item {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         if (pageError.isNotBlank()) Text(pageError, color = com.music.spotui.ui.theme.AppSecondary)
@@ -446,6 +486,7 @@ fun SearchSongRow(
     searchViewModel: SearchViewModel,
     onPlayed: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
+    featured: Boolean = false,
 ) {
     val context = LocalContext.current
     var isLiked by com.music.spotui.ui.components.rememberSongLiked(context, song.id.toString())
@@ -488,7 +529,7 @@ fun SearchSongRow(
             GlideImage(
                 modifier = Modifier
                     .padding(0.dp, 0.dp, 10.dp, 0.dp)
-                    .size(48.dp)
+                    .size(if(featured)72.dp else 48.dp)
                     .clip(RoundedCornerShape(6.dp)),
                 model = song.coverUri,
                 contentScale = ContentScale.Crop,
@@ -497,15 +538,16 @@ fun SearchSongRow(
                 contentDescription = "",
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = song.title, color = currentPlayingIndicatorColor, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                Text(text = song.title, color = currentPlayingIndicatorColor, fontSize = if(featured)18.sp else 14.sp, fontWeight = FontWeight.SemiBold, maxLines = if(featured)2 else 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Text(text = "Song • ${song.singer}", color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
             }
         }
 
+        if(song.id == searchViewModel.currentSongId.value)com.music.spotui.ui.components.PlayingBars(searchViewModel.currentSongPlayingState.value)
         if (onLongClick != null) com.music.spotui.ui.components.SongOverflowButton(song.title) { onLongClick() }
         Icon(
             modifier = Modifier
-                .size(20.dp)
+                .size(48.dp)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -515,10 +557,10 @@ fun SearchSongRow(
                     isLiked = isSongLiked(context, song.id.toString())
                     com.music.spotui.data.api.SpotifySync.setTrackSaved(context, song.spotifyTrackId, isLiked)
                     searchViewModel.updateLikeState(!searchViewModel.likeState.value)
-                },
+                }.padding(14.dp),
             painter = if (isLiked) painterResource(id = R.drawable.added) else painterResource(id = R.drawable.ic_add),
-            tint = if (isLiked) Color.White else Color.Gray,
-            contentDescription = "",
+            tint = if (isLiked) com.music.spotui.ui.theme.AppPalette else com.music.spotui.ui.theme.AppSecondary,
+            contentDescription = if(isLiked)"Unlike ${song.title}"else"Like ${song.title}",
         )
     }
 }
@@ -748,6 +790,7 @@ fun SearchTopBar() {
 fun SearchStickyBar(
     text: String,
     onFocusChange: (Boolean) -> Unit = {},
+    onBack: () -> Unit = {},
     onTextChange: (String) -> Unit,
 ) {
 
@@ -757,19 +800,20 @@ fun SearchStickyBar(
             .padding(10.dp)
             .clip(RoundedCornerShape(10.dp))
             .height(55.dp)
-            .background(Color.White)
+            .background(com.music.spotui.ui.theme.AppRaised)
             .padding(10.dp, 0.dp)
     ){
+        androidx.compose.material3.IconButton(onClick=onBack) { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack,contentDescription="Back",tint=com.music.spotui.ui.theme.AppText) }
         Icon(
             painterResource(id = R.drawable.ic_search_big),
-            tint = Color.Black,
-            contentDescription = "")
+            tint = com.music.spotui.ui.theme.AppSecondary,
+            contentDescription = "Search")
 
         TextField(
             enabled = true,
-            modifier = Modifier.onFocusChanged { onFocusChange(it.isFocused) },
+            modifier = Modifier.weight(1f).onFocusChanged { onFocusChange(it.isFocused) },
             value = text,
-            textStyle = TextStyle.Default.copy(fontSize = 16.sp, color = Color.Black, fontWeight = FontWeight(500)),
+            textStyle = TextStyle.Default.copy(fontSize = 16.sp, color = com.music.spotui.ui.theme.AppText, fontWeight = FontWeight(500)),
             colors = TextFieldDefaults.colors(
                 unfocusedContainerColor = Color.Transparent,
                 disabledContainerColor = Color.Transparent,
@@ -777,9 +821,10 @@ fun SearchStickyBar(
                 disabledIndicatorColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
-                cursorColor = Color.Black
+                cursorColor = com.music.spotui.ui.theme.AppPalette
 
             ),
+            trailingIcon = { if(text.isNotEmpty()) androidx.compose.material3.IconButton(onClick={onTextChange("")}) { Text("×",color=com.music.spotui.ui.theme.AppText,fontSize=24.sp) } },
             singleLine = true,
             onValueChange = onTextChange,
             placeholder = {
@@ -807,7 +852,7 @@ private fun SearchPlaylistRow(playlist: com.music.spotui.data.entity.LibraryEntr
         Column(Modifier.weight(1f).padding(start = 10.dp)) {
             Text(playlist.name, color = com.music.spotui.ui.theme.AppText, fontSize = 14.sp,
                 maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-            Text(playlist.subtitle, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp,
+            Text("Spotify playlist", color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp,
                 maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
     }

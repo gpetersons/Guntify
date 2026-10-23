@@ -35,9 +35,14 @@ Next time there's an update, USpot can let you know. Choose **Install** or **Can
   </tr>
 </table>
 
+## 💚 A fresh feel, wherever you listen
+
+Move through your music with cleaner pages, smoother transitions and a refreshed player. Pin favorite collections in Library, manage downloads and retry unfinished ones, and find what you want faster with grouped search results. The computer interface gets the same attention, too.
+
 ## ✨ Make yourself at home
 
 - **🏠 A Home that learns your taste.** Familiar music to start, more of your favorites as you listen.
+- **📌 Keep favorites close.** Pin playlists, albums and USpot radios in Library.
 - **📚 Your music, together.** Liked Songs, playlists, albums, downloads and saved radios.
 - **➕ Playlists your way.** Create a playlist, pick songs from your likes and other playlists, or discover something new. Use **Edit** to add and remove songs from playlists you own.
 - **⋮ More from every song.** Tap the three dots or hold a song for its menu.

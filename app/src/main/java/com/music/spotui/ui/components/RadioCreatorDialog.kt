@@ -191,9 +191,10 @@ fun RadioCreatorDialog(mix:Boolean,onDismiss:()->Unit,onCreated:(String)->Unit,m
         onDispose{prefs.unregisterOnSharedPreferenceChangeListener(listener)}
     }
     LaunchedEffect(revision){saved=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){com.music.spotui.data.preferences.RadioSessions.get(context)}}
-    val visible=saved.filter{query.isBlank() || it.title.contains(query,true) || it.singer.contains(query,true)}
+    val pinRevision by com.music.spotui.data.preferences.LibraryPins.revision.collectAsState()
+    val visible=saved.sortedByDescending{com.music.spotui.data.preferences.LibraryPins.contains(context,"radio:${it.spotifyTrackId.ifBlank{it.id.toString()}}")}.also{pinRevision}.filter{query.isBlank() || it.title.contains(query,true) || it.singer.contains(query,true)}
     val player:com.music.spotui.ui.viewmodel.PlayerViewModel=hiltViewModel()
-    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=16.dp,end=16.dp,bottom=140.dp,top=12.dp)) {
+    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=16.dp,end=16.dp,bottom=com.music.spotui.ui.navigation.LocalBottomOverlayInset.current+24.dp,top=12.dp)) {
         if(visible.isEmpty())item{Text("Your USpot radios appear here. Create one using + on Home.",color=AppSecondary)}
         items(visible,key={it.spotifyTrackId.ifBlank{it.id.toString()}}) { song ->
             val id=song.spotifyTrackId.ifBlank{song.id.toString()}
@@ -207,6 +208,7 @@ fun RadioCreatorDialog(mix:Boolean,onDismiss:()->Unit,onCreated:(String)->Unit,m
                     Text(if(com.music.spotui.data.preferences.RadioSessions.isMix(id))"USpot Radio Mix · ${song.singer}" else "USpot Radio · ${song.singer}",color=AppSecondary,fontSize=12.sp)
                 }
                 if(active)PlayingBars(player.currentSongPlayingState.value)
+                PinButton("radio:$id")
             }
         }
     }

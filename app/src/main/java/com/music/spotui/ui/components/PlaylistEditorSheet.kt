@@ -1,5 +1,7 @@
 package com.music.spotui.ui.components
 
+import com.music.spotui.ui.components.menuReveal
+import com.music.spotui.ui.components.motionClick
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -58,7 +60,7 @@ fun PlaylistEditorSheet(id: String, name: String, navController: NavController, 
     }
     ModalBottomSheet(onDismissRequest = { if(!state.busy) onDismiss() },containerColor=AppSurface,contentColor=AppText,
         sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(0.92f).navigationBarsPadding().imePadding().padding(horizontal=16.dp)) {
+        Column(Modifier.menuReveal().fillMaxWidth().fillMaxHeight(0.92f).navigationBarsPadding().imePadding().padding(horizontal=16.dp)) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) { Text(if(newlyCreated)"Make it yours" else "Edit playlist",color=AppSecondary,fontSize=12.sp); Text(name,color=AppText,fontSize=23.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis) }
                 TextButton(enabled=!state.busy,onClick=onDismiss) { Text("Done",color=AppPalette) }

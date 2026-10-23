@@ -96,9 +96,11 @@ fun LibraryScreen(navController: NavController) {
     var showAccount by remember { mutableStateOf(false) }
     val context = LocalContext.current
     // Spotify-style layout toggle: rows or a 3-column grid, persisted across runs.
-    var gridView by remember { mutableStateOf(isLibraryGridView(context)) }
-    var searchActive by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
+    var gridView by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(isLibraryGridView(context)) }
+    var searchActive by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var searchQuery by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+    val pinRevision by com.music.spotui.data.preferences.LibraryPins.revision.collectAsState()
+    val sort = "Recent"
     var libraryType by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("All") }
     var removal by remember { mutableStateOf<LibraryEntry?>(null) }
     var creating by remember { mutableStateOf(false) }
@@ -117,7 +119,7 @@ fun LibraryScreen(navController: NavController) {
     val message by libraryViewModel.message.collectAsState()
     androidx.compose.runtime.LaunchedEffect(message) {
         if (message.isNotBlank()) {
-            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            com.music.spotui.ui.components.ActionFeedback.show(message)
             libraryViewModel.clearMessage()
         }
     }
@@ -271,25 +273,27 @@ fun LibraryScreen(navController: NavController) {
         }
 
         val followedArtists by libraryViewModel.followedArtists.collectAsState()
-        if(libraryType=="Radios")com.music.spotui.ui.components.SavedRadiosLibrary(navController,searchQuery)
+        com.music.spotui.ui.components.PageMotion(libraryType to gridView, Modifier.weight(1f)) { (shownType, shownGrid) ->
+        if(shownType=="Radios")com.music.spotui.ui.components.SavedRadiosLibrary(navController,searchQuery)
         else when (entries) {
             is Response.Loading -> LibrarySkeleton(PaddingValues(0.dp))
             is Response.Success -> {
-                val allEntries = (entries as Response.Success).data.filter { entry ->
-                    when (libraryType) { "Playlists" -> entry.isPlaylist; "Albums" -> !entry.isPlaylist; else -> true }
+                val allEntries = com.music.spotui.data.preferences.LibraryPins.arrange(context,(entries as Response.Success).data,sort).also { pinRevision }.filter { entry ->
+                    when (shownType) { "Playlists" -> entry.isPlaylist; "Albums" -> !entry.isPlaylist; else -> true }
                 }
                 val filteredEntries = if (searchQuery.isBlank()) allEntries
                     else allEntries.filter {
                         it.name.contains(searchQuery, ignoreCase = true) ||
                         it.subtitle.contains(searchQuery, ignoreCase = true)
                     }
-                val visibleArtists = if (libraryType == "All") followedArtists else emptyList()
+                val visibleArtists = if (shownType == "All") followedArtists else emptyList()
                 val filteredArtists = if (searchQuery.isBlank()) visibleArtists
                     else visibleArtists.filter { it.name.contains(searchQuery, ignoreCase = true) }
-                if (gridView) LibraryGridScreen(PaddingValues(0.dp), filteredEntries, filteredArtists, navController, onRemove = { removal = it })
+                if (shownGrid) LibraryGridScreen(PaddingValues(0.dp), filteredEntries, filteredArtists, navController, onRemove = { removal = it })
                 else SumUpLibraryScreen(PaddingValues(0.dp), filteredEntries, filteredArtists, navController, onRemove = { removal = it })
             }
             else -> Box(modifier = Modifier.padding(20.dp, 100.dp)) { Snackbar(showMessage = "Couldn't load your library") }
+        }
         }
     }
 }
@@ -319,7 +323,7 @@ fun SumUpLibraryScreen(
         return
     }
     LazyColumn(
-        contentPadding = PaddingValues(top = 10.dp, bottom = 130.dp),
+        contentPadding = PaddingValues(top = 10.dp, bottom = com.music.spotui.ui.navigation.LocalBottomOverlayInset.current + 24.dp),
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
@@ -412,6 +416,7 @@ fun SumUpLibraryScreen(
                     Text(text = entry.subtitle, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (active) com.music.spotui.ui.components.PlayingBars(player.currentSongPlayingState.value)
+                com.music.spotui.ui.components.PinButton(com.music.spotui.data.preferences.LibraryPins.key(entry))
             }
         }
         // ── Artists the user follows on Spotify ──
@@ -570,6 +575,7 @@ fun LibraryGridScreen(
                 )
                 if (active) com.music.spotui.ui.components.PlayingBars(player.currentSongPlayingState.value)
                 Spacer(modifier = Modifier.height(6.dp))
+                com.music.spotui.ui.components.PinButton(com.music.spotui.data.preferences.LibraryPins.key(entry))
                 Text(text = entry.name, color = com.music.spotui.ui.theme.AppText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(text = entry.subtitle, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }

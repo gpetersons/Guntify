@@ -22,6 +22,10 @@ object HomeHiddenItems {
         pending.remove(key)
         prefs(context).edit().putStringSet("keys", keys).putStringSet("replay_pending", pending).apply()
     }
+    @Synchronized fun restore(context:Context,item:HomeItem) {
+        val keys=prefs(context).getStringSet("keys",emptySet()).orEmpty().toMutableSet()
+        keys.remove(key(item));prefs(context).edit().putStringSet("keys",keys).apply()
+    }
     /** Explicit playback requests can restore a hidden collection after it qualifies again. */
     @Synchronized fun beginReplay(context: Context, type: String, id: String) {
         val key = "$type:$id"

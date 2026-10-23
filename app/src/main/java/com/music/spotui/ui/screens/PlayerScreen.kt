@@ -1,5 +1,8 @@
 package com.music.spotui.ui.screens
 
+import androidx.compose.ui.draw.drawBehind
+import com.music.spotui.ui.components.menuReveal
+import com.music.spotui.ui.components.motionClick
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -163,24 +166,7 @@ fun PlayerScreen(navController: NavController) {
     }
 
 
-    var songProgress by remember { mutableStateOf(maxOf(0f, SongPlayer.getCurrentPosition().toFloat())) }
-    var songDurationText by remember { mutableStateOf("0") }
-    var songProgressText by remember { mutableStateOf("") }
 
-    songDurationText = if (SongPlayer.getDuration() < 0){
-        "0:00"
-    }
-    else{
-        playerViewModel.formatDuration(SongPlayer.getDuration())
-    }
-    songProgressText = if (SongPlayer.getCurrentPosition() < 0){
-        "0:00"
-    }
-    else{
-        playerViewModel.formatDuration(SongPlayer.getCurrentPosition())
-    }
-
-    Log.d("checkplayer", songTitle)
 
     //playerViewModel.updateSongState(songCoverUri, songTitle, songSinger, songPlayingState)
 
@@ -261,55 +247,35 @@ fun PlayerScreen(navController: NavController) {
     // End of track (repeat / next / radio) is handled by PlaybackService, so it also
     // happens with the screen off.
 
-    Log.d("queueSongaa", songs.toString())
-    Log.d("queueSongc", playerViewModel.currentSongAlbum.value.toString())
-    Log.d("queueSong", queueSongs.toString())
-
-    LaunchedEffect(key1 = songId) {
-
-            while (true) {
-
-                    songProgress = SongPlayer.getCurrentPosition().toFloat()
-                    songProgressText = playerViewModel.formatDuration(songProgress.toLong())
-                    // FLAC (and any slow start) learns its length after the screen first
-                    // drew; refresh it here or it stays 0:00 until the screen reopens.
-                    val dur = SongPlayer.getDuration()
-                    songDurationText = if (dur < 0) "0:00" else playerViewModel.formatDuration(dur)
-
-//                if (songProgress >= songDuration ) {
-//                    if (playerViewModel.repeatState.value){
-//                        SongPlayer.seekTo(0) // Restart the song
-//                    }
-//                }
-
-
-                delay(300L) // update every .0 second
-            }
-    }
-
-
-
-
-
-
-
-
 
     val canvasUrl = playerViewModel.canvasUrl.value
+    val animatedArtworkColor = androidx.compose.animation.animateColorAsState(
+        targetValue = dominentColor,
+        animationSpec = androidx.compose.animation.core.tween(550), label = "Artwork atmosphere"
+    )
+    val playerBackground = com.music.spotui.ui.theme.AppBackground
+    val useDarkArtwork = com.music.spotui.ui.theme.AppearanceSettings.effectiveDark
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = if (canvasUrl != null) listOf(dominentColor, Color.Black) else listOf(com.music.spotui.ui.theme.artworkHeader(dominentColor), com.music.spotui.ui.theme.AppBackground),
-                    startY = 0f
-                )
-            )
+            .drawBehind {
+                // Read the animated color during drawing rather than recomposing the video each frame.
+                drawRect(Brush.verticalGradient(
+                    colors = if (canvasUrl != null) listOf(animatedArtworkColor.value, Color.Black)
+                        else listOf(if (useDarkArtwork) animatedArtworkColor.value else androidx.compose.ui.graphics.lerp(playerBackground, animatedArtworkColor.value, 0.16f), playerBackground)
+                ))
+            }
     ) {
         if (canvasUrl != null) {
             // Spotify Canvas: the looping video fills the whole now-playing screen
             // edge-to-edge behind the controls (the "immersive" treatment), with a
             // scrim on top so the title, slider and buttons stay readable.
+            GlideImage(
+                model = songCoverUri,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                contentDescription = null,
+            )
             CanvasVideo(
                 url = canvasUrl,
                 modifier = Modifier.fillMaxSize(),
@@ -321,8 +287,8 @@ fun PlayerScreen(navController: NavController) {
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Black.copy(alpha = 0.50f),
-                                Color.Black.copy(alpha = 0.10f),
-                                Color.Black.copy(alpha = 0.35f),
+                                Color.Black.copy(alpha = 0.28f),
+                                Color.Black.copy(alpha = 0.48f),
                                 Color.Black.copy(alpha = 0.80f),
                             )
                         )
@@ -404,12 +370,8 @@ fun PlayerScreen(navController: NavController) {
                     .height(320.dp)
                     .padding(0.dp, 0.dp, 0.dp, 16.dp)
             ){
-                // Reads each 300ms tick (songProgress recomposition) so it reflects
-                // the current engine — Spotify vs Lossless (SpotiFLAC) vs YouTube.
                 PlayerInfo(
                     songTitle, songSinger, songId, context, isLiked,
-                    source = SongPlayer.currentSource,
-                    quality = SongPlayer.currentQuality,
                     onArtistClick = {
                         val track = queueSongs.firstOrNull { it.id == songId }
                         playerViewModel.goToArtist(track?.spotifyTrackId.orEmpty(), songSinger) { route ->
@@ -422,74 +384,7 @@ fun PlayerScreen(navController: NavController) {
                     onStartRadio = { queueSongs.firstOrNull { it.id == songId }?.let { playerViewModel.startRadioFromSong(it, context) } },
                 )
 
-                // Smooth scrubbing: while dragging, the thumb follows the finger
-                // locally (no seek per delta — that fired a web seek on every pixel
-                // and fought the polled position, making it jerky). We seek ONCE on
-                // release.
-                var isDragging by remember { mutableStateOf(false) }
-                var dragValue by remember { mutableStateOf(0f) }
-                val liveFraction = SongPlayer.getDuration().toFloat().let { dur ->
-                    if (dur > 0f) (SongPlayer.getCurrentPosition().toFloat() / dur).coerceIn(0f, 1f) else 0f
-                }
-                CustomSlider(
-                    value = if (isDragging) dragValue else liveFraction,
-                    onValueChange = { newValue ->
-                        isDragging = true
-                        dragValue = newValue
-                    },
-                    onValueChangeFinished = {
-                        SongPlayer.seekTo((dragValue * SongPlayer.getDuration()).toLong())
-                        isDragging = false
-                        if (!songPlayingState) {
-                            SongPlayer.play()
-                            playerViewModel.updateSongState(
-                                playerViewModel.currentSongCoverUri.value,
-                                playerViewModel.currentSongTitle.value,
-                                playerViewModel.currentSongSinger.value,
-                                true,
-                                playerViewModel.currentSongId.value,
-                                playerViewModel.currentSongIndex.value,
-                                playerViewModel.currentSongAlbum.value
-                            )
-                        }
-                    },
-                    valueRange = 0f..1f,
-                    steps = 0,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp, 20.dp, 16.dp, 0.dp),
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFF1ED760),
-                        activeTrackColor = Color(0xFF1ED760),
-                        inactiveTrackColor = com.music.spotui.ui.theme.PlayerSecondary.copy(alpha = 0.35f)
-                    )
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(25.dp, 0.dp)
-                    ,
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        // While scrubbing, show the dragged time so the label tracks the finger.
-                        text = if (isDragging)
-                            playerViewModel.formatDuration((dragValue * SongPlayer.getDuration()).toLong())
-                        else songProgressText,
-                        color = com.music.spotui.ui.theme.PlayerSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = songDurationText,
-                        color = com.music.spotui.ui.theme.PlayerSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
+                PlayerSeekbar(songId, songPlayingState, playerViewModel)
 
                 Spacer(modifier = Modifier.padding(5.dp))
                 PlayerFull(songPlayingState, playerViewModel, context, isLiked, shuffle, repeat, queueSongs)
@@ -568,7 +463,7 @@ fun PlayerTopBar(
             },
             painter = painterResource(id = R.drawable.ic_down),
             tint = com.music.spotui.ui.theme.PlayerText,
-            contentDescription = "")
+            contentDescription = "down")
 
         // Spotify shows the source context here (album/playlist), not a generic label.
         Column(modifier = Modifier.weight(1f).padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -611,14 +506,23 @@ fun PlayerInfo(
     songId: Int,
     context: Context,
     isLiked: MutableState<Boolean>,
-    source: String = "",
-    quality: String = "",
     onArtistClick: (() -> Unit)? = null,
     spotifyTrackId: String = "",
     onShowSavedIn: (() -> Unit)? = null,
     onStartRadio: (() -> Unit)? = null,
     radioActive: Boolean = false,
 ) {
+
+    val playbackStage by com.music.spotui.audio.PlaybackPresentation.state.collectAsState()
+    val playbackLabel = com.music.spotui.audio.PlaybackPresentation.label(playbackStage)
+    var sourceInfo by remember(songId) { mutableStateOf(SongPlayer.currentSource to SongPlayer.currentQuality) }
+    LaunchedEffect(songId, playbackStage) {
+        while (true) {
+            sourceInfo = SongPlayer.currentSource to SongPlayer.currentQuality
+            delay(500L)
+        }
+    }
+    val (source, quality) = sourceInfo
 
     var snackbarMessage by remember {
         mutableStateOf("")
@@ -680,7 +584,7 @@ fun PlayerInfo(
                         indication = null,
                     ) { onArtistClick() } else Modifier,
                 )
-                if (source.isNotBlank()) {
+                if (source.isNotBlank() || playbackLabel.isNotBlank()) {
                     // One rule app-wide: green = lossless (as on the FLAC badges in Local
                     // files), grey = everything else, whatever the source. Source-based
                     // colours made a downloaded or local FLAC show up red.
@@ -701,8 +605,10 @@ fun PlayerInfo(
                             // Don't advertise the fallback engine — just "Streamed".
                             // Append the stream quality (codec/bitrate or FLAC depth)
                             // so the user can see what they're actually hearing.
-                            text = (if (source == "YouTube") "Streamed" else source) +
-                                (if (quality.isNotBlank()) " • $quality" else ""),
+                            text = playbackLabel.ifBlank {
+                                (if (source == "YouTube") "Streamed" else source) +
+                                    (if (quality.isNotBlank()) " • $quality" else "")
+                            },
                             color = badgeColor,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -781,6 +687,90 @@ fun PlayerInfo(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+
+/** Timer ticks only invalidate the seek controls, never the video/artwork screen. */
+@Composable
+private fun PlayerSeekbar(songId: Int, songPlayingState: Boolean, playerViewModel: PlayerViewModel) {
+    var position by remember(songId) { mutableStateOf(SongPlayer.getCurrentPosition().coerceAtLeast(0)) }
+    var duration by remember(songId) { mutableStateOf(SongPlayer.getDuration()) }
+    LaunchedEffect(songId) {
+        while (true) {
+            position = SongPlayer.getCurrentPosition().coerceAtLeast(0)
+            duration = SongPlayer.getDuration()
+            delay(300L)
+        }
+    }
+    val songProgressText = playerViewModel.formatDuration(position)
+    val songDurationText = if (duration > 0) playerViewModel.formatDuration(duration) else "—:—"
+    // Smooth scrubbing: while dragging, the thumb follows the finger
+    // locally (no seek per delta — that fired a web seek on every pixel
+    // and fought the polled position, making it jerky). We seek ONCE on
+    // release.
+    var isDragging by remember { mutableStateOf(false) }
+    var dragValue by remember { mutableStateOf(0f) }
+    val liveFraction = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
+    CustomSlider(
+        value = if (isDragging) dragValue else liveFraction,
+        onValueChange = { newValue ->
+            isDragging = true
+            dragValue = newValue
+        },
+        onValueChangeFinished = {
+            SongPlayer.seekTo((dragValue * SongPlayer.getDuration()).toLong())
+            isDragging = false
+            if (!songPlayingState) {
+                SongPlayer.play()
+                playerViewModel.updateSongState(
+        playerViewModel.currentSongCoverUri.value,
+        playerViewModel.currentSongTitle.value,
+        playerViewModel.currentSongSinger.value,
+        true,
+        playerViewModel.currentSongId.value,
+        playerViewModel.currentSongIndex.value,
+        playerViewModel.currentSongAlbum.value
+                )
+            }
+        },
+        valueRange = 0f..1f,
+        steps = 0,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp, 20.dp, 16.dp, 0.dp),
+        colors = SliderDefaults.colors(
+            thumbColor = Color(0xFF1ED760),
+            activeTrackColor = Color(0xFF1ED760),
+            inactiveTrackColor = com.music.spotui.ui.theme.PlayerSecondary.copy(alpha = 0.35f)
+        )
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(25.dp, 0.dp)
+        ,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            // While scrubbing, show the dragged time so the label tracks the finger.
+            text = if (isDragging)
+                playerViewModel.formatDuration((dragValue * SongPlayer.getDuration()).toLong())
+            else songProgressText,
+            color = com.music.spotui.ui.theme.PlayerSecondary,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium
+        )
+        Text(
+            text = songDurationText,
+            color = com.music.spotui.ui.theme.PlayerSecondary,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomSlider(
     modifier: Modifier = Modifier,
@@ -823,13 +813,13 @@ fun PlayerEndInfo() {
                 .size(22.dp),
             painter = painterResource(id = R.drawable.ic_devices),
             tint = com.music.spotui.ui.theme.PlayerText,
-            contentDescription = "")
+            contentDescription = "Audio output")
         Icon(
             modifier = Modifier
                 .size(16.dp),
             painter = painterResource(id = R.drawable.ic_share),
             tint = com.music.spotui.ui.theme.PlayerText,
-            contentDescription = "")
+            contentDescription = "Share song")
     }
 }
 
@@ -885,7 +875,7 @@ fun PlayerFull(
             ,
             tint = com.music.spotui.ui.theme.PlayerText,
             painter = painterResource(id = R.drawable.ic_player_back),
-            contentDescription = "")
+            contentDescription = "Previous song")
         androidx.compose.foundation.layout.Box(
             modifier = Modifier
                 // requiredSize forces an exact 64×64 square even if the parent Column
@@ -893,7 +883,7 @@ fun PlayerFull(
                 .requiredSize(64.dp)
                 .clip(CircleShape)
                 .background(Color(0xFF1ED760))
-                .clickable {
+                .motionClick {
                     if (songPlayingState) {
                         SongPlayer.pause()
                         playerViewModel.updateSongState(
@@ -921,18 +911,14 @@ fun PlayerFull(
             ,
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                modifier = Modifier
-                    .size(30.dp)
-
-                ,
-                tint = Color.Black,
-                painter = if (songPlayingState)
-                    painterResource(id = R.drawable.ic_playing)
-                else
-                    painterResource(id = R.drawable.play_svgrepo_com)
-                ,
-                contentDescription = "")
+            androidx.compose.animation.Crossfade(targetState = songPlayingState, animationSpec = androidx.compose.animation.core.tween(160), label = "Play pause") { playing ->
+                Icon(
+                    modifier = Modifier.size(30.dp),
+                    tint = Color.Black,
+                    painter = painterResource(if (playing) R.drawable.ic_playing else R.drawable.play_svgrepo_com),
+                    contentDescription = if (playing) "Pause" else "Play"
+                )
+            }
         }
 
         Icon(
@@ -948,7 +934,7 @@ fun PlayerFull(
             ,
             tint = com.music.spotui.ui.theme.PlayerText,
             painter = painterResource(id = R.drawable.ic_player_skip),
-            contentDescription = "")
+            contentDescription = "player skip")
         Icon(
             modifier = Modifier
                 .size(20.dp)
@@ -972,7 +958,7 @@ fun PlayerFull(
                 com.music.spotui.ui.theme.PlayerText
             },
             painter = painterResource(id = R.drawable.ic_repeat),
-            contentDescription = "")
+            contentDescription = "repeat")
     }
 }
 
@@ -1042,6 +1028,7 @@ fun PlayerOptionsSheet(
     onOpenQueue: () -> Unit = { navController.navigate(Routes.Queue.route) },
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val dismiss = com.music.spotui.ui.components.rememberSheetDismiss(sheetState, onDismiss)
     var showSleep by remember { mutableStateOf(false) }
     var showSavedIn by remember { mutableStateOf(false) }
     var showAlternativeStream by remember { mutableStateOf(false) }
@@ -1079,14 +1066,14 @@ fun PlayerOptionsSheet(
         com.music.spotui.ui.components.SavedInSheet(
             song = currentSong,
             context = context,
-            onDismiss = { showSavedIn = false; onDismiss() },
+            onDismiss = { showSavedIn = false; dismiss() },
             onLikedChanged = { isLiked.value = it },
         )
         return
     }
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = dismiss,
         sheetState = sheetState,
         containerColor = com.music.spotui.ui.theme.AppSurface,
         contentColor = com.music.spotui.ui.theme.AppText,
@@ -1095,6 +1082,7 @@ fun PlayerOptionsSheet(
     ) {
         Column(
             modifier = Modifier
+                .menuReveal()
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .imePadding().verticalScroll(androidx.compose.foundation.rememberScrollState())
@@ -1158,7 +1146,7 @@ fun PlayerOptionsSheet(
                     enabled = currentSong != null && playerViewModel.activeCollection.value?.type != "radio",
                 ) {
                     currentSong?.let { playerViewModel.startRadioFromSong(it, context) }
-                    onDismiss()
+                    dismiss()
                 }
                 PlayerMenuRow(
                     icon = Icons.Default.Share,
@@ -1173,7 +1161,7 @@ fun PlayerOptionsSheet(
                         putExtra(Intent.EXTRA_TEXT, shareText)
                     }
                     context.startActivity(Intent.createChooser(send, "Share"))
-                    onDismiss()
+                    dismiss()
                 }
                 PlayerMenuRow(
                     icon = null,
@@ -1220,7 +1208,7 @@ fun PlayerOptionsSheet(
                     // Mirror the like to the real Spotify account.
                     com.music.spotui.data.api.SpotifySync.setTrackSaved(
                         context, currentSong?.spotifyTrackId.orEmpty(), isLiked.value)
-                    onDismiss()
+                    dismiss()
                 }
                 PlayerMenuRow(
                     icon = Icons.Default.Add,
@@ -1234,7 +1222,7 @@ fun PlayerOptionsSheet(
                     icon = Icons.AutoMirrored.Filled.List,
                     label = "View queue"
                 ) {
-                    onDismiss()
+                    dismiss()
                     onOpenQueue()
                 }
                 // Use the track's REAL album (currentSongAlbum is the playing
@@ -1245,7 +1233,7 @@ fun PlayerOptionsSheet(
                     label = "Go to album",
                     enabled = realAlbum.isNotBlank()
                 ) {
-                    onDismiss()
+                    dismiss()
                     navController.navigate(albumRoute(realAlbum, singer))
                 }
                 PlayerMenuRow(
@@ -1253,7 +1241,7 @@ fun PlayerOptionsSheet(
                     label = "Go to artist",
                     enabled = singer.isNotBlank()
                 ) {
-                    onDismiss()
+                    dismiss()
                     playerViewModel.goToArtist(currentSong?.spotifyTrackId.orEmpty(), singer) { route ->
                         navController.navigate(route)
                     }
@@ -1283,7 +1271,7 @@ fun PlayerOptionsSheet(
                 options.forEach { (label, minutes) ->
                     PlayerMenuRow(icon = Icons.Default.Notifications, label = label) {
                         SongPlayer.setSleepTimer(minutes * 60_000L)
-                        onDismiss()
+                        dismiss()
                     }
                 }
             }
@@ -1385,7 +1373,7 @@ fun PlayerMenuRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth().padding(horizontal = 12.dp, vertical = 3.dp).clip(RoundedCornerShape(14.dp)).background(com.music.spotui.ui.theme.AppRaised.copy(alpha = 0.5f))
-            .clickable(enabled = enabled) { onClick() }
+            .motionClick(enabled = enabled) { onClick() }
             .padding(horizontal = 20.dp, vertical = 14.dp)
     ) {
         if (icon != null) {
@@ -1454,10 +1442,13 @@ private fun CanvasVideo(url: String, modifier: Modifier = Modifier) {
     androidx.compose.ui.viewinterop.AndroidView(
         modifier = modifier,
         // factory runs once; a new track's clip gets a new player, so rebind it here.
-        update = { it.player = exo },
+        update = { if (it.player !== exo) it.player = exo },
+        onRelease = { it.player = null },
         factory = { ctx ->
-            androidx.media3.ui.PlayerView(ctx).apply {
+            // TextureView participates in the same composition as the page, including its exit.
+            (android.view.LayoutInflater.from(ctx).inflate(R.layout.uspot_canvas_video, null, false) as androidx.media3.ui.PlayerView).apply {
                 player = exo
+                (videoSurfaceView as? android.view.TextureView)?.isOpaque = false
                 // Strip ALL chrome: no controller, no buffering spinner, and no
                 // artwork/placeholder icon (that "play icon" overlay) — just video.
                 useController = false

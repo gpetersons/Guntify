@@ -53,6 +53,9 @@ fun SpotuiTheme(
     val useDark = AppearanceSettings.effectiveDark
     val colorScheme = if (useDark) DarkColorScheme.copy(background = AppBackground, surface = AppSurface, onBackground = AppText, onSurface = AppText)
         else LightColorScheme.copy(background = AppBackground, surface = AppSurface, onBackground = AppText, onSurface = AppText)
+    val polishedScheme = colorScheme.copy(primary=AppPalette,secondary=AppPalette,
+        onPrimary=if(useDark)Color.Black else Color.White,
+        surfaceVariant=AppRaised,onSurfaceVariant=AppSecondary,outline=AppSecondary.copy(alpha=.35f))
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -65,7 +68,7 @@ fun SpotuiTheme(
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = polishedScheme,
         typography = Typography,
     ) {
         // Bare Text() uses LocalTextStyle, which MaterialTheme does NOT derive

@@ -91,6 +91,7 @@ internal class WebUiBackend(private val context: Context) {
                 .put("anchors", array(RadioSessions.anchors(context, item.seed.spotifyTrackId).map(::track)))
                 .put("shuffled", RadioMemory.queue(context, item.seed.spotifyTrackId)?.shuffled ?: false)
         }
+        json.put("pinned",LibraryPins.contains(context,libraryEntries[key]?.let(LibraryPins::key) ?: key))
         if(item is HomeItem.Playlist) json.put("canRecommend", createdPlaylists.containsKey(item.id))
         return json
     }
@@ -130,9 +131,9 @@ internal class WebUiBackend(private val context: Context) {
                     val mapped = item(if (entry.isPlaylist) HomeItem.Playlist(entry.name, entry.coverUri, entry.subtitle, entry.spotifyId)
                     else HomeItem.Album(entry.name, entry.coverUri, entry.subtitle, entry.artists))
                     libraryEntries[mapped.getString("key")] = entry
-                    mapped
+                    mapped.put("pinned",LibraryPins.contains(context,LibraryPins.key(entry)))
                 }
-                JSONObject().put("items", array(rows + RadioSessions.get(context).take(100).map { item(HomeItem.Radio(it)) }))
+                JSONObject().put("sort",LibraryPins.sort(context)).put("items", array(rows + RadioSessions.get(context).take(100).map { item(HomeItem.Radio(it)) }))
             }
             "search" -> {
                 val query = body.optString("q").trim().take(180)
@@ -141,7 +142,8 @@ internal class WebUiBackend(private val context: Context) {
                 JSONObject().put("songs", array(data.songs.map(::track)))
                     .put("albums", array(data.albums.map { item(HomeItem.Album(it.name, it.coverUri, "Album", it.artists)) }))
                     .put("artists", array(data.artists.map { item(HomeItem.Artist(it.name, it.coverUri, it.id)) }))
-                    .put("playlists", array(data.playlists.map { item(HomeItem.Playlist(it.name, it.coverUri, it.subtitle, it.spotifyId)) }))
+                    .put("playlists", array(data.playlists.map { item(HomeItem.Playlist(it.name, it.coverUri, "Spotify playlist", it.spotifyId)) }))
+                    .put("radios",array(RadioSessions.get(context).filter{RadioSessions.stationName(it).contains(query,true)||it.singer.contains(query,true)}.map{item(HomeItem.Radio(it))}))
             }
             "collection" -> {
                 val key = body.optString("key")
@@ -236,6 +238,28 @@ internal class WebUiBackend(private val context: Context) {
         return result.getOrElse { throw WebUiActionFailure(SpotifyMutations.describe(it).lineSequence().first()) }
     }
     private suspend fun extra(body: JSONObject): JSONObject = when (body.optString("action")) {
+        "pin" -> {
+            val key=body.getString("key")
+            require(collections[key] != null)
+            val pinKey=libraryEntries[key]?.let(LibraryPins::key) ?: key
+            LibraryPins.toggle(context,pinKey)
+            JSONObject().put("pinned",LibraryPins.contains(context,pinKey))
+        }
+        "librarySort" -> {
+            val value=body.getString("value");require(value in setOf("Recent","Name","Creator"))
+            LibraryPins.setSort(context,value);JSONObject().put("ok",true)
+        }
+        "restoreHome" -> {
+            val target=collections[body.optString("key")] ?: songs[body.optString("key")]?.let{HomeItem.RecentTrack(it)} ?: error("Reload Home")
+            HomeHiddenItems.restore(context,target);JSONObject().put("ok",true)
+        }
+        "downloadManager" -> JSONObject().put("active",array(Downloads.downloadingSnapshot().map{(song,pct)->track(song).put("progress",pct)}))
+            .put("failed",array(FailedDownloads.entries(context).map{track(it.song).put("reason",it.reason)}))
+            .put("bytes",getDownloadedEntries(context).sumOf{java.io.File(it.second).length()})
+            .put("completed",getDownloadedSongs(context).size)
+        "retryDownload" -> {Downloads.downloadSong(song(body),context);JSONObject().put("ok",true)}
+        "dismissDownload" -> {FailedDownloads.dismiss(context,song(body).id);JSONObject().put("ok",true)}
+        "cancelDownload" -> {Downloads.cancelSong(song(body).url);JSONObject().put("ok",true)}
         "tuneRadio", "refreshRadio" -> {
             val radio = station(body)
             if (body.optString("action") == "tuneRadio") {

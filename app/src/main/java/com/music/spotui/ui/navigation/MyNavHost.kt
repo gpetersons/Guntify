@@ -4,6 +4,10 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
@@ -91,11 +95,11 @@ fun MyNavHost(
     NavHost(
         navController = navHostController,
         startDestination = startDestination,
-        // Quick fade between screens instead of the default slide/scale animations.
-        enterTransition = { fadeIn(animationSpec = tween(150)) },
-        exitTransition = { fadeOut(animationSpec = tween(150)) },
-        popEnterTransition = { fadeIn(animationSpec = tween(150)) },
-        popExitTransition = { fadeOut(animationSpec = tween(150)) },
+        // Small compositor transitions across every route; no list remeasurement.
+        enterTransition = { fadeIn(tween(200)) + slideInHorizontally(tween(220, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it / 24 } },
+        exitTransition = { fadeOut(tween(110)) },
+        popEnterTransition = { fadeIn(tween(180)) + slideInHorizontally(tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { -it / 24 } },
+        popExitTransition = { fadeOut(tween(150)) + slideOutHorizontally(tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it / 24 } },
     ){
         composable(Routes.Login.route){
             LaunchedEffect(Unit) {
@@ -125,7 +129,13 @@ fun MyNavHost(
             }
             LibraryScreen(navHostController)
         }
-        composable(Routes.Player.route){
+        composable(
+            Routes.Player.route,
+            enterTransition = { slideInVertically(tween(260, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it / 5 } + fadeIn(tween(220)) },
+            exitTransition = { fadeOut(tween(140)) },
+            popEnterTransition = { fadeIn(tween(180)) },
+            popExitTransition = { slideOutVertically(tween(220, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it / 5 } + fadeOut(tween(200)) },
+        ) {
             LaunchedEffect(playerState.value) {
                 bottomBarState.value = false
                 bottomBarPlayerState.value = playerState.value != ""

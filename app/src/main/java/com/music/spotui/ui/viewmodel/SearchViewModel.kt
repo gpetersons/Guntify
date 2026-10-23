@@ -28,6 +28,7 @@ class SearchViewModel @Inject constructor(private val repository: AppRepository,
 
     val likeState = currentSongState.likeState
 
+    val currentSongPlayingState: State<Boolean> get() = currentSongState.playingState
     val currentSongId: State<Int> get() = currentSongState.songId
 
 

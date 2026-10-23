@@ -169,3 +169,19 @@ private fun exportFile(context: Context, song: SongsModel, path: String): Boolea
     }
     true
 }.getOrDefault(false)
+
+/** Bounded retry records survive process death; cancelled tasks are not failures. */
+object FailedDownloads {
+    data class Entry(val song: SongsModel, val reason: String)
+    private fun prefs(c:Context)=c.getSharedPreferences("download_failures",0)
+    fun entries(c:Context):List<Entry> = prefs(c).all.values.mapNotNull { raw -> runCatching {
+        val o=JSONObject(raw as String)
+        parse(o.getString("song"))?.first?.let { Entry(it,o.optString("reason","Couldn't finish downloading")) }
+    }.getOrNull() }
+    @Synchronized fun record(c:Context,song:SongsModel) {
+        val p=prefs(c);val editor=p.edit()
+        if(p.all.size>=50 && !p.contains(song.id.toString()))p.all.keys.firstOrNull()?.let{editor.remove(it)}
+        editor.putString(song.id.toString(),JSONObject().put("song",song.toJson("")).put("reason","Couldn't finish downloading. Check your connection and try again.").toString()).apply()
+    }
+    fun dismiss(c:Context,id:Int){prefs(c).edit().remove(id.toString()).apply()}
+}

@@ -155,10 +155,10 @@ fun HomeScreen(navController: NavController){
             statsSelected = false
 
         }
-        Box(Modifier.weight(1f)) {
+        com.music.spotui.ui.components.PageMotion(if (statsSelected) "stats" else if (followingSelected) "following" else "music", Modifier.weight(1f)) { shownTab ->
         when {
-            statsSelected -> StatsContent(navController)
-            followingSelected -> FollowingContent(navController, following) { homeViewModel.loadFollowing(refresh = true) }
+            shownTab == "stats" -> StatsContent(navController)
+            shownTab == "following" -> FollowingContent(navController, following) { homeViewModel.loadFollowing(refresh = true) }
             presentation?.let { it.topTiles.isNotEmpty() || it.sections.isNotEmpty() } == true -> HomeFeedContent(navController, presentation!!, musicListState) { item -> homeViewModel.hideHomeItem(context, item) }
             home is Response.Loading || baseFeed != null -> Loader()
             else -> {
@@ -209,6 +209,7 @@ fun HomeFeedContent(navController: NavController, presentation: com.music.spotui
             text = { Text("Remove ${item.name} from Home history on this device. It stays in Spotify and your library.") },
             confirmButton = { androidx.compose.material3.TextButton(onClick = {
                 onRemove(item)
+                com.music.spotui.ui.components.ActionFeedback.show("Removed from Home",undo={com.music.spotui.data.preferences.HomeHiddenItems.restore(context,item);com.music.spotui.data.preferences.ListeningHistorySignals.revision.value++})
                 removeItem = null
             }) { Text("Remove", color = Color(0xFF1DB954)) } },
             dismissButton = { androidx.compose.material3.TextButton(onClick = { removeItem = null }) { Text("Cancel") } }
@@ -242,7 +243,7 @@ fun HomeFeedContent(navController: NavController, presentation: com.music.spotui
     }
     LazyColumn(
         state = listState,
-        contentPadding = PaddingValues(bottom = 130.dp),
+        contentPadding = PaddingValues(bottom = com.music.spotui.ui.navigation.LocalBottomOverlayInset.current + 24.dp),
         modifier = Modifier
             .fillMaxSize()
             .background(Color(AppBackground.toArgb()))

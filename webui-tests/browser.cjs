@@ -30,9 +30,12 @@ w.fetch=async(url,opts={})=>{
  const req=opts.body?JSON.parse(opts.body):{action:'ping'};calls.push(req);
  let data={ok:true},status=200;
  switch(req.action){
+ case 'pin':playlist.pinned=!playlist.pinned;data={pinned:playlist.pinned};break;
+ case 'librarySort':data={ok:true};break;
+ case 'downloadManager':data={active:[{...songs[0],progress:35}],failed:[{...songs[1],reason:'Needs retry'}],bytes:2097152,completed:3};break;
  case 'home':data={shortcuts:[playlist,liked,radio],sections:[{title:'Made for you',items:[playlist]}]};break;
  case 'library':data={items:[playlist,liked,downloads,radio]};break;
- case 'search':data={songs,albums:[],artists:[],playlists:[playlist]};break;
+ case 'search':data={songs,albums:[],artists:[],playlists:[playlist],radios:[radio]};break;
  case 'collection':if(failCollection){status=503;data={error:'Temporary test failure'}}else data={item:req.key===radio.key?radio:req.key===liked.key?liked:req.key===created.key?created:playlist,songs:req.key===created.key?[]:songs};break;
  case 'following':data={songs,releases:[playlist],artists:[]};break;
  case 'stats':data={plays:12,artists:2,minutes:6,songs:songs.slice(0,2),activity:[{day:'2026-10-20',plays:3},{day:'2026-10-21',plays:9}]};break;
@@ -54,7 +57,7 @@ w.fetch=async(url,opts={})=>{
  return {ok:status===200,status,json:async()=>data};
 };
 w.AbortSignal.timeout=()=>new w.AbortController().signal;
-w.eval(fs.readFileSync(path.join(base,'app.js'),'utf8')+'\nwindow.__state=state;window.__enqueue=enqueue;window.__openItem=openItem;window.__collectionMenu=collectionMenu;window.__radioCreator=radioCreator;window.__fullPlayer=fullPlayer;window.__loadTrack=loadTrack;');
+w.eval(fs.readFileSync(path.join(base,'app.js'),'utf8')+'\nwindow.__state=state;window.__enqueue=enqueue;window.__openItem=openItem;window.__collectionMenu=collectionMenu;window.__radioCreator=radioCreator;window.__fullPlayer=fullPlayer;window.__loadTrack=loadTrack;window.__navigate=navigate;window.__search=search;');
 const tick=()=>new Promise(resolve=>setTimeout(resolve,15));
 const click=q=>{const e=w.document.querySelector(q);assert.ok(e,`Missing ${q}`);e.click()};
 const text=id=>w.document.getElementById(id).textContent;
@@ -85,7 +88,7 @@ const text=id=>w.document.getElementById(id).textContent;
  // Search results can play, enqueue, and create a real API-backed station.
  w.document.getElementById('search').value='test';w.document.getElementById('search').dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter'}));await tick();
  assert.match(text('content'),/Results for/);click('.track-name');await tick();assert.equal(text('title'),'Song 0');assert.equal(calls.filter(c=>c.action==='resolve').at(-1).collection,'');
- currentTime=42;const loadsBeforeRadio=loads;click('.track-row > .quiet');await tick();assert.match(text('content'),/USPOT RADIO/);assert.equal(w.__state.collection.type,'radio');
+ currentTime=42;const loadsBeforeRadio=loads;click('.track-row button[title="Start USpot Radio"]');await tick();assert.match(text('content'),/USPOT RADIO/);assert.equal(w.__state.collection.type,'radio');
  assert.equal(currentTime,42);assert.equal(loads,loadsBeforeRadio);assert.equal(w.__state.ticket,'adopted-ticket');
  assert.equal(w.document.querySelectorAll('#content .track-row').length,0,'Radio must not render as a playlist');
  assert.match(text('content'),/Stay close/);assert.match(text('content'),/Explore more/);
@@ -133,6 +136,17 @@ const text=id=>w.document.getElementById(id).textContent;
  assert.ok(w.__state.recoveryTimer);assert.match(text('artist'),/retrying in 10 seconds/);
  w.document.getElementById('audio').dispatchEvent(new w.Event('pause'));
  clearTimeout(w.__state.recoveryTimer);
+ // Preview organization changes reach the shared phone backend.
+ await w.__navigate('library');await tick();
+ w.__collectionMenu(playlist);[...w.document.querySelectorAll('#action-dialog button')].find(b=>b.textContent==='Pin to library').click();await tick();await tick();
+ assert.equal(calls.filter(c=>c.action==='pin').at(-1).key,playlist.key);assert.ok(playlist.pinned);
+ assert.equal(w.document.querySelector('.sort-select'),null,'Library sort controls stay hidden');
+ await w.__navigate('downloads');await tick();assert.match(text('content'),/2.0 MB/);assert.match(text('content'),/Needs attention/);
+ [...w.document.querySelectorAll('#content button')].find(b=>b.textContent==='Retry').click();await tick();assert.equal(calls.filter(c=>c.action==='retryDownload').at(-1).key,songs[1].key);
+ [...w.document.querySelectorAll('#content button')].find(b=>b.textContent==='Cancel').click();await tick();assert.equal(calls.filter(c=>c.action==='cancelDownload').at(-1).key,songs[0].key);
+ w.document.getElementById('search').value='Song';await w.__search();await tick();assert.match(text('content'),/TOP RESULT/);
+ [...w.document.querySelectorAll('#content .chip')].find(b=>b.textContent==='USpot Radios').click();await tick();assert.equal(w.document.querySelectorAll('#content .track-row').length,0);assert.match(text('content'),/Song 0 Radio/);
+ await w.__navigate('settings');assert.ok(w.document.querySelectorAll('details.settings-group').length>3);
  assert.equal(errors.length,0,errors.join('\n'));console.log('PASS: navigation, collection retry, queue next/previous, smart-shuffle cycle, radio modes without restart, manual FIFO queue, confirmed likes and mutation errors, settings and no-code connection, shuffle restoration, add-next, 30-second history qualification, search playback, radio creation, theme switching, no-restart radio adoption, exhausted-radio refill, and failed-lookup recovery (simulated phone/audio).');
  dom.window.close();
 })().catch(e=>{console.error(e);dom.window.close();process.exitCode=1});

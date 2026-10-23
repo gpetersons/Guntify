@@ -15,11 +15,11 @@ android {
 
     defaultConfig {
         applicationId = "com.music.spotui.modified"
-        manifestPlaceholders["uspotAppLabel"] = "@string/app_name"
+        manifestPlaceholders["uspotAppLabel"] = "USpot"
         minSdk = 26
         targetSdk = 34
         // Must exceed every published build: 1.5 shipped as versionCode 14 ("1.4").
-        versionCode = 77
+        versionCode = 82
         versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

@@ -123,7 +123,7 @@ private fun QueueContent(navController: NavController, playerViewModel: PlayerVi
     val refreshing by playerViewModel.radioRefreshing.collectAsState()
     val refreshMessage by playerViewModel.radioRefreshMessage.collectAsState()
     androidx.compose.runtime.LaunchedEffect(refreshMessage) {
-        if (refreshMessage.isNotBlank()) { android.widget.Toast.makeText(context, refreshMessage, android.widget.Toast.LENGTH_LONG).show(); playerViewModel.clearRadioRefreshMessage() }
+        if (refreshMessage.isNotBlank()) { com.music.spotui.ui.components.ActionFeedback.show(refreshMessage); playerViewModel.clearRadioRefreshMessage() }
     }
     val collectionName = playerViewModel.activeCollection.value?.name ?: "your queue"
     val undo = playerViewModel.queueUndo.value

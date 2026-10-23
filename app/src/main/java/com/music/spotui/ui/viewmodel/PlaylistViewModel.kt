@@ -87,7 +87,7 @@ class PlaylistViewModel @Inject constructor(
             try {
                 val result=kotlinx.coroutines.withContext(Dispatchers.IO){com.music.spotui.data.api.SpotifyMutations.run(context){com.metrolist.spotify.Spotify.addToLibrary(listOf("spotify:playlist:$id"))}}
                 if(result.isSuccess){com.music.spotui.data.preferences.CreatedPlaylists.markSaved(context,id);_needsSave.value=false}
-                kotlinx.coroutines.withContext(Dispatchers.Main){android.widget.Toast.makeText(context,if(result.isSuccess)"Saved to Spotify library"else"Couldn't save to Spotify yet. Your playlist stays in USpot.",android.widget.Toast.LENGTH_LONG).show()}
+                kotlinx.coroutines.withContext(Dispatchers.Main){com.music.spotui.ui.components.ActionFeedback.show(if(result.isSuccess)"Saved to Spotify library"else"Couldn't save to Spotify yet. Your playlist stays in USpot.")}
             } finally{_saving.value=false}
         }
     }

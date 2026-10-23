@@ -28,7 +28,7 @@ object HomePresentationPolicy {
         }
         val discoveries = discovered.map { it.copy(items = it.items.filter(::visible)) }
         val rows = LocalHomePolicy.shelves(withRecent, discoveries, fraction, accountName)
-        return HomePresentation(rotation, rows.map { it.copy(items = it.items.distinctBy(HomeHiddenItems::key)) }, local.isNotEmpty() || localTracks.isNotEmpty())
+        return HomePresentation(rotation, HomePolishPolicy.refine(rows.map { it.copy(items = it.items.distinctBy(HomeHiddenItems::key)) }), local.isNotEmpty() || localTracks.isNotEmpty())
     }
 }
 
