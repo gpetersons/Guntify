@@ -31,7 +31,7 @@ fun BackupControls(viewModel: BackupViewModel = hiltViewModel()) {
     }
     Text("Audio makes backups larger. Music linked from external folders must be selected again after a reinstall.", color = com.music.spotui.ui.theme.AppSecondary)
     Spacer(Modifier.height(16.dp))
-    Button(enabled = !busy, onClick = { exporter.launch("Guntify-backup-${java.time.LocalDate.now()}.zip") }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1ED760), contentColor = Color.Black)) { Text("Export backup") }
+    Button(enabled = !busy, onClick = { exporter.launch("Sprotify-backup-${java.time.LocalDate.now()}.zip") }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1ED760), contentColor = Color.Black)) { Text("Export backup") }
     OutlinedButton(enabled = !busy, onClick = { importer.launch(arrayOf("application/zip", "application/octet-stream")) }) { Text("Import backup", color = com.music.spotui.ui.theme.AppText) }
     if (busy) CircularProgressIndicator(color = Color(0xFF1ED760), modifier = Modifier.padding(vertical = 16.dp))
     if (message.isNotBlank()) Text(message, color = com.music.spotui.ui.theme.AppSecondary, modifier = Modifier.padding(vertical = 12.dp))

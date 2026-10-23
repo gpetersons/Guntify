@@ -136,7 +136,7 @@ fun SumUpSearchScreen(
     }
     // Live Spotify search results for the current query.
     var selectedFilter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("All") }
-    val filteredResults = if(selectedFilter=="Guntify Radios")SearchResults() else com.music.spotui.data.recommendation.SearchFilterPolicy.filter(results, selectedFilter)
+    val filteredResults = if(selectedFilter=="Sprotify Radios")SearchResults() else com.music.spotui.data.recommendation.SearchFilterPolicy.filter(results, selectedFilter)
     val searchedList = filteredResults.songs
     // One relevance-mixed list (songs, artists, albums interleaved) instead of
     // separate type sections — matches how most music apps present search.
@@ -171,7 +171,7 @@ fun SumUpSearchScreen(
                     searchViewModel.search(it)
                 }
                 if (text.isNotBlank()) Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("All", "Songs", "Playlists", "Albums", "Artists", "Guntify Radios").forEach { label ->
+                    listOf("All", "Songs", "Playlists", "Albums", "Artists", "Sprotify Radios").forEach { label ->
                         com.music.spotui.ui.components.ThemeFilterPill(label, selectedFilter == label) { selectedFilter = label }
                     }
                 }
@@ -267,7 +267,7 @@ fun SumUpSearchScreen(
                 }
             }
         } else {
-            if(selectedFilter!="Guntify Radios") when (val response = searchViewModel.results.value) {
+            if(selectedFilter!="Sprotify Radios") when (val response = searchViewModel.results.value) {
                 is Response.Loading -> item { com.music.spotui.ui.components.LoadingRows() }
                 is Response.Error -> item { com.music.spotui.ui.components.RetryPanel("Couldn’t search right now. Check your connection.") { searchViewModel.search(text) } }
                 is Response.Success -> Unit
@@ -281,20 +281,20 @@ fun SumUpSearchScreen(
                     androidx.compose.material3.TextButton(onClick={radioMode=true}) {Text("Create Radio Mix",color=com.music.spotui.ui.theme.AppPalette)}
                 }
             }
-            if(selectedFilter in listOf("All","Guntify Radios") && radioMatches.isNotEmpty()) {
-                item { SearchSectionHeader("Your Guntify Radios") }
+            if(selectedFilter in listOf("All","Sprotify Radios") && radioMatches.isNotEmpty()) {
+                item { SearchSectionHeader("Your Sprotify Radios") }
                 items(radioMatches.size) { index ->
                     val seed=radioMatches[index]
                     Row(Modifier.fillMaxWidth().clickable {navController.navigate("radio/"+android.net.Uri.encode(seed.spotifyTrackId.ifBlank{seed.id.toString()}))}.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
                         GlideImage(model=seed.coverUri,contentDescription=null,modifier=Modifier.size(52.dp).clip(RoundedCornerShape(10.dp)),contentScale=ContentScale.Crop)
                         Column(Modifier.weight(1f).padding(start=12.dp)) {
                             Text(com.music.spotui.data.preferences.RadioSessions.stationName(seed),color=com.music.spotui.ui.theme.AppText,fontWeight=FontWeight.Bold)
-                            Text("Guntify Radio",color=com.music.spotui.ui.theme.AppSecondary,fontSize=12.sp)
+                            Text("Sprotify Radio",color=com.music.spotui.ui.theme.AppSecondary,fontSize=12.sp)
                         }
                     }
                 }
             }
-            items(if(selectedFilter=="Guntify Radios")0 else mixed.size) { i ->
+            items(if(selectedFilter=="Sprotify Radios")0 else mixed.size) { i ->
                 val kind = when(mixed[i]){is SearchRow.Song->"Songs";is SearchRow.Artist->"Artists";is SearchRow.Album->"Albums";is SearchRow.Playlist->"Spotify playlists"}
                 val previous = mixed.getOrNull(i-1)?.javaClass
                 if(i==0) SearchSectionHeader(if(selectedFilter=="All")"Top result"else kind)
@@ -335,7 +335,7 @@ fun SumUpSearchScreen(
                 }
             }
             }
-            if (selectedFilter!="Guntify Radios" && (results.nextOffset != null || pageError.isNotBlank())) {
+            if (selectedFilter!="Sprotify Radios" && (results.nextOffset != null || pageError.isNotBlank())) {
                 item {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         if (pageError.isNotBlank()) Text(pageError, color = com.music.spotui.ui.theme.AppSecondary)

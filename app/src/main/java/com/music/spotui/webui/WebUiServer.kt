@@ -31,7 +31,7 @@ internal class WebUiServer(private val context: Context, private val address: St
         setAsyncRunner(object : AsyncRunner {
             private val clients = ConcurrentHashMap.newKeySet<ClientHandler>()
             private val workers = ThreadPoolExecutor(12, 12, 30, TimeUnit.SECONDS,
-                ArrayBlockingQueue<Runnable>(12), { task -> Thread(task, "Guntify-LAN").apply { isDaemon = true } })
+                ArrayBlockingQueue<Runnable>(12), { task -> Thread(task, "Sprotify-LAN").apply { isDaemon = true } })
             override fun exec(client: ClientHandler) {
                 clients.add(client)
                 try { workers.execute(client) }
@@ -126,7 +126,7 @@ internal class WebUiServer(private val context: Context, private val address: St
                     override fun close() { try { super.close() } finally { file.delete() } }
                 }
                 newFixedLengthResponse(Response.Status.OK, "application/zip", input, file.length()).also {
-                    headers(it); it.addHeader("Content-Disposition", "attachment; filename=Guntify-backup.zip")
+                    headers(it); it.addHeader("Content-Disposition", "attachment; filename=Sprotify-backup.zip")
                 }
             } catch (_: Exception) { file.delete(); error(Response.Status.SERVICE_UNAVAILABLE, "Couldn't create a backup. Try exporting from your phone.") }
         }
@@ -148,7 +148,7 @@ internal class WebUiServer(private val context: Context, private val address: St
                 backend.restored()
                 json(Response.Status.OK, JSONObject().put("ok", true))
             } catch (_: Exception) {
-                error(Response.Status.BAD_REQUEST, "Couldn't import this backup. It must be a complete Guntify data export with valid files. Your existing data was retained.")
+                error(Response.Status.BAD_REQUEST, "Couldn't import this backup. It must be a complete Sprotify data export with valid files. Your existing data was retained.")
             } finally { lookups.release() }
         }
         if (path.startsWith("/audio/") && session.method in setOf(Method.GET, Method.HEAD)) {

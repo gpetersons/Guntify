@@ -126,7 +126,7 @@ class LibraryViewModel @Inject constructor(
                     _message.value = "Created and saved to Spotify"
                 } else {
                     _created.value = playlist.copy(libraryWarning = "Spotify library save is pending")
-                    _actionError.value = "Your playlist was created and kept in Guntify. Retry saving this playlist, rather than creating another.\n" +
+                    _actionError.value = "Your playlist was created and kept in Sprotify. Retry saving this playlist, rather than creating another.\n" +
                         com.music.spotui.data.api.SpotifyMutations.describe(saved.exceptionOrNull())
                 }
                 recommendationJob = viewModelScope.launch {
