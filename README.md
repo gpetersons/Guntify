@@ -3,7 +3,7 @@
 </p>
 <h1 align="center">Guntify</h1>
 <p align="center">🎶 Your favorites. Your discoveries. Your kind of radio.</p>
-<p align="center"><strong><a href="https://github.com/gpetersons/Guntify/releases/latest/download/Guntify.apk">⬇️ Download Guntify for Android</a></strong> · <a href="https://github.com/gpetersons/Guntify/releases/latest">What's new</a></p>
+<p align="center"><strong><a href="https://github.com/gpetersons/Guntify/releases/download/v1.0.0-beta.1/Guntify.apk">⬇️ Download Guntify for Android</a></strong> · <a href="https://github.com/gpetersons/Guntify/releases">What's new</a></p>
 
 Guntify is a music player that gets to know what you love. Find songs, keep your favorites together, and make your own radio stations. 🎧
 
@@ -79,4 +79,4 @@ Thanks also to Meld, Neptune, SpotiFLAC, SimpMusic and the other projects credit
 
 Guntify is an independent fork of USpot, originally based on Spotui. It is not affiliated with Spotify or YouTube. Available music and account features depend on those services.
 
-[License](LICENSE) · [Credits](NOTICE) · [Source code](https://github.com/gpetersons/Guntify/releases/latest/download/Guntify-source.zip)
+[License](LICENSE) · [Credits](NOTICE) · [Source code](https://github.com/gpetersons/Guntify/releases/download/v1.0.0-beta.1/Guntify-source.zip)

@@ -100,7 +100,7 @@ fun UpdateSettings() {
         if (state.checked && state.release == null && state.error.isBlank()) Text("You're up to date.", color = UpdateGreen)
         if (state.error.isNotBlank()) Text(state.error, color = AppText)
         Text("You may need to allow 'Install unknown apps' for Guntify once. Installation always needs your confirmation; your current app stays installed.", color = AppSecondary)
-        TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/gpetersons/Guntify/releases/latest"))) }) {
+        TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/gpetersons/Guntify/releases"))) }) {
             Text("View GitHub release notes", color = UpdateGreen)
         }
     }
