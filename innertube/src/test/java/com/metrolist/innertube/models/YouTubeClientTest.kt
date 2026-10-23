@@ -37,5 +37,8 @@ class YouTubeClientTest {
         assertEquals(YouTubeClient.ANDROID_MUSIC, YouTubeClient.forStreamUrl(nativeUrl))
         assertEquals(YouTubeClient.WEB_REMIX, YouTubeClient.forStreamUrl(webUrl))
         assertEquals(YouTubeClient.ANDROID_VR_1_43_32, YouTubeClient.forStreamUrl(legacyVrUrl))
+        val embeddedUrl = "https://r.example.googlevideo.com/videoplayback?c=WEB_EMBEDDED_PLAYER&cver=2.20260722.01.00"
+        assertEquals(YouTubeClient.WEB_EMBEDDED_PLAYER, YouTubeClient.forStreamUrl(embeddedUrl))
+        assertTrue(YouTubeClient.WEB_EMBEDDED_PLAYER.isEmbedded)
     }
 }

@@ -20,6 +20,7 @@ import com.metrolist.innertube.models.YouTubeClient.Companion.IOS_RECENT
 import com.metrolist.innertube.models.YouTubeClient.Companion.MOBILE
 import com.metrolist.innertube.models.YouTubeClient.Companion.TVHTML5
 import com.metrolist.innertube.models.YouTubeClient.Companion.WEB_REMIX
+import com.metrolist.innertube.models.YouTubeClient.Companion.WEB_EMBEDDED_PLAYER
 import com.metrolist.innertube.models.response.PlayerResponse
 import com.metrolist.music.constants.AudioQuality
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
@@ -67,6 +68,7 @@ object YTPlayerUtils {
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
         WEB_REMIX,
         TVHTML5,
+        WEB_EMBEDDED_PLAYER,
         ANDROID_VR_1_65_10,
         ANDROID_VR_1_43_32,
         IOS,
@@ -308,7 +310,9 @@ object YTPlayerUtils {
                     // A real signed-in browser fallback is also needed when native
                     // clients return OK metadata but their CDN URLs are rejected.
                     // Never send account cookies to native client identities.
-                    if (!isLoggedIn || usedAgeRestrictedClient == WEB_REMIX) continue
+                    // An anonymous WEB_REMIX request can use a visitor-bound BotGuard proof.
+                    // Previously we skipped this client entirely unless a user was signed in.
+                    if (usedAgeRestrictedClient == WEB_REMIX) continue
                     if (sessionId == null) {
                         YouTube.visitorData = kotlinx.coroutines.withTimeoutOrNull(2_000L) { YouTube.visitorData().getOrNull() }
                         sessionId = YouTube.visitorData?.takeIf { it.isNotBlank() }
@@ -419,13 +423,13 @@ object YTPlayerUtils {
 
                 // Apply n-transform and PoToken for web clients OR for private tracks (including TVHTML5)
                 val needsNTransform = currentClient.useWebPoTokens ||
-                    currentClient.clientName in listOf("WEB", "WEB_REMIX", "WEB_CREATOR", "TVHTML5") ||
+                    currentClient.clientName in listOf("WEB", "WEB_REMIX", "WEB_CREATOR", "WEB_EMBEDDED_PLAYER", "TVHTML5") ||
                     isPrivatelyOwnedTrack
 
                 Timber.tag(TAG).d("N-transform decision:")
                 Timber.tag(TAG).d("  needsNTransform: $needsNTransform")
                 Timber.tag(TAG).d("  Reason: useWebPoTokens=${currentClient.useWebPoTokens}, " +
-                    "clientInList=${currentClient.clientName in listOf("WEB", "WEB_REMIX", "WEB_CREATOR", "TVHTML5")}, " +
+                    "clientInList=${currentClient.clientName in listOf("WEB", "WEB_REMIX", "WEB_CREATOR", "WEB_EMBEDDED_PLAYER", "TVHTML5")}, " +
                     "isPrivatelyOwnedTrack=$isPrivatelyOwnedTrack")
 
                 if (needsNTransform) {
@@ -444,17 +448,15 @@ object YTPlayerUtils {
                         Timber.tag(TAG).d("  Transformed URL length: ${streamUrl.length}")
                         Timber.tag(TAG).d("  URL changed: ${originalUrl != streamUrl}")
 
-                        // Append pot= parameter with streaming data poToken
-                        val needsPoToken = (currentClient.useWebPoTokens || isPrivatelyOwnedTrack) && poToken?.streamingDataPoToken != null
-                        Timber.tag(TAG).d("PoToken decision:")
-                        Timber.tag(TAG).d("  needsPoToken: $needsPoToken")
-                        Timber.tag(TAG).d("  hasStreamingDataPoToken: ${poToken?.streamingDataPoToken != null}")
-
+                        // Player and GVS proof binding can differ by YouTube experiment.
+                        // Try the video-bound proof first and retain the session-bound proof
+                        // as a strictly scoped fallback after a rejected probe.
+                        val needsPoToken = (currentClient.useWebPoTokens || isPrivatelyOwnedTrack) && poToken != null
+                        Timber.tag(TAG).d("PoToken decision: needsPoToken=$needsPoToken")
                         if (needsPoToken) {
-                            Timber.tag(TAG).d("Appending pot= parameter to stream URL")
+                            // Never write proof bytes or media URLs to diagnostics.
                             val separator = if ("?" in streamUrl) "&" else "?"
-                            streamUrl = "${streamUrl}${separator}pot=${Uri.encode(poToken.streamingDataPoToken)}"
-                            Timber.tag(TAG).d("  Final URL length (with pot): ${streamUrl.length}")
+                            streamUrl = "${streamUrl}${separator}pot=${Uri.encode(poToken!!.videoBoundStreamingDataPoToken)}"
                         }
                     } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
@@ -486,11 +488,24 @@ object YTPlayerUtils {
                     break
                 }
 
-                if (validateStatus(streamUrl, format.contentLength, trace)) {
-                    // working stream found
+                var validated = validateStatus(streamUrl, format.contentLength, trace)
+                if (!validated && currentClient.useWebPoTokens && poToken != null) {
+                    // If this YouTube rollout requires the legacy session-bound GVS
+                    // proof, retry the *same signed URL* with only its pot value
+                    // changed. Never change c/cver, signature, host or other fields.
+                    val videoProof = "pot=${Uri.encode(poToken!!.videoBoundStreamingDataPoToken)}"
+                    val sessionProof = "pot=${Uri.encode(poToken!!.streamingDataPoToken)}"
+                    if (videoProof != sessionProof && streamUrl.contains(videoProof)) {
+                        val legacyUrl = streamUrl.replace(videoProof, sessionProof)
+                        if (validateStatus(legacyUrl, format.contentLength, trace)) {
+                            streamUrl = legacyUrl
+                            validated = true
+                        }
+                    }
+                }
+                if (validated) {
                     streamAccepted = true
                     Timber.tag(logTag).d("Stream validated successfully with client: ${currentClient.clientName}")
-                    // Log for release builds
                     Timber.tag(TAG).i("Playback: client=${currentClient.clientName}, videoId=$videoId")
                     break
                 } else {
