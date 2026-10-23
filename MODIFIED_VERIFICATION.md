@@ -1,23 +1,23 @@
-# Build 74 validation and limits
+# Build 75 validation and limits
 
-## Completed locally before publication
+## Passed on GitHub Actions
 
-- Debug Desktop Preview APK assembled successfully from the build 74 runtime source.
-- All 319 app unit tests across 44 suites passed, with zero failures, errors or skips.
-- Simulated browser/phone interaction checks passed, including queue navigation, likes and mutation errors, Radio tuning without restart, 30-second listening qualification, failed-preload recovery and retry for ambiguous browser media error code 4.
-- New proof-binding regression tests check distinct per-video player proofs within one session and failure without substituting the session proof.
-- Preview package/version, v2 signature, retained preview signing certificate and bundled browser/source equality were verified.
+[Build run](https://github.com/rare621/USpot/actions/runs/39876036994), source commit `753104a2071efd1bce97a87a46bea0b9eb44cc41`:
 
-## Required by the public release workflow
+- Android debug APK assembled successfully.
+- App unit tests and Spotify module unit tests passed.
+- Simulated browser interaction checks passed.
+- Update-policy tests cover numeric builds, stable releases, trusted repository/asset URLs, required checksums, size bounds, and package/signature compatibility.
+- Spotify Web Player session tests cover host restrictions, header validation, expiry and clearing the session.
+- Production certificate, APK v2 signature, package `com.music.spotui.modified` and versionCode 75 verified before publication.
+- Public APK and source ZIP were downloaded after publication; sizes, GitHub SHA-256 digests and ZIP integrity matched. The source ZIP contains build 75 and the updater code.
 
-- Rebuild regular USpot with the existing production signing key; do not use the preview package suffix.
-- Run app unit tests and browser interaction checks again on GitHub Actions.
-- Verify the APK signature and compare its certificate with the previous public USpot release.
-- Verify application ID `com.music.spotui.modified` and versionCode 74 before creating the latest release.
-- Package corresponding source from the exact build commit, with LICENSE, NOTICE and SOURCE.md.
+## Device/account testing still required
 
-## Device testing still required
+The Android update dialog and installer have not been exercised on a physical phone in this environment. Install build 75 once; later releases can trigger its update prompt. Android must approve installation, and may require allowing installs from USpot once.
 
-Real YouTube/account playback, browser audio and codecs, phone-to-PC Wi-Fi transport, background survival, actual restore operations, Bluetooth and Android Auto were not tested on physical devices in this environment. The browser interface remains experimental. Automated checks do not establish that every upstream HTTP 403 error or every Spotify account operation is resolved.
+Spotify writes now reuse a client-session header captured from the connected Web Player when available. No live Spotify account creation/removal test was performed. A successful compile does not establish that every upstream rejection is resolved.
 
-Browser listening writes to the hosting app's local history after 30 seconds of audible time. Data belongs to that Android installation; the regular and Desktop Preview apps have separate data. Browser queue, volume and EQ remain independent of the phone player. Refresh may be needed to see data changed on the other screen.
+Real YouTube playback, browser audio/codecs, Wi-Fi transport, background survival, restore, Bluetooth and Android Auto still need device testing. Browser checks use simulated phone/audio behavior. Desktop & Browser remains experimental.
+
+Browser listening counts locally after 30 seconds of audible time. The browser queue, volume and EQ are independent of the phone player. Refresh may be needed to see data changed on the other screen.
