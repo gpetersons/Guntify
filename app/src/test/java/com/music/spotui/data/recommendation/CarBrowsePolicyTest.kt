@@ -7,10 +7,14 @@ import org.junit.Test
 
 class CarBrowsePolicyTest {
     private fun song(id: Int) = SongsModel(id, "Song $id", "Album", "Artist", "art", "q$id", "s$id")
-    @Test fun recentIsFirstAndRootFitsFourBrowsableTabs() {
+    @Test fun personalizedRootHasStableBrowsableSections() {
         val root = CarBrowsePolicy.root()
-        assertEquals(listOf("Recent", "Recent radios", "Liked Songs", "Library"), root.map { it.title })
+        assertEquals(listOf("Playing queue", "Continue listening", "Recommended for you",
+            "Made for you", "Recently played", "Your radios", "Liked Songs", "Library"),
+            root.map { it.title })
         assertTrue(root.all { !it.playable })
+        assertEquals(root.map { it.id }, CarBrowsePolicy.root("Bones Radio").map { it.id })
+        assertEquals("Playing: Bones Radio", CarBrowsePolicy.root("Bones Radio").first().title)
     }
     @Test fun radioRowIsPlayableWithOriginalStationIdentity() {
         val seed = song(1)

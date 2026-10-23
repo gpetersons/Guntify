@@ -75,6 +75,9 @@ class RadioPlaybackController @Inject constructor(
                     .distinctBy { it.id }.take(10)
                 if (fresh.isNotEmpty()) {
                     state.updateQueue(live + fresh, preserveSession = true)
+                    // Warm the newly discovered next track without interrupting
+                    // the currently playing song. SongPlayer skips unsafe sources.
+                    fresh.firstOrNull()?.let { SongPlayer.prefetch(it.url, app) }
                 }
             }
         }

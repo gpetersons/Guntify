@@ -578,9 +578,15 @@ object SongPlayer {
         artist: String = metaArtist,
         cover: String = metaCover,
     ): MediaItem {
+        val radioStation = boundState?.collection?.value?.takeIf { it.type == "radio" }?.name
+        val albumLabel = radioStation?.let { "Playing radio: $it" }
+            ?: boundState?.album?.value.orEmpty()
         val metadata = androidx.media3.common.MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(artist)
+            // Android Auto controls its Now Playing layout; retain song/artist
+            // and attach the active Radio station as standard album metadata.
+            .setAlbumTitle(albumLabel)
             .apply { if (cover.isNotBlank()) setArtworkUri(android.net.Uri.parse(cover)) }
             .build()
         return MediaItem.Builder()
