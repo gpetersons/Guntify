@@ -298,7 +298,9 @@ internal class WebUiBackend(private val context: Context) {
         }
         "createPlaylist" -> {
             val name = body.optString("name").trim().take(100); require(name.isNotEmpty())
+            val creationSession = com.music.spotui.data.preferences.CreatedPlaylists.session(context)
             val created = mutation { Spotify.createPlaylist(name) }
+            com.music.spotui.data.preferences.CreatedPlaylists.record(context,creationSession,created.id,created.name,pending=true)
             val entry = LibraryEntry(created.id, created.name, "Playlist", "", true)
             val mapped = item(HomeItem.Playlist(created.name, "", "Playlist", created.id))
             libraryEntries[mapped.getString("key")] = entry
@@ -306,7 +308,9 @@ internal class WebUiBackend(private val context: Context) {
             mapped.put("canRecommend",true)
             Api.HomeCache.library = (Api.HomeCache.library.orEmpty() + entry).distinctBy { it.spotifyId }
             cacheLibraryEntries(context, Api.HomeCache.library.orEmpty())
-            JSONObject().put("item", mapped)
+            val saved = com.music.spotui.data.api.SpotifyMutations.run(context) { Spotify.addToLibrary(listOf("spotify:playlist:${created.id}")) }
+            if(saved.isSuccess)com.music.spotui.data.preferences.CreatedPlaylists.markSaved(context,created.id)
+            JSONObject().put("item", mapped).put("warning",if(saved.isSuccess)""else"Playlist created and kept in USpot. Saving to Spotify is pending; retry saving it from your phone.")
         }
         "addToPlaylist" -> {
             val song = song(body)
@@ -340,6 +344,7 @@ internal class WebUiBackend(private val context: Context) {
             val entry = libraryEntries[body.optString("key")] ?: error("Reload your library first.")
             require(entry.spotifyId !in setOf(Api.LIKED_SONGS_ID, Api.DOWNLOADS_ID))
             mutation { Spotify.removeFromLibrary(listOf("spotify:${if(entry.isPlaylist)"playlist" else "album"}:${entry.spotifyId}")) }
+            if(entry.isPlaylist)com.music.spotui.data.preferences.CreatedPlaylists.remove(context,entry.spotifyId)
             Api.HomeCache.library = Api.HomeCache.library.orEmpty().filterNot { it.spotifyId == entry.spotifyId }
             cacheLibraryEntries(context, Api.HomeCache.library.orEmpty())
             libraryEntries.remove(body.optString("key"))

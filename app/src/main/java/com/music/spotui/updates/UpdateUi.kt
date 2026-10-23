@@ -86,7 +86,7 @@ fun UpdateSettings() {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 160.dp)) {
         Text("Keep your music moving", color = AppText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Text("Installed: USpot ${BuildConfig.VERSION_NAME} · build ${BuildConfig.VERSION_CODE}", color = AppSecondary)
-        Text("Updates come from the official USpot GitHub releases. USpot checks when you open or return to the app, at most once an hour. Cancel dismisses a release until you check manually or a newer release arrives.", color = AppSecondary)
+        Text("Updates come from the official USpot GitHub releases. USpot checks each time it starts. While it stays open, returning to it checks at most once an hour. Cancel dismisses a release until you check manually or a newer release arrives.", color = AppSecondary)
         Button(onClick = { scope.launch { AppUpdates.check(context, manual = true) } }, enabled = !state.checking && !state.downloading,
             colors = ButtonDefaults.buttonColors(containerColor = UpdateGreen, contentColor = androidx.compose.ui.graphics.Color.Black)) {
             Text(if (state.checking) "Checking…" else "Check for updates")

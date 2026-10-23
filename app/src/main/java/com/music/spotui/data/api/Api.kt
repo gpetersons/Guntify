@@ -837,7 +837,8 @@ class Api @Inject constructor(
      * GQL endpoint (not rate-limited). Process-cached for instant re-entry.
      */
     suspend fun getLibrary(): Flow<Response<List<com.music.spotui.data.entity.LibraryEntry>>> = flow {
-        HomeCache.library?.let { emit(Response.Success(it)) } ?: emit(Response.Loading())
+        val retained = com.music.spotui.data.preferences.CreatedPlaylists.merge(context, HomeCache.library.orEmpty())
+        if(retained.isNotEmpty())emit(Response.Success(retained))else emit(Response.Loading())
         if (!SpotifyTokenProvider.ensureToken(context)) {
             if (HomeCache.library == null) emit(Response.Error("Spotify not authenticated — set sp_dc cookie"))
             return@flow
@@ -869,9 +870,14 @@ class Api @Inject constructor(
             coverUri = "https://misc.scdn.co/liked-songs/liked-songs-640.png",
             isPlaylist = true,
         )
-        val merged = com.music.spotui.data.recommendation.LibraryIdentityPolicy.unique(listOf(liked, DOWNLOADED_ENTRY) + playlists + albums)
+        val remote = com.music.spotui.data.recommendation.LibraryIdentityPolicy.unique(listOf(liked, DOWNLOADED_ENTRY) + playlists + albums)
+        val merged = com.music.spotui.data.preferences.CreatedPlaylists.merge(context, remote, authoritative = true)
         HomeCache.library = merged
         emit(Response.Success(merged))
+        if(com.music.spotui.data.preferences.CreatedPlaylists.recoverLegacy(context)) {
+            val recovered=com.music.spotui.data.preferences.CreatedPlaylists.merge(context,merged)
+            HomeCache.library=recovered; emit(Response.Success(recovered))
+        }
     }
 
     /**

@@ -95,15 +95,21 @@ object SpotifySync {
         val app = context.applicationContext
         scope.launch {
             if (!SpotifyTokenProvider.ensureToken(app)) { onDone(false); return@launch }
+            val creationSession = com.music.spotui.data.preferences.CreatedPlaylists.session(app)
             val playlist = Spotify.createPlaylist(name).getOrNull()
             if (playlist == null || playlist.id.isBlank()) {
                 Log.w(TAG, "createPlaylist '$name' failed"); onDone(false); return@launch
             }
+            com.music.spotui.data.preferences.CreatedPlaylists.record(app,creationSession,playlist.id,playlist.name,
+                playlist.images.firstOrNull()?.url.orEmpty(),pending=true)
+            val saved = SpotifyMutations.run(app) { Spotify.addToLibrary(listOf("spotify:playlist:${playlist.id}")) }.isSuccess
+            if (saved) com.music.spotui.data.preferences.CreatedPlaylists.markSaved(app, playlist.id)
             val ok = trackId.isBlank() ||
                 Spotify.addTracksToPlaylist(playlist.id, listOf("spotify:track:$trackId")).isSuccess
             if (ok && trackId.isNotBlank()) {
                 membershipCache[playlist.id] = java.util.concurrent.ConcurrentHashMap.newKeySet<String>().apply { add(trackId) }
             }
+            if (!saved) showSyncFailure(app)
             onDone(ok)
         }
     }

@@ -66,7 +66,7 @@ object BackupArchive {
 }
 
 object BackupPreferencePolicy {
-    val stores = setOf("radio_skip_memory", "smart_downloads", "radio_taste", "ListeningHistory", "LikedSongs", "LikedSongsFromSpotify", "LikedAlbums", "FollowedArtists", "RecentItems", "Downloads", "LocalLibrary", "AlternativeStreams", "LibraryCache", "music_source", "settings_prefs", "home_personalization", "home_hidden_items", "spotui_modified_home_recents", "spotui_home_frequency_v1", "spotui_radio_sessions", "radio_progress", "PlaybackState", "playlist_covers", "playback_equalizer", "Deezer", "Soulseek")
+    val stores = setOf("radio_skip_memory", "smart_downloads", "radio_taste", "ListeningHistory", "LikedSongs", "LikedSongsFromSpotify", "LikedAlbums", "FollowedArtists", "RecentItems", "Downloads", "LocalLibrary", "AlternativeStreams", "LibraryCache", "created_playlists", "music_source", "settings_prefs", "home_personalization", "home_hidden_items", "spotui_modified_home_recents", "spotui_home_frequency_v1", "spotui_radio_sessions", "radio_progress", "PlaybackState", "playlist_covers", "playback_equalizer", "Deezer", "Soulseek")
     fun allowed(store: String, key: String): Boolean {
         if (store !in stores) return false
         // Random track/Radio IDs are data keys, not credential field names.

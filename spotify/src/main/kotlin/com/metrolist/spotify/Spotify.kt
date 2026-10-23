@@ -1018,9 +1018,10 @@ object Spotify {
             }) }
         }
         val endpoint = "Web Player playlist create"
+        val session = SpotifyWebSession.awaitCurrent()
         val response = gqlClient.post("https://spclient.wg.spotify.com/playlist/v2/playlist") {
             header("Authorization", "Bearer $token")
-            SpotifyWebSession.current()?.let { session ->
+            session?.let { session ->
                 header("client-token", session.clientToken)
                 session.userAgent?.let { header("User-Agent", it) }
             }
@@ -1033,13 +1034,9 @@ object Spotify {
             ?.takeIf { it.startsWith("spotify:playlist:") && it.substringAfterLast(':').isNotBlank() }
             ?: throw SpotifyException(502, "Creation response has no playlist URI; check Spotify before retrying", endpoint = endpoint)
         val playlist = SpotifyPlaylist(id = uri.substringAfterLast(':'), name = name.trim(), uri = uri)
-        // The Web Player follows its new playlist after creating it. Keep the returned ID
-        // even if that second operation fails, so tapping retry cannot create a duplicate.
-        val saved = addToLibrary(listOf(uri))
-        playlist.copy(libraryWarning = saved.exceptionOrNull()?.let { error ->
-            val failure = error as? SpotifyException
-            "Created, but library save failed" + (failure?.let { " (HTTP ${it.statusCode})" } ?: "")
-        })
+        // Caller must persist this ID before following it; a follow timeout must not
+        // discard a successful creation and encourage a duplicate.
+        playlist
     }
 
     private fun safeErrorDetail(raw: String): String {
@@ -1160,6 +1157,13 @@ object Spotify {
             )
         }
 
+    private val playlistLibrary by lazy { PlaylistLibrary(gqlClient) }
+    private suspend fun changePlaylistLibrary(uris: List<String>, saved: Boolean): Result<Unit> = runCatching {
+        val token = accessToken ?: throw SpotifyException(401, "Not authenticated")
+        val account = me().getOrThrow().id
+        playlistLibrary.setSaved(account, uris, saved, token)
+    }
+
     // ── Library Mutations (GQL: addToLibrary / removeFromLibrary) ──────
 
     /**
@@ -1167,7 +1171,7 @@ object Spotify {
      * @param uris Full Spotify URIs, e.g. `["spotify:track:abc123"]`.
      */
     suspend fun addToLibrary(uris: List<String>): Result<Unit> =
-        runCatching {
+        if (uris.isNotEmpty() && uris.all { it.startsWith("spotify:playlist:") }) changePlaylistLibrary(uris, true) else runCatching {
             val vars = buildJsonObject {
                 put("interactionId", JsonNull)
                 putJsonArray("libraryItemUris") {
@@ -1196,7 +1200,7 @@ object Spotify {
      * @param uris Full Spotify URIs, e.g. `["spotify:track:abc123"]`.
      */
     suspend fun removeFromLibrary(uris: List<String>): Result<Unit> =
-        runCatching {
+        if (uris.isNotEmpty() && uris.all { it.startsWith("spotify:playlist:") }) changePlaylistLibrary(uris, false) else runCatching {
             val vars = buildJsonObject {
                 putJsonArray("libraryItemUris") {
                     uris.forEach { add(it) }

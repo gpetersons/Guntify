@@ -75,6 +75,22 @@ class PlaylistViewModel @Inject constructor(
     private var permissionJob: kotlinx.coroutines.Job? = null
     private val _canEdit = MutableStateFlow(false)
     val canEdit = _canEdit.asStateFlow()
+    private val _needsSave = MutableStateFlow(false)
+    val needsSave = _needsSave.asStateFlow()
+    private val _saving = MutableStateFlow(false)
+    val saving = _saving.asStateFlow()
+    fun retryLibrarySave() {
+        val id=playlistKey ?: return
+        if(_saving.value)return
+        _saving.value=true
+        viewModelScope.launch {
+            try {
+                val result=kotlinx.coroutines.withContext(Dispatchers.IO){com.music.spotui.data.api.SpotifyMutations.run(context){com.metrolist.spotify.Spotify.addToLibrary(listOf("spotify:playlist:$id"))}}
+                if(result.isSuccess){com.music.spotui.data.preferences.CreatedPlaylists.markSaved(context,id);_needsSave.value=false}
+                kotlinx.coroutines.withContext(Dispatchers.Main){android.widget.Toast.makeText(context,if(result.isSuccess)"Saved to Spotify library"else"Couldn't save to Spotify yet. Your playlist stays in USpot.",android.widget.Toast.LENGTH_LONG).show()}
+            } finally{_saving.value=false}
+        }
+    }
     fun refreshPlaylist(id: String) { playlistKey = null; loadPlaylist(id) }
 
 
@@ -82,6 +98,7 @@ class PlaylistViewModel @Inject constructor(
         if (playlistKey == playlistId) return
         songsJob?.cancel(); metadataJob?.cancel(); permissionJob?.cancel()
         playlistKey = playlistId
+        _needsSave.value = com.music.spotui.data.preferences.CreatedPlaylists.find(context,playlistId)?.pending == true
         _canEdit.value = false
         permissionJob = viewModelScope.launch(Dispatchers.IO) {
             if (com.music.spotui.data.api.SpotifyTokenProvider.ensureToken(context)) {

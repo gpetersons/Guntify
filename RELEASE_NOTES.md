@@ -1,28 +1,19 @@
-# 🎶 More ways to make it yours · USpot build 76
+# 💚 Keep your playlists close · USpot build 77
 
-## 📚 Build your perfect playlist
+## 📚 Playlists that stay with you
 
-- Choose songs from **Liked Songs**, your **other playlists**, **Spotify search**, or **recommendations** when creating a playlist.
-- Pick several songs together, then add them in one go.
-- Open a playlist and tap **Edit** to add songs or remove individual entries from playlists you own.
-- Playlist controls keep the familiar Play, Shuffle and Download buttons.
+USpot now saves a record of each newly created playlist on your phone before trying to add it to your Spotify library. A refresh or restart keeps that record available, including when Spotify needs another attempt to save it.
 
-## ⋮ Your song menu, one tap away
+Playlist saving and removal now use Spotify’s playlist library service and check the result before showing success. Removing a playlist from your library leaves its songs intact.
 
-Three-dot buttons on playlist, Liked Songs, album, search and artist rows open the same menu as holding a song. Removing a song from a playlist leaves your Liked Songs alone.
+If saving is still pending, open the playlist and tap **Save to Spotify library**. USpot retries the same playlist, so you don’t need to create another copy. Your playlist records are included in data exports, too.
 
-## 🎧 Choose where you listen
+## 🔔 Updates when you open USpot
 
-The player shows the selected audio output. Tap it to see connected speakers and headphones or open your phone's device controls. The device, share and queue buttons sit higher with more breathing room above the bottom edge.
+Each fresh app start checks for a newer release. Returning while USpot is still running checks at most once an hour. Spotify and GitHub wait periods are respected. You can also check from **Settings → Updates**.
 
-## 🔧 Spotify playlist tune-up
+Install **USpot.apk** over your existing USpot to keep your history and settings. Keep the app installed; Android will ask you to confirm the update.
 
-Updated saving and removal requests. If a newly created playlist needs another attempt to appear in your Spotify library, you can retry saving that playlist without creating a duplicate. Removing a playlist from Library unfollows it; it doesn't delete its songs.
+Spotify saving still needs confirmation on your account. Automated checks cover the requests and error handling but cannot verify your account’s access or every phone.
 
-The GitHub homepage is simpler and easier to browse, too. 💚
-
-Install **USpot.apk** over your current app. Keep USpot installed to retain your history and settings. Android asks you to confirm installation. Matching source and license notices are included.
-
-Spotify account changes and audio-device switching depend on your account and phone. They still need real-device testing; automated checks cannot confirm every setup.
-
-Thank you to [Spotui's creators and contributors](https://github.com/Spotui/Spotui) for the foundation. 🎧
+Thank you to [Spotui’s creators and contributors](https://github.com/Spotui/Spotui) for the foundation. 🎧

@@ -31,11 +31,13 @@ object AppUpdates {
     private val mutable = MutableStateFlow(State())
     val state = mutable.asStateFlow()
     private val checkLock = Mutex()
+    private var attemptedThisProcess = false
     private var downloadJob: Job? = null
     private var readyFile: File? = null
     @Volatile private var activeDownload: okhttp3.Call? = null
     private val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS)
         .callTimeout(150, TimeUnit.SECONDS).followSslRedirects(false).build()
+    private val checkClient = client.newBuilder().callTimeout(15, TimeUnit.SECONDS).build()
     private fun prefs(c: Context) = c.getSharedPreferences("app_updates", Context.MODE_PRIVATE)
 
     suspend fun check(context: Context, manual: Boolean = false) {
@@ -43,18 +45,22 @@ object AppUpdates {
         val c = context.applicationContext
         try {
             val p = prefs(c); val now = System.currentTimeMillis()
-            if (!manual && (mutable.value.downloading || now - p.getLong("last_auto", 0L) < 60 * 60_000L)) return
+            if (mutable.value.downloading) return
+            if (!manual && !UpdateCheckPolicy.shouldCheck(!attemptedThisProcess, now, p.getLong("last_auto", 0L))) return
             if (now < p.getLong("retry_at", 0L)) {
                 if (manual) mutable.update { it.copy(error = "GitHub asked us to wait before checking again. Please try later.") }
                 return
             }
+            attemptedThisProcess = true
+            // Failed requests also get a session throttle; a fresh process checks again.
+            p.edit().putLong("last_auto", now).apply()
             mutable.update { it.copy(checking = true, error = "") }
             val release = withContext(Dispatchers.IO) {
                 withTimeout(15_000L) {
                     val request = Request.Builder().url(UpdatePolicy.API).header("Accept", "application/vnd.github+json")
                         .header("User-Agent", "USpot/${BuildConfig.VERSION_NAME} build-${BuildConfig.VERSION_CODE}")
                         .apply { p.getString("etag", null)?.let { header("If-None-Match", it) } }.build()
-                    val call = client.newCall(request)
+                    val call = checkClient.newCall(request)
                     val handle = currentCoroutineContext().job.invokeOnCompletion { if (it is CancellationException) call.cancel() }
                     try {
                         call.execute().use { response ->
@@ -83,6 +89,8 @@ object AppUpdates {
             p.edit().putLong("last_auto", now).putLong("retry_at", 0L).apply()
             mutable.update { it.copy(checked = true, release = available, error = "",
                 showPrompt = available != null && (manual || p.getLong("dismissed", 0L) != available.code)) }
+        } catch (timeout: kotlinx.coroutines.TimeoutCancellationException) {
+            mutable.update { it.copy(error = "The update check took too long. Check your connection and try again.") }
         } catch (cancelled: CancellationException) { throw cancelled
         } catch (error: Exception) {
             mutable.update { it.copy(error = error.message?.take(180) ?: "Could not check for updates. Check your connection.") }

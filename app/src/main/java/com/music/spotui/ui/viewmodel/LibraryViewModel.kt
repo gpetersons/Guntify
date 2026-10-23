@@ -39,7 +39,7 @@ class LibraryViewModel @Inject constructor(
 
     init {
         // Seed UI with the last-seen library immediately so it's visible offline.
-        val cached = getCachedLibraryEntries(context)
+        val cached = com.music.spotui.data.preferences.CreatedPlaylists.merge(context, getCachedLibraryEntries(context))
         if (cached.isNotEmpty()) _entries.value = Response.Success(com.music.spotui.data.recommendation.LibraryIdentityPolicy.unique(cached))
         val cachedArtists = getCachedFollowedArtists(context)
         if (cachedArtists.isNotEmpty()) _followedArtists.value = cachedArtists
@@ -79,6 +79,7 @@ class LibraryViewModel @Inject constructor(
                 }
                 val ok = result.isSuccess
                 if (ok) {
+                    if(entry.isPlaylist)com.music.spotui.data.preferences.CreatedPlaylists.remove(context, entry.spotifyId)
                     val remaining = (_entries.value as? Response.Success)?.data.orEmpty().filterNot { it.spotifyId == entry.spotifyId }
                     _entries.value = Response.Success(remaining)
                     com.music.spotui.data.api.Api.HomeCache.library = remaining
@@ -95,6 +96,7 @@ class LibraryViewModel @Inject constructor(
         _actionError.value = ""
         _busy.value = true
         libraryLoadJob?.cancel()
+        val creationSession = com.music.spotui.data.preferences.CreatedPlaylists.session(context)
         viewModelScope.launch {
             try {
                 val createdResult = kotlinx.coroutines.withContext(Dispatchers.IO) {
@@ -105,6 +107,8 @@ class LibraryViewModel @Inject constructor(
                     _actionError.value = com.music.spotui.data.api.SpotifyMutations.describe(createdResult.exceptionOrNull())
                     return@launch
                 }
+                com.music.spotui.data.preferences.CreatedPlaylists.record(context, creationSession, playlist.id, playlist.name,
+                    playlist.images.firstOrNull()?.url.orEmpty(), pending = true)
                 _created.value = playlist
                 playlist.libraryWarning?.let { _message.value = it + ". Open the created playlist; do not create another copy." }
                 _added.value = emptyList()
@@ -114,6 +118,17 @@ class LibraryViewModel @Inject constructor(
                 _entries.value = Response.Success(merged)
                 com.music.spotui.data.api.Api.HomeCache.library = merged
                 cacheLibraryEntries(context, merged)
+                val saved = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    com.music.spotui.data.api.SpotifyMutations.run(context) { com.metrolist.spotify.Spotify.addToLibrary(listOf("spotify:playlist:${playlist.id}")) }
+                }
+                if (saved.isSuccess) {
+                    com.music.spotui.data.preferences.CreatedPlaylists.markSaved(context, playlist.id)
+                    _message.value = "Created and saved to Spotify"
+                } else {
+                    _created.value = playlist.copy(libraryWarning = "Spotify library save is pending")
+                    _actionError.value = "Your playlist was created and kept in USpot. Retry saving this playlist, rather than creating another.\n" +
+                        com.music.spotui.data.api.SpotifyMutations.describe(saved.exceptionOrNull())
+                }
                 recommendationJob = viewModelScope.launch {
                 try {
                 _suggestions.value = kotlinx.coroutines.withContext(Dispatchers.IO) {
@@ -148,7 +163,7 @@ class LibraryViewModel @Inject constructor(
                 val result = kotlinx.coroutines.withContext(Dispatchers.IO) { com.music.spotui.data.api.SpotifyMutations.run(context) {
                     com.metrolist.spotify.Spotify.addToLibrary(listOf("spotify:playlist:${p.id}"))
                 } }
-                if (result.isSuccess) { _created.value = p.copy(libraryWarning = null); _message.value = "Saved to your Spotify library"; _actionError.value = "" }
+                if (result.isSuccess) { com.music.spotui.data.preferences.CreatedPlaylists.markSaved(context, p.id); _created.value = p.copy(libraryWarning = null); _message.value = "Saved to your Spotify library"; _actionError.value = "" }
                 else _actionError.value = com.music.spotui.data.api.SpotifyMutations.describe(result.exceptionOrNull())
             } finally { _busy.value = false }
         }

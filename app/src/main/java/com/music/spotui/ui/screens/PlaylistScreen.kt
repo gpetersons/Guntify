@@ -76,6 +76,8 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
     val playlistViewModel: PlaylistViewModel = hiltViewModel()
     val songsResp by playlistViewModel.songs.collectAsState()
     val playlistResp by playlistViewModel.playlist.collectAsState()
+    val needsSave by playlistViewModel.needsSave.collectAsState()
+    val saving by playlistViewModel.saving.collectAsState()
     val canEdit by playlistViewModel.canEdit.collectAsState()
     var editing by remember(playlistId) { mutableStateOf(false) }
     var removeFromPlaylist by remember(playlistId) { mutableStateOf<com.music.spotui.data.entity.SongsModel?>(null) }
@@ -228,6 +230,10 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                             }
                         }
 
+                        if(needsSave) {
+                            Text("Saved in USpot. Spotify hasn't confirmed it in your library yet.",color=com.music.spotui.ui.theme.AppSecondary,modifier=Modifier.padding(horizontal=20.dp))
+                            androidx.compose.material3.TextButton(enabled=!saving,onClick={playlistViewModel.retryLibrarySave()},modifier=Modifier.padding(horizontal=12.dp)){Text(if(saving)"Saving…"else"Save to Spotify library",color=com.music.spotui.ui.theme.AppPalette)}
+                        }
                         Row(
                             horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically,

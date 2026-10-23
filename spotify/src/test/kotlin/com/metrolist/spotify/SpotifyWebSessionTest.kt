@@ -12,6 +12,14 @@ class SpotifyWebSessionTest {
         assertEquals("a".repeat(40),SpotifyWebSession.current(1001)?.clientToken)
         assertEquals("Session browser",SpotifyWebSession.current(1001)?.userAgent)
     }
+    @Test fun regionalSpotifyEndpointsCanProvideTheSession() {
+        SpotifyWebSession.capture("https://gew4-spclient.spotify.com/a",headers,1000)
+        assertNotNull(SpotifyWebSession.current(1001))
+    }
+    @Test fun regionalLookalikesCannotProvideTheSession() {
+        SpotifyWebSession.capture("https://gew4-spclient.spotify.com.evil.test/a",headers,1000)
+        assertNull(SpotifyWebSession.current(1001))
+    }
     @Test fun arbitraryHostsAndPlainHttpCannotSetIdentity() {
         for (url in listOf("http://spclient.wg.spotify.com/a","https://spclient.wg.spotify.com.evil.test/a","https://evil.test/a")) {
             SpotifyWebSession.capture(url,headers,1000)

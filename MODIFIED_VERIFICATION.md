@@ -1,30 +1,23 @@
-# Build 76 checks and device limits
+# Build 77 verification
 
-## Passed before publication
+## Required before publication
 
-[GitHub Actions run 39879466038](https://github.com/rare621/USpot/actions/runs/39879466038), source commit `135614b4d9a66c2d47882df1b091ad220066bd53`:
+GitHub Actions must assemble the Android APK, pass app and Spotify-module unit tests, pass simulated browser checks, and verify the production certificate, application ID and versionCode 77. The release is published only after its files are uploaded.
 
-- APK assembly, app unit tests, Spotify-module unit tests and simulated browser checks passed.
-- Production signing certificate, APK v2 signature, application ID `com.music.spotui.modified` and versionCode 76 verified.
-- Release published after all files were uploaded.
+## Changes and meaningful checks
 
-## Checks and limits
+- Playlist library mutations read a revisioned rootlist, change only the requested playlist URI references, and read back membership before confirming success. They never send a contents-delete request to the playlist itself. Tests cover preserving folder references, no duplicate save, save/unfollow, unconfirmed results, changed pagination revisions, wrong URI types, and HTTP 429 cooldown without write retries.
+- Playlist creation returns its real Spotify ID separately from saving it to the library. Android and browser callers persist that ID before trying the save. Failed save retries never create another playlist. Durable account-scoped records are distinct from the replaceable library snapshot and included in backup exports.
+- Ledger tests cover restart serialization, remote omission, account separation, remote metadata confirmation, ID collisions and explicit removal.
+- The existing signed-in WebView can supply session headers from regional Spotify endpoints. The first write waits briefly for the session; it never fabricates client credentials.
+- Fresh-process update checks revalidate GitHub releases even if the preceding process checked less than an hour ago. Warm resumes are throttled. Existing GitHub backoff and download/signature verification remain. Tests cover cold starts, warm resumes and clock rollback.
 
+No live Spotify account or Android device is available here. Rootlist protocol behavior, account write access, process-restart UI, real streaming and installer prompts still require device confirmation. Retaining a playlist record is not proof of Spotify library synchronization; pending state is shown explicitly. Legacy IDs can be recovered only where the earlier app retained their generated-cover metadata and Spotify confirms ownership.
 
-The release workflow must compile the Android app, pass app and Spotify-module unit tests, pass simulated browser checks and verify the existing production signing certificate, package and build before publication.
+## Primary references inspected
 
-Playlist contract tests check the Web Player changes endpoint for additions, real Spotify track URIs, one request on HTTP 429 and rejection of embedded errors. Removal retains the app's original GraphQL path; tests check specific occurrence UIDs and refuse missing UIDs or URI-only fallback. Library mutations use the currently observed Web Player document hash with the former hash retained as an explicit fallback.
+- https://github.com/mirrorfm/spotify-private-api/blob/main/app/app.go — rootlist read/change endpoint and baseRevision envelope.
+- https://github.com/librespot-org/librespot/blob/dev/protocol/proto/playlist4_external.proto — ADD/REM reference operations and list schema.
+- https://github.com/imoonkey/openweb/blob/main/src/sites/spotify/adapters/spotify-pathfinder.ts — observed Web Player creation request and session headers.
 
-New screens reuse the existing Spotify authentication, repositories, player, download controls and song menu. Playlists can only be edited when the current account owns them. Library removal unfollows a playlist; it does not delete playlist contents.
-
-No live Spotify-account mutation or physical audio-route/installer test is available in this environment. Bluetooth names, available routes and output controls depend on Android and the manufacturer. Android 14+ can open the system output switcher; older devices use supported routing or Bluetooth settings. Actual account sync and device switching must be confirmed on a device.
-
-Desktop browser checks simulate the phone and audio. Real streaming, car controls, background survival and Wi-Fi playback require device testing.
-
-## Primary protocol references inspected
-
-- Spotify Web Player adapter and captured requests: https://github.com/imoonkey/openweb/blob/main/src/sites/spotify/adapters/spotify-pathfinder.ts
-- Android MediaRouter2: https://developer.android.com/reference/android/media/MediaRouter2
-- Android legacy MediaRouter: https://developer.android.com/reference/android/media/MediaRouter
-
-Existing licenses and attribution notices remain with their source. No upstream source file was copied into this project.
+The new implementation was written for this project; no upstream source file was copied. Existing licenses and attribution remain.

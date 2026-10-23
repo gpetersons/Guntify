@@ -36,6 +36,7 @@ object ProfileCache {
                 if (SpotifyTokenProvider.ensureToken(context)) {
                     Spotify.me().onSuccess { user ->
                         if (cookie != SpotifySession.spDc(context)) return@onSuccess
+                        com.music.spotui.data.preferences.CreatedPlaylists.bind(context, user.id)
                         name = user.displayName ?: user.id
                         imageUrl = user.images.firstOrNull()?.url
                     }
