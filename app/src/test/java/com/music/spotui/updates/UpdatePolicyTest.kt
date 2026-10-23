@@ -14,7 +14,7 @@ class UpdatePolicyTest {
             .put("browser_download_url", "https://github.com/gpetersons/Guntify/releases/download/v1.1-build-$code/Guntify.apk")))
     @Test fun sameDisplayVersionCanHaveNewerBuild() { val r=UpdatePolicy.parse(release().toString())!!;assertEquals(76L,r.code);assertEquals("1.1",r.version) }
     @Test fun buildNumbersAreNumeric() { assertEquals(100L,UpdatePolicy.parse(release(100).toString())!!.code) }
-    @Test fun draftsAndPrereleasesAreNeverOffered() {
+    @Test fun draftsAndMislabeledPrereleasesAreNeverOffered() {
         assertNull(UpdatePolicy.parse(release().put("draft",true).toString()))
         assertNull(UpdatePolicy.parse(release().put("prerelease",true).toString()))
     }
@@ -30,4 +30,38 @@ class UpdatePolicyTest {
     @Test fun differentPackageOrKeyIsRejected() { assertFalse(UpdatePolicy.compatible("app","preview",75,76,76,setOf("key"),setOf("key")));assertFalse(UpdatePolicy.compatible("app","app",75,76,76,setOf("key"),setOf("other"))) }
     @Test fun oldOrMislabeledApkIsRejected() { assertFalse(UpdatePolicy.compatible("app","app",75,75,75,setOf("key"),setOf("key")));assertFalse(UpdatePolicy.compatible("app","app",75,76,77,setOf("key"),setOf("key"))) }
     @Test fun missingCertificatesNeverPass() { assertFalse(UpdatePolicy.compatible("app","app",75,76,76,emptySet(),emptySet())) }
+    private fun beta(code: Int = 4): JSONObject = release(code).apply {
+        val tag = "v1.0.0-beta.$code"
+        put("tag_name", tag)
+        put("html_url", "https://github.com/gpetersons/Guntify/releases/tag/$tag")
+        put("prerelease", true)
+        getJSONArray("assets").getJSONObject(0).apply {
+            put("name", "SprotiFy.apk")
+            put("browser_download_url", "https://github.com/gpetersons/Guntify/releases/download/$tag/SprotiFy.apk")
+        }
+    }
+
+    @Test fun betaFourIsSupported() {
+        val r = UpdatePolicy.parse(beta().toString())!!
+        assertEquals(4L, r.code)
+        assertEquals("1.0.0-beta.4", r.version)
+        assertTrue(r.apk.endsWith("/SprotiFy.apk"))
+    }
+    @Test fun betaMustBeMarkedPrerelease() {
+        assertNull(UpdatePolicy.parse(beta().put("prerelease", false).toString()))
+    }
+    @Test fun releaseListPicksHighestVersionCode() {
+        val listed = JSONArray().put(beta(3)).put(release(2)).put(beta(4))
+        assertEquals(4L, UpdatePolicy.parse(listed.toString())!!.code)
+    }
+    @Test fun malformedListedReleaseDoesNotBlockValidBeta() {
+        val listed = JSONArray().put(JSONObject().put("tag_name", "unknown")).put(beta(4))
+        assertEquals(4L, UpdatePolicy.parse(listed.toString())!!.code)
+    }
+    @Test fun duplicateApksAreRejectedForBeta() {
+        val r = beta()
+        r.getJSONArray("assets").put(r.getJSONArray("assets").getJSONObject(0))
+        rejected(r)
+    }
+
 }
