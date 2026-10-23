@@ -3,13 +3,14 @@
 </p>
 <h1 align="center">ŠprotiFy</h1>
 <p align="center">🎶 Your favorites. Your discoveries. Your kind of radio.</p>
-<p align="center"><strong><a href="https://github.com/gpetersons/Guntify/releases/download/v1.0.0-beta.2/Guntify.apk">⬇️ Download the latest signed Android beta (v1.0.0-beta.2)</a></strong> · <a href="https://github.com/gpetersons/Guntify/releases">All releases</a></p>
+<p align="center"><strong><a href="https://github.com/gpetersons/Guntify/releases/download/v1.0.0-beta.4/SprotiFy.apk">⬇️ Download ŠprotiFy Beta 4 (signed Android APK)</a></strong> · <a href="https://github.com/gpetersons/Guntify/releases">All releases</a></p>
 
-> **Branding update in progress:** ŠprotiFy is the new name of Guntify. The latest published, signed Beta 2 APK still displays **Guntify**. The ŠprotiFy name and sardine icon are prepared in [PR #7](https://github.com/gpetersons/Guntify/pull/7) and are **not yet included in that download**.
+> **Upgrading from Guntify?** ŠprotiFy uses the same Android package ID and signing key. Install Beta 4 over your existing app to keep data. Do not uninstall first. Earlier beta versions cannot discover prerelease updates correctly, so this first upgrade requires a manual download from the link above.
 
 ŠprotiFy is a music player that gets to know what you love. Find songs, keep your favorites together, and make your own radio stations. 🎧
 
-**Android 8.0 or newer**
+**Android 8.0 or newer**  
+**Latest version:** 1.0.0-beta.4 (build 4)
 
 ## 🚀 Start listening
 
@@ -21,7 +22,7 @@
 
 **For USpot users:** This is a separate app from USpot. Local data does not transfer automatically. Keep USpot installed until you have verified what you need.
 
-Check for future releases under **Settings → Updates** or on the [Releases page](https://github.com/gpetersons/Guntify/releases). The new ŠprotiFy APK has not been published yet.
+Check for future releases under **Settings → Updates** or on the [Releases page](https://github.com/gpetersons/Guntify/releases). The signed ŠprotiFy Beta 4 APK is published through GitHub Releases.
 
 ## 📸 Take a look around
 
@@ -83,4 +84,4 @@ Thanks also to Meld, Neptune, SpotiFLAC, SimpMusic and the other projects credit
 
 ŠprotiFy is an independent fork of USpot, originally based on Spotui. It is not affiliated with Spotify or YouTube. Available music and account features depend on those services.
 
-[License](LICENSE) · [Credits](NOTICE) · [Beta 2 source archive](https://github.com/gpetersons/Guntify/releases/download/v1.0.0-beta.2/Guntify-source.zip) · [Current development source](https://github.com/gpetersons/Guntify/tree/branding/sprotify-name-icon)
+[License](LICENSE) · [Credits](NOTICE) · [Beta 4 source archive](https://github.com/gpetersons/Guntify/releases/download/v1.0.0-beta.4/SprotiFy-source.zip) · [Current development source](https://github.com/gpetersons/Guntify)

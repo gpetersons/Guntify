@@ -15,12 +15,11 @@ android {
 
     defaultConfig {
         applicationId = "lv.guntify.player"
-        manifestPlaceholders["guntifyAppLabel"] = "Guntify"
-        minSdk = 26
+                minSdk = 26
         targetSdk = 34
         // Increment for every signed Guntify release to support in-place updates.
-        versionCode = 3
-        versionName = "1.0.0-beta.3"
+        versionCode = 4
+        versionName = "1.0.0-beta.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
