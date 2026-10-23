@@ -15,7 +15,7 @@ android {
 
     defaultConfig {
         applicationId = "lv.guntify.player"
-        manifestPlaceholders["guntifyAppLabel"] = "ŠprotiFy"
+        manifestPlaceholders["guntifyAppLabel"] = "Guntify"
         minSdk = 26
         targetSdk = 34
         // Increment for every signed Guntify release to support in-place updates.
