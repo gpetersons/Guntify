@@ -1288,7 +1288,7 @@ function renderCollection(data) {
       "span",
       "eyebrow",
       item.type === "radio"
-        ? "USPOT RADIO • CONTINUOUS RECOMMENDATIONS"
+        ? "GUNTIFY RADIO • CONTINUOUS RECOMMENDATIONS"
         : item.type.toUpperCase(),
     ),
     el("h1", "", item.title),
