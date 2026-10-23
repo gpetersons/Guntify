@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,6 +20,7 @@ import javax.inject.Inject
 class PlaylistViewModel @Inject constructor(
     private val repository: AppRepository,
     private val currentSongState: CurrentSongState,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
 ) : ViewModel() {
 
     val currentSongPlayingState: State<Boolean> get() = currentSongState.playingState
@@ -68,14 +70,30 @@ class PlaylistViewModel @Inject constructor(
     }
 
     private var playlistKey: String? = null
+    private var songsJob: kotlinx.coroutines.Job? = null
+    private var metadataJob: kotlinx.coroutines.Job? = null
+    private var permissionJob: kotlinx.coroutines.Job? = null
+    private val _canEdit = MutableStateFlow(false)
+    val canEdit = _canEdit.asStateFlow()
+    fun refreshPlaylist(id: String) { playlistKey = null; loadPlaylist(id) }
+
 
     fun loadPlaylist(playlistId: String) {
         if (playlistKey == playlistId) return
+        songsJob?.cancel(); metadataJob?.cancel(); permissionJob?.cancel()
         playlistKey = playlistId
-        viewModelScope.launch(Dispatchers.IO) {
+        _canEdit.value = false
+        permissionJob = viewModelScope.launch(Dispatchers.IO) {
+            if (com.music.spotui.data.api.SpotifyTokenProvider.ensureToken(context)) {
+                val owner = com.metrolist.spotify.Spotify.playlist(playlistId).getOrNull()?.owner?.id
+                val me = com.metrolist.spotify.Spotify.me().getOrNull()?.id
+                if (playlistKey == playlistId) _canEdit.value = !owner.isNullOrBlank() && owner == me
+            }
+        }
+        metadataJob = viewModelScope.launch(Dispatchers.IO) {
             repository.providePlaylist(playlistId).collect { _playlist.value = it }
         }
-        viewModelScope.launch(Dispatchers.IO) {
+        songsJob = viewModelScope.launch(Dispatchers.IO) {
             repository.providePlaylistSongs(playlistId).collect { _songs.value = it }
         }
     }

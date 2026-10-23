@@ -42,13 +42,13 @@ object SpotifyHashProvider {
             "removeFromPlaylist" to "b907ad6b088d5bf7680fa81198996d58398c2d55dfcdf59fcc959e0be98a418a",
             "moveItemsInPlaylist" to "b907ad6b088d5bf7680fa81198996d58398c2d55dfcdf59fcc959e0be98a418a",
             "editPlaylistAttributes" to "35a1a9ce3a2f4f8c32ee0e24c63c2069c6613c0a0b7e56d0e40dabe69a0b4f80",
-            "addToLibrary" to "896ebcb47815681340860d121cb5d494e157e2a78d3950385cd54e0393c67148",
-            "removeFromLibrary" to "896ebcb47815681340860d121cb5d494e157e2a78d3950385cd54e0393c67148",
+            "addToLibrary" to "7c5a69420e2bfae3da5cc4e14cbc8bb3f6090f80afc00ffc179177f19be3f33d",
+            "removeFromLibrary" to "7c5a69420e2bfae3da5cc4e14cbc8bb3f6090f80afc00ffc179177f19be3f33d",
             "home" to "23e37f2e58d82d567f27080101d36609009d8c3676457b1086cb0acc55b72a5d",
             "internalLinkRecommenderTrack" to "eda0a1e9140af4114340bf3098980172dfd1003b65cfc980c36ab238dbfcef84",
         )
         defaults.forEach { (op, hash) ->
-            hashes[op] = GqlHashEntry(hash = hash, source = HashSource.HARDCODED)
+            hashes[op] = GqlHashEntry(hash = hash, previousHash = if (op in setOf("addToLibrary", "removeFromLibrary")) "896ebcb47815681340860d121cb5d494e157e2a78d3950385cd54e0393c67148" else null, source = HashSource.HARDCODED)
         }
     }
 

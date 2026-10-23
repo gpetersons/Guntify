@@ -162,6 +162,7 @@ fun ShowScreen(navController: NavController, showId: String, showName: String = 
                     )
                     Text(ep.singer, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, maxLines = 1)
                 }
+                com.music.spotui.ui.components.SongOverflowButton(ep.title) { menuSong = ep }
             }
         }
         item { Spacer(Modifier.height(130.dp)) }

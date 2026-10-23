@@ -454,6 +454,7 @@ fun SumUpAlbumScreen(
                             }
                         }
 
+                        com.music.spotui.ui.components.SongOverflowButton(albumSongs[song].title) { menuSong = albumSongs[song] }
                         Icon(
                             modifier = Modifier
                                 .size(20.dp)

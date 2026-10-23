@@ -76,6 +76,11 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
     val playlistViewModel: PlaylistViewModel = hiltViewModel()
     val songsResp by playlistViewModel.songs.collectAsState()
     val playlistResp by playlistViewModel.playlist.collectAsState()
+    val canEdit by playlistViewModel.canEdit.collectAsState()
+    var editing by remember(playlistId) { mutableStateOf(false) }
+    var removeFromPlaylist by remember(playlistId) { mutableStateOf<com.music.spotui.data.entity.SongsModel?>(null) }
+    if (editing) com.music.spotui.ui.components.PlaylistEditorSheet(playlistId, playlistName, navController, initialRemove = removeFromPlaylist,
+        onChanged = { playlistViewModel.refreshPlaylist(playlistId) }, onDismiss = { editing = false; removeFromPlaylist = null; playlistViewModel.refreshPlaylist(playlistId) })
     val context = LocalContext.current
 
     LaunchedEffect(playlistId) {
@@ -102,6 +107,7 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
             navController = navController,
             context = context,
             onDismiss = { menuSong = null },
+            onRemoveFromPlaylist = if (canEdit) ({ removeFromPlaylist = sel; menuSong = null; editing = true }) else null,
         )
     }
 
@@ -230,6 +236,8 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                                 .heightIn(min = 56.dp)
                                 .padding(20.dp, 0.dp)
                         ) {
+                            androidx.compose.material3.TextButton(onClick = { editing = true }) { Text("Edit", color = com.music.spotui.ui.theme.AppText) }
+                            Spacer(Modifier.weight(1f))
                             // Download the whole playlist (all tracks) for offline playback.
                             var askDownloadAll by remember { mutableStateOf(false) }
                             val playlistDownloaded = com.music.spotui.ui.components.rememberCollectionDownloaded(songs, context)
@@ -364,6 +372,7 @@ fun PlaylistScreen(navController: NavController, playlistId: String, playlistNam
                                 maxLines = 1
                             )
                         }
+                        com.music.spotui.ui.components.SongOverflowButton(song.title) { menuSong = song }
                     }
                     }
                 }

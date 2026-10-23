@@ -117,6 +117,8 @@ object SpotifySync {
     // check marks without re-fetching on every open.
     private val membershipCache = ConcurrentHashMap<String, MutableSet<String>>()
 
+    fun invalidatePlaylist(playlistId: String) { membershipCache.remove(playlistId) }
+
     /** Track ids contained in [playlistId] (first call fetches, then cached). */
     suspend fun playlistTrackIds(context: Context, playlistId: String): Set<String> {
         membershipCache[playlistId]?.let { return it }

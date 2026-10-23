@@ -480,6 +480,7 @@ private fun PopularTrackRow(
                 Text(text = grouped(it), color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, maxLines = 1)
             } ?: Text(text = song.singer, color = com.music.spotui.ui.theme.AppSecondary, fontSize = 12.sp, maxLines = 1)
         }
+        if (onLongClick != null) com.music.spotui.ui.components.SongOverflowButton(song.title) { onLongClick() }
         Icon(
             painter = if (isLiked) painterResource(id = R.drawable.added) else painterResource(id = R.drawable.ic_add),
             contentDescription = "",

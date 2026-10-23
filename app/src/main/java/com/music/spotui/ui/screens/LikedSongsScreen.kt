@@ -285,6 +285,7 @@ fun LikedSongsScreen(navController: NavController) {
                                 maxLines = 1
                             )
                         }
+                        com.music.spotui.ui.components.SongOverflowButton(song.title) { menuSong = song }
                     }
                     }
                 }

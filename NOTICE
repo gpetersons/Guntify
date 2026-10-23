@@ -1,5 +1,5 @@
 USpot — modified version of Spotui
-Display version: 1.1; internal build: 75
+Display version: 1.1; internal build: 76
 Modification notice date: October 23, 2026
 
 Original project: Spotui, by its authors and contributors
@@ -14,8 +14,8 @@ Modifications include local listening-based Home recommendations and history,
 continuous Radio and Radio Mix queues, Following and Stats, Library/search UI,
 equalizer controls, backup, downloads, playback preparation/recovery, Android
 Auto browsing and voice requests, branding and build/release packaging.
-This build adds GitHub release update checks and Android-confirmed installation,
-and reuses the authenticated Web Player client session for Spotify writes.
+This build refreshes Spotify library writes, adds playlist song editing and
+library song selection, visible song menus and an audio output chooser.
 Features are subject to the validation limits in MODIFIED_VERIFICATION.md.
 
 This program is distributed WITHOUT ANY WARRANTY; without even the implied

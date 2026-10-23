@@ -1,21 +1,28 @@
-# 🎶 USpot 1.1 · build 75
+# 🎶 More ways to make it yours · USpot build 76
 
-## ⬆️ Updates, right inside USpot
+## 📚 Build your perfect playlist
 
-- A new release? USpot offers **Install** or **Cancel** when you open or return to the app (checks at most once an hour).
-- Open **Settings → Updates** anytime to check manually, see the available build and install it.
-- Cancel dismisses that release until you check manually or a newer release arrives.
-- Downloads show progress and verify the release checksum, package, build number and signing certificate before opening Android's installer.
-- Android may ask you to allow installs from USpot once. Installation always needs your confirmation.
+- Choose songs from **Liked Songs**, your **other playlists**, **Spotify search**, or **recommendations** when creating a playlist.
+- Pick several songs together, then add them in one go.
+- Open a playlist and tap **Edit** to add songs or remove individual entries from playlists you own.
+- Playlist controls keep the familiar Play, Shuffle and Download buttons.
 
-Install **USpot.apk** over your existing regular USpot. Keep the app installed to retain its data. This build adds the updater; automatic prompts begin with later releases. 💚
+## ⋮ Your song menu, one tap away
 
-## 🎵 Spotify library connections
+Three-dot buttons on playlist, Liked Songs, album, search and artist rows open the same menu as holding a song. Removing a song from a playlist leaves your Liked Songs alone.
 
-Spotify writes now reuse the connected Web Player's client-session header when available, and a fresh Spotify sign-in refreshes that session. Removing a playlist continues to remove it from your library without deleting its tracks. Account operations still need testing with your Spotify account; this is not a guarantee that every Spotify rejection is resolved.
+## 🎧 Choose where you listen
 
-## 🖥️ Desktop & Browser
+The player shows the selected audio output. Tap it to see connected speakers and headphones or open your phone's device controls. The device, share and queue buttons sit higher with more breathing room above the bottom edge.
 
-Included in this same app: **Settings → Desktop & Browser**. The browser About page now displays the connected app's build number.
+## 🔧 Spotify playlist tune-up
 
-Matching source and license notices are included below. Thank you to [Spotui's creators and contributors](https://github.com/Spotui/Spotui) for the open-source foundation. 🎧
+Updated saving and removal requests. If a newly created playlist needs another attempt to appear in your Spotify library, you can retry saving that playlist without creating a duplicate. Removing a playlist from Library unfollows it; it doesn't delete its songs.
+
+The GitHub homepage is simpler and easier to browse, too. 💚
+
+Install **USpot.apk** over your current app. Keep USpot installed to retain your history and settings. Android asks you to confirm installation. Matching source and license notices are included.
+
+Spotify account changes and audio-device switching depend on your account and phone. They still need real-device testing; automated checks cannot confirm every setup.
+
+Thank you to [Spotui's creators and contributors](https://github.com/Spotui/Spotui) for the foundation. 🎧

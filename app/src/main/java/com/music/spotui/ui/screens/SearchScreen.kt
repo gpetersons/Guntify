@@ -502,6 +502,7 @@ fun SearchSongRow(
             }
         }
 
+        if (onLongClick != null) com.music.spotui.ui.components.SongOverflowButton(song.title) { onLongClick() }
         Icon(
             modifier = Modifier
                 .size(20.dp)

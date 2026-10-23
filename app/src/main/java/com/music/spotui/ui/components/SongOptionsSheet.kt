@@ -79,6 +79,7 @@ fun SongOptionsSheet(
     song: SongsModel,
     navController: NavController,
     context: Context,
+    onRemoveFromPlaylist: (() -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
     val playerViewModel: com.music.spotui.ui.viewmodel.PlayerViewModel =
@@ -138,6 +139,7 @@ fun SongOptionsSheet(
             }
             HorizontalDivider(color = com.music.spotui.ui.theme.AppRaised)
 
+            if (onRemoveFromPlaylist != null) SongMenuRow(null, "Remove from this playlist") { onRemoveFromPlaylist() }
             SongMenuRow(Icons.Default.PlayArrow, "Start Radio") {
                 playerViewModel.startRadioFromSong(song, context)
                 onDismiss()

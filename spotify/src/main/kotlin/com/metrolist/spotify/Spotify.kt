@@ -990,40 +990,9 @@ object Spotify {
      * @param playlistId Playlist ID (without the `spotify:playlist:` prefix).
      * @param trackUris Full Spotify URIs, e.g. `["spotify:track:abc123"]`.
      */
-    suspend fun addTracksToPlaylist(
-        playlistId: String,
-        trackUris: List<String>,
-    ): Result<Unit> =
-        runCatching {
-            val vars = buildJsonObject {
-                put("playlistUri", "spotify:playlist:$playlistId")
-                putJsonArray("playlistItemUris") {
-                    trackUris.forEach { add(it) }
-                }
-                putJsonObject("newPosition") {
-                    put("moveType", "BOTTOM_OF_PLAYLIST")
-                    put("fromUid", JsonNull)
-                }
-            }
-            log("D", "addTracksToPlaylist: sending mutation for $playlistId with ${trackUris.size} tracks, vars=$vars")
-            kotlinx.coroutines.withTimeout(20_000L) {
-                graphqlPost(
-                    operationName = "addToPlaylist",
-                    variables = vars,
-                )
-            }
-            log("D", "addTracksToPlaylist: added ${trackUris.size} tracks to $playlistId")
-        }.recoverCatching { error ->
-            if (error !is SpotifyException || error.statusCode !in listOf(400, 403, 404, 405, 412)) throw error
-            val token = accessToken ?: throw SpotifyException(401, "Not authenticated")
-            val body = buildJsonObject { putJsonArray("uris") { trackUris.forEach { add(it) } } }
-            val response = restClient.post("playlists/$playlistId/items") {
-                header("Authorization", "Bearer $token")
-                setBody(TextContent(body.toString(), ContentType.Application.Json))
-            }
-            if (response.status.value !in 200..299) throw SpotifyException(response.status.value, "Adding songs failed (HTTP ${response.status.value})")
-            Unit
-        }
+    suspend fun addTracksToPlaylist(playlistId: String, trackUris: List<String>): Result<Unit> = runCatching {
+        PlaylistChanges(gqlClient).add(playlistId, trackUris, accessToken ?: throw SpotifyException(401, "Not authenticated"))
+    }
 
     /** Uploads a JPEG cover using Spotify's supported image endpoint. */
     suspend fun uploadPlaylistCover(playlistId: String, base64Jpeg: String): Result<Unit> = runCatching {
@@ -1084,23 +1053,9 @@ object Spotify {
      * Requires the playlist-scoped [uid] for each item
      * (returned by fetchPlaylist in each content item).
      */
-    suspend fun removeTracksFromPlaylist(
-        playlistId: String,
-        items: List<PlaylistItemRef>,
-    ): Result<Unit> =
-        runCatching {
-            val vars = buildJsonObject {
-                put("playlistUri", "spotify:playlist:$playlistId")
-                putJsonArray("uids") {
-                    items.forEach { item -> add(item.uid) }
-                }
-            }
-            graphqlPost(
-                operationName = "removeFromPlaylist",
-                variables = vars,
-            )
-            log("D", "removeTracksFromPlaylist: removed ${items.size} items from $playlistId")
-        }
+    suspend fun removeTracksFromPlaylist(playlistId: String, items: List<PlaylistItemRef>): Result<Unit> = runCatching {
+        PlaylistChanges(gqlClient).remove(playlistId, items, accessToken ?: throw SpotifyException(401, "Not authenticated"))
+    }
 
     /**
      * Moves items within a Spotify playlist via GQL mutation.

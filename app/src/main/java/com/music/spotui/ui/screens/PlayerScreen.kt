@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -331,7 +332,7 @@ fun PlayerScreen(navController: NavController) {
         androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding(),
+                .statusBarsPadding().navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
         item {
@@ -339,7 +340,7 @@ fun PlayerScreen(navController: NavController) {
             verticalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier
                 .fillParentMaxHeight()
-                .fillMaxWidth(),
+                .fillMaxWidth().padding(bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             PlayerTopBar(
@@ -975,29 +976,6 @@ fun PlayerFull(
     }
 }
 
-/** The current audio output route name for the Connect indicator (BT name if
- *  connected, else Headphones / This device). Uses AudioDeviceInfo.productName
- *  which needs no Bluetooth permission. */
-private fun currentAudioRoute(context: Context): String {
-    return try {
-        val am = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-        val outs = am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
-        val bt = outs.firstOrNull {
-            it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
-                it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO
-        }
-        if (bt != null) return bt.productName?.toString()?.takeIf { it.isNotBlank() } ?: "Bluetooth"
-        val wired = outs.firstOrNull {
-            it.type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
-                it.type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                it.type == android.media.AudioDeviceInfo.TYPE_USB_HEADSET
-        }
-        if (wired != null) "Headphones" else "This device"
-    } catch (e: Exception) {
-        "This device"
-    }
-}
-
 @Composable
 fun PlayerConnectRow(
     navController: NavController,
@@ -1005,7 +983,11 @@ fun PlayerConnectRow(
     currentTrack: SongsModel?,
     onOpenQueue: () -> Unit = { navController.navigate(Routes.Queue.route) },
 ) {
-    val routeName = remember(currentTrack?.id) { currentAudioRoute(context) }
+    val (audioOutputs, outputs) = com.music.spotui.ui.components.rememberAudioOutputs(context)
+    val selected = outputs.firstOrNull { it.selected }
+    val routeName = selected?.name ?: "Phone speaker"
+    var showOutputs by remember { mutableStateOf(false) }
+    if (showOutputs) com.music.spotui.ui.components.AudioOutputSheet(audioOutputs, outputs) { showOutputs = false }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1014,7 +996,9 @@ fun PlayerConnectRow(
             .padding(horizontal = 25.dp, vertical = 4.dp),
     ) {
         // Device / Spotify Connect indicator (green, like the official app).
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.weight(1f).heightIn(min = 48.dp).clickable(
+            interactionSource = remember { MutableInteractionSource() }, indication = null
+        ) { showOutputs = true }, verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_devices),
                 tint = Color(0xFF1ED760),
@@ -1034,39 +1018,15 @@ fun PlayerConnectRow(
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_share),
-                tint = com.music.spotui.ui.theme.PlayerText,
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) {
-                        val link = currentTrack?.spotifyTrackId
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { "https://open.spotify.com/track/$it" }
-                            ?: "${currentTrack?.title ?: ""} ${currentTrack?.singer ?: ""}".trim()
-                        val send = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, link)
-                        }
-                        context.startActivity(Intent.createChooser(send, "Share"))
-                    },
-                contentDescription = "Share",
-            )
-            Spacer(modifier = Modifier.width(22.dp))
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.List,
-                tint = com.music.spotui.ui.theme.PlayerText,
-                modifier = Modifier
-                    .size(23.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) { onOpenQueue() },
-                contentDescription = "Queue",
-            )
+            androidx.compose.material3.IconButton(onClick = {
+                val link = currentTrack?.spotifyTrackId?.takeIf { it.isNotBlank() }?.let { "https://open.spotify.com/track/$it" }
+                    ?: "${currentTrack?.title.orEmpty()} ${currentTrack?.singer.orEmpty()}".trim()
+                val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, link) }
+                context.startActivity(Intent.createChooser(send, "Share"))
+            }) { Icon(painter=painterResource(R.drawable.ic_share),contentDescription="Share",tint=com.music.spotui.ui.theme.PlayerText,modifier=Modifier.size(22.dp)) }
+            androidx.compose.material3.IconButton(onClick = onOpenQueue) {
+                Icon(imageVector=Icons.AutoMirrored.Filled.List,contentDescription="Queue",tint=com.music.spotui.ui.theme.PlayerText,modifier=Modifier.size(24.dp))
+            }
         }
     }
 }

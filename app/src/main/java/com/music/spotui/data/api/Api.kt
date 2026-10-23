@@ -826,7 +826,7 @@ class Api @Inject constructor(
         var loaded = false
         fetchAllPages(onPage = { items, _ ->
             loaded = true
-            emit(Response.Success(items.mapNotNull { it.track?.toSongModel() }))
+            emit(Response.Success(items.mapNotNull { it.track?.toSongModel()?.copy(playlistItemUid = it.uid.orEmpty()) }))
         }) { offset -> Spotify.playlistTracks(playlistId, limit = 100, offset = offset) }
         if (!loaded) emit(Response.Error("Couldn't load this playlist"))
     }

@@ -24,6 +24,7 @@ class LibraryViewModel @Inject constructor(
     @ApplicationContext private val context: android.content.Context,
 ) : ViewModel() {
 
+    private var recommendationJob: kotlinx.coroutines.Job? = null
     private var libraryLoadJob: kotlinx.coroutines.Job? = null
 
     private val _entries: MutableStateFlow<Response<List<LibraryEntry>>> = MutableStateFlow(Response.Loading())
@@ -63,7 +64,7 @@ class LibraryViewModel @Inject constructor(
     val added: StateFlow<List<com.music.spotui.data.entity.SongsModel>> = _added
 
     fun clearMessage() { _message.value = "" }
-    fun finishCreation() { if (!_busy.value) { _created.value = null; _added.value = emptyList(); _suggestions.value = emptyList() } }
+    fun finishCreation() { if (!_busy.value) { recommendationJob?.cancel(); _created.value = null; _added.value = emptyList(); _suggestions.value = emptyList() } }
     fun remove(entry: LibraryEntry) {
         if (_busy.value || entry.spotifyId in listOf(com.music.spotui.data.api.Api.LIKED_SONGS_ID, com.music.spotui.data.api.Api.DOWNLOADS_ID)) return
         _actionError.value = ""
@@ -113,6 +114,8 @@ class LibraryViewModel @Inject constructor(
                 _entries.value = Response.Success(merged)
                 com.music.spotui.data.api.Api.HomeCache.library = merged
                 cacheLibraryEntries(context, merged)
+                recommendationJob = viewModelScope.launch {
+                try {
                 _suggestions.value = kotlinx.coroutines.withContext(Dispatchers.IO) {
                     val history = com.music.spotui.data.preferences.getListeningHistory(context)
                         .filter { it.source != "spotify" && com.music.spotui.audio.ListeningQualification.qualifies(it.listenedMs) && it.spotifyTrackId.isNotBlank() }
@@ -127,10 +130,26 @@ class LibraryViewModel @Inject constructor(
                     (0 until maxOf(local.size, spotify.size)).flatMap { i -> listOfNotNull(local.getOrNull(i), spotify.getOrNull(i)) }
                         .plus(spotifySongs).filter { it.spotifyTrackId.isNotBlank() }.distinctBy { it.spotifyTrackId }.take(20)
                 }
+                } catch(c: kotlinx.coroutines.CancellationException) { throw c } catch(_: Exception) { _suggestions.value = emptyList() }
+                }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e
             } catch (e: Exception) {
                 if (_created.value != null) _message.value = "Playlist created, but recommendations could not load. Open it to add songs."
                 else _actionError.value = com.music.spotui.data.api.SpotifyMutations.describe(e)
+            } finally { _busy.value = false }
+        }
+    }
+    fun saveCreated() {
+        val p = _created.value ?: return
+        if (_busy.value) return
+        _busy.value = true
+        viewModelScope.launch {
+            try {
+                val result = kotlinx.coroutines.withContext(Dispatchers.IO) { com.music.spotui.data.api.SpotifyMutations.run(context) {
+                    com.metrolist.spotify.Spotify.addToLibrary(listOf("spotify:playlist:${p.id}"))
+                } }
+                if (result.isSuccess) { _created.value = p.copy(libraryWarning = null); _message.value = "Saved to your Spotify library"; _actionError.value = "" }
+                else _actionError.value = com.music.spotui.data.api.SpotifyMutations.describe(result.exceptionOrNull())
             } finally { _busy.value = false }
         }
     }

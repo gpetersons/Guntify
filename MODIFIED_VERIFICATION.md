@@ -1,23 +1,19 @@
-# Build 75 validation and limits
+# Build 76 checks and device limits
 
-## Passed on GitHub Actions
+The release workflow must compile the Android app, pass app and Spotify-module unit tests, pass simulated browser checks and verify the existing production signing certificate, package and build before publication.
 
-[Build run](https://github.com/rare621/USpot/actions/runs/39876036994), source commit `753104a2071efd1bce97a87a46bea0b9eb44cc41`:
+Playlist contract tests check the Web Player changes endpoint, adding real Spotify track URIs, removing a specific playlist occurrence using its UID, refusing missing UIDs, one request on HTTP 429 and rejecting error responses. Library mutations use the currently observed Web Player document hash with the former hash retained as an explicit fallback.
 
-- Android debug APK assembled successfully.
-- App unit tests and Spotify module unit tests passed.
-- Simulated browser interaction checks passed.
-- Update-policy tests cover numeric builds, stable releases, trusted repository/asset URLs, required checksums, size bounds, and package/signature compatibility.
-- Spotify Web Player session tests cover host restrictions, header validation, expiry and clearing the session.
-- Production certificate, APK v2 signature, package `com.music.spotui.modified` and versionCode 75 verified before publication.
-- Public APK and source ZIP were downloaded after publication; sizes, GitHub SHA-256 digests and ZIP integrity matched. The source ZIP contains build 75 and the updater code.
+New screens reuse the existing Spotify authentication, repositories, player, download controls and song menu. Playlists can only be edited when the current account owns them. Library removal unfollows a playlist; it does not delete playlist contents.
 
-## Device/account testing still required
+No live Spotify-account mutation or physical audio-route/installer test is available in this environment. Bluetooth names, available routes and output controls depend on Android and the manufacturer. Android 14+ can open the system output switcher; older devices use supported routing or Bluetooth settings. Actual account sync and device switching must be confirmed on a device.
 
-The Android update dialog and installer have not been exercised on a physical phone in this environment. Install build 75 once; later releases can trigger its update prompt. Android must approve installation, and may require allowing installs from USpot once.
+Desktop browser checks simulate the phone and audio. Real streaming, car controls, background survival and Wi-Fi playback require device testing.
 
-Spotify writes now reuse a client-session header captured from the connected Web Player when available. No live Spotify account creation/removal test was performed. A successful compile does not establish that every upstream rejection is resolved.
+## Primary protocol references inspected
 
-Real YouTube playback, browser audio/codecs, Wi-Fi transport, background survival, restore, Bluetooth and Android Auto still need device testing. Browser checks use simulated phone/audio behavior. Desktop & Browser remains experimental.
+- Spotify Web Player adapter and captured requests: https://github.com/imoonkey/openweb/blob/main/src/sites/spotify/adapters/spotify-pathfinder.ts
+- Android MediaRouter2: https://developer.android.com/reference/android/media/MediaRouter2
+- Android legacy MediaRouter: https://developer.android.com/reference/android/media/MediaRouter
 
-Browser listening counts locally after 30 seconds of audible time. The browser queue, volume and EQ are independent of the phone player. Refresh may be needed to see data changed on the other screen.
+Existing licenses and attribution notices remain with their source. No upstream source file was copied into this project.
