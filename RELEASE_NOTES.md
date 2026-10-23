@@ -1,21 +1,22 @@
-# Previous Beta 4 release (published as ŠprotiFy)
+# Sprotify 1.0.0 Beta 5 - final naming and repository migration
 
 ## What's new
-- The previous branding evolved toward **Sprotify**, with the approved green-and-black three-sardine icon on Android launcher, splash screen and desktop.
-- Updated visible product naming in settings, Radio labels and documentation.
-- Fixed update detection for prereleases: read published GitHub releases and select the highest supported build number, including Beta N.
-- Retains strict APK download URL, size and SHA-256 digest checks, plus installed package/signature checks.
-- Includes Android Auto Radio and personalized Home improvements from Beta 3.
+- Official product name is now **Sprotify** (without the Latvian accent) across the Android launcher, Android Auto, Radio, settings, notifications and Desktop Mode.
+- Updated logo resource paths and README to match the renamed GitHub repository: [gpetersons/Sprotify](https://github.com/gpetersons/Sprotify).
+- The in-app update checker now reads the **new GitHub repository** and continues accepting historic `Guntify.apk` and `SprotiFy.apk` asset names as well as the new `Sprotify.apk`.
+- Updated CI workflow names, attribution documents and playback diagnostics.
+- Keeps Beta 4's Radio and personalized Android Auto features and the verified-update checks.
 
 ## Installation and compatibility
-- **versionCode 4**, **versionName 1.0.0-beta.4**, **applicationId lv.guntify.player**.
-- Signed with the existing Sprotify signing key for an in-place update. **Do not uninstall** the old app; back up important data first.
-- Download **SprotiFy.apk** from this release and install it over Sprotify Beta 3. Older beta builds cannot detect prereleases correctly, so this first upgrade requires manual installation. Future compatible beta releases can be found in Sprotify's Updates screen.
-- Current repository: gpetersons/Sprotify. The published Beta 4 APK still has the old app name and the filename `SprotiFy.apk`.
+- Signed APK: **Sprotify.apk**. Source archive: **Sprotify-source.zip**.
+- Version: **1.0.0-beta.5**, **versionCode 5**, **applicationId lv.guntify.player**.
+- Uses the same signing identity as Beta 4 for a compatible update. **Install over Beta 4; do not uninstall your current app.** Back up important local data before updating.
+- A successful installation changes the displayed application name to **Sprotify**, without creating a separate Android package.
+- Older signed releases remain available under their published filenames.
 
-## Known limitations
-- Icon rendering and Android Auto changes still require real-device and in-car validation.
-- Desktop Mode security PR #5 is separate and **not included**. Use Desktop Mode only on a trusted network and never expose its port to the internet.
-- A complete independent security audit has not yet been completed.
+## Notes
+- Verify the name and sardine icon on the phone and the Android Auto display.
+- Desktop Mode should only be used on a trusted local network. Security hardening under separate PRs is not claimed as part of this release.
+- Full independent security and network audit not completed.
 
-**Thanks to [Spotui](https://github.com/Spotui/Spotui) and [USpot](https://github.com/rare621/USpot).** GPLv3 licensing and attribution notices remain.
+**Credits:** [Spotui](https://github.com/Spotui/Spotui), [USpot](https://github.com/rare621/USpot) and contributors acknowledged in [NOTICE](NOTICE). GPLv3 and upstream acknowledgements are retained.

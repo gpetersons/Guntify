@@ -3,14 +3,14 @@
 </p>
 <h1 align="center">Sprotify</h1>
 <p align="center">🎶 Your favorites. Your discoveries. Your kind of radio.</p>
-<p align="center"><strong><a href="https://github.com/gpetersons/Sprotify/releases/download/v1.0.0-beta.4/SprotiFy.apk">⬇️ Download Beta 4 (published as ŠprotiFy)</a></strong> · <a href="https://github.com/gpetersons/Sprotify/releases">All releases</a></p>
+<p align="center"><strong><a href="https://github.com/gpetersons/Sprotify/releases/download/v1.0.0-beta.5/Sprotify.apk">⬇️ Download Sprotify Beta 5 (signed Android APK)</a></strong> · <a href="https://github.com/gpetersons/Sprotify/releases">All releases</a></p>
 
-> **Naming update:** This project is now **Sprotify**. The latest published Beta 4 was built under the previous **ŠprotiFy** name, and its downloaded file is still `SprotiFy.apk`. A Sprotify-branded APK has **not** been released yet. The Android package ID (`lv.guntify.player`) and signing identity will stay the same for in-place updates. Do not uninstall the existing app just to rename it.
+> **Updating from ŠprotiFy Beta 4 or Guntify?** Sprotify Beta 5 uses the same Android package ID (`lv.guntify.player`) and signing identity. Install the signed Beta 5 APK over your current app to keep local data. **Do not uninstall first.** Previously published releases retain their original APK names; they remain available under [Releases](https://github.com/gpetersons/Sprotify/releases).
 
 Sprotify is a music player that gets to know what you love. Find songs, keep your favorites together, and make your own radio stations. 🎧
 
 **Android 8.0 or newer**  
-**Latest version:** 1.0.0-beta.4 (build 4)
+**Latest version:** 1.0.0-beta.5 (build 5)
 
 ## 🚀 Start listening
 
@@ -18,15 +18,15 @@ Sprotify is a music player that gets to know what you love. Find songs, keep you
 2. **Sign in to Spotify** to access your music and playlists.
 3. **Pick a song and press Play.** Home becomes more personal as you listen.
 
-**For existing app users:** Sprotify keeps the same Android application ID (`lv.guntify.player`). After a newer signed version is released with the same signing key and a higher version code, it can update Guntify in place. Do not uninstall Guntify just to change its name: uninstalling may delete local app data.
+**For existing app users:** Sprotify keeps the same Android application ID (`lv.guntify.player`). Install a newer signed version with a higher version code over the existing app. Do not uninstall it just to change the name: uninstalling may delete local app data.
 
 **For USpot users:** This is a separate app from USpot. Local data does not transfer automatically. Keep USpot installed until you have verified what you need.
 
-Check for future releases under **Settings → Updates** or on the [Releases page](https://github.com/gpetersons/Sprotify/releases). The existing Beta 4 release still contains the previously branded app. The next Sprotify-branded APK is not published.
+Check for future releases under **Settings → Updates** or on the [Releases page](https://github.com/gpetersons/Sprotify/releases). Beta 5 is the first Sprotify-branded signed release. Previously published Beta 4 is available under its original ŠprotiFy name.
 
 ## 📸 Take a look around
 
-*Screenshots are from previous builds and may show earlier branding. The next Sprotify build is not published yet.*
+*Screenshots are from previous builds and may show earlier branding.*
 
 <table>
   <tr>
@@ -84,4 +84,4 @@ Thanks also to Meld, Neptune, SpotiFLAC, SimpMusic and the other projects credit
 
 Sprotify is an independent fork of USpot, originally based on Spotui. It is not affiliated with Spotify or YouTube. Available music and account features depend on those services.
 
-[License](LICENSE) · [Credits](NOTICE) · [Beta 4 source archive](https://github.com/gpetersons/Sprotify/releases/download/v1.0.0-beta.4/SprotiFy-source.zip) · [Current development source](https://github.com/gpetersons/Sprotify)
+[License](LICENSE) · [Credits](NOTICE) · [Beta 5 source archive](https://github.com/gpetersons/Sprotify/releases/download/v1.0.0-beta.5/Sprotify-source.zip) · [Current development source](https://github.com/gpetersons/Sprotify)
