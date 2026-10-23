@@ -169,6 +169,65 @@ class PlaybackService : MediaLibraryService() {
     }
     private var recentRefreshJob: kotlinx.coroutines.Job? = null
     private var playingQueueObserver: kotlinx.coroutines.Job? = null
+    // The queue exposed to Android Auto is a read-only projection; ExoPlayer
+    // still receives exactly one resolved stream at any given time.
+    private var carQueueTimeline = CarQueueTimeline(emptyList(), "")
+    private val carQueueListeners = linkedSetOf<Player.Listener>()
+    private var lastCarQueueSongId: Int? = null
+    private var lastCarQueueIds: List<Pair<Int, String>> = emptyList()
+    private var lastCarQueueSource: String = ""
+    private var suppressSearchAddPlayUntil = 0L
+
+    private fun jumpToCarQueue(index: Int, positionMs: Long) {
+        val song = currentSongState.queue.value.getOrNull(index) ?: return
+        if (song.id == currentSongState.songId.value) {
+            if (positionMs > 0 && positionMs != C.TIME_UNSET) SongPlayer.seekTo(positionMs)
+            return
+        }
+        currentSongState.updateSongState(
+            song.coverUri, song.title, song.singer, true, song.id, index, song.album,
+        )
+        SongPlayer.playSong(song.url, applicationContext)
+    }
+
+    private fun publishCarQueueTimeline() {
+        val songs = currentSongState.queue.value
+        val selectedSongId = currentSongState.songId.value
+        val ids = songs.map { it.id to it.url }
+        val source = playingSourceName()
+        val timelineChanged = ids != lastCarQueueIds || source != lastCarQueueSource
+        val songChanged = lastCarQueueSongId != selectedSongId
+        if (!timelineChanged && !songChanged) return
+        if (timelineChanged) {
+            carQueueTimeline = CarQueueTimeline(songs, source)
+            lastCarQueueIds = ids
+            lastCarQueueSource = source
+        }
+        lastCarQueueSongId = selectedSongId
+        val sessionPlayer = mediaSession?.player ?: return
+        // Don't emit a full TIMELINE_CHANGED when only the current cursor
+        // moves. Some Android Auto versions jumped out of the queue/browse UI
+        // on every Next when the timeline was unnecessarily reset.
+        val flags = androidx.media3.common.FlagSet.Builder()
+            .apply { if (timelineChanged) add(Player.EVENT_TIMELINE_CHANGED) }
+            .apply { if (songChanged) add(Player.EVENT_MEDIA_ITEM_TRANSITION) }
+            .build()
+        val events = Player.Events(flags)
+        carQueueListeners.toList().forEach { listener ->
+            if (timelineChanged)
+                listener.onTimelineChanged(carQueueTimeline, Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED)
+            if (songChanged) {
+                listener.onMediaItemTransition(
+                    carQueueTimeline.songs.indexOfFirst { it.id == selectedSongId }
+                        .takeIf { it >= 0 }?.let(carQueueTimeline::itemAt),
+                    Player.MEDIA_ITEM_TRANSITION_REASON_SEEK,
+                )
+            }
+            listener.onEvents(sessionPlayer, events)
+        }
+        if (timelineChanged)
+            mediaSession?.notifyChildrenChanged(CarBrowsePolicy.PLAYING_QUEUE, songs.size, null)
+    }
     private val recentStores by lazy {
         listOf("spotui_home_frequency_v1", "spotui_radio_sessions").map { getSharedPreferences(it, 0) }
     }
@@ -299,6 +358,10 @@ class PlaybackService : MediaLibraryService() {
         )
 
         webPlayer = WebMediaPlayer(mainLooper, currentSongState) { forward -> advance(forward,manual=true) }
+        carQueueTimeline = CarQueueTimeline(currentSongState.queue.value, playingSourceName())
+        lastCarQueueIds = currentSongState.queue.value.map { it.id to it.url }
+        lastCarQueueSource = playingSourceName()
+        lastCarQueueSongId = currentSongState.songId.value
 
         mediaSession = MediaLibrarySession.Builder(this, wrap(base), LibraryCallback())
             .setSessionActivity(sessionActivity)
@@ -313,14 +376,18 @@ class PlaybackService : MediaLibraryService() {
                 .distinctUntilChanged()
                 .collect { refreshCarControls() }
         }
-        // The phone and Android Auto share this actual playback queue. Notify
-        // only the dedicated queue node so album/Now Playing navigation is stable.
+        // Keep Android Auto's MediaSession queue synchronized with the shared
+        // phone queue and cursor; do not refresh unrelated browse screens.
         playingQueueObserver = serviceScope.launch {
-            snapshotFlow { currentSongState.queue.value.map { it.id to it.url } }
-                .distinctUntilChanged()
-                .collect { items ->
-                    mediaSession?.notifyChildrenChanged(CarBrowsePolicy.PLAYING_QUEUE, items.size, null)
-                }
+            snapshotFlow {
+                Triple(
+                    currentSongState.queue.value.map { it.id to it.url },
+                    currentSongState.songId.value,
+                    playingSourceName(),
+                )
+            }.distinctUntilChanged().collect {
+                publishCarQueueTimeline()
+            }
         }
 
         // When a crossfade promotes a new ExoPlayer instance, re-bind the session to it
@@ -383,6 +450,12 @@ class PlaybackService : MediaLibraryService() {
         override fun prepare() { if (pendingVoice == null) super.prepare() }
         override fun seekToDefaultPosition() { if (pendingVoice == null) super.seekToDefaultPosition() }
         override fun play() {
+            // An Android Auto "Add to queue" media row is sent as a play request.
+            // We already queued it in onSetMediaItems; don't let the host restart
+            // or resume the existing stream as a side-effect of adding a track.
+            val suppressUntil = suppressSearchAddPlayUntil
+            suppressSearchAddPlayUntil = 0L
+            if (suppressUntil >= android.os.SystemClock.elapsedRealtime()) return
             if (playPendingVoice()) return
             if (base.mediaItemCount == 0 || base.playbackState == Player.STATE_IDLE) {
                 if (!restoreLastSessionIfNeeded()) { clearResumingNotification(); return }
@@ -407,6 +480,33 @@ class PlaybackService : MediaLibraryService() {
             clearResumingNotification()
         }
 
+        override fun getCurrentTimeline(): androidx.media3.common.Timeline =
+            if (carQueueTimeline.windowCount > 0) carQueueTimeline else super.getCurrentTimeline()
+
+        override fun getMediaItemCount(): Int =
+            if (carQueueTimeline.windowCount > 0) carQueueTimeline.windowCount else super.getMediaItemCount()
+
+        override fun getMediaItemAt(index: Int): MediaItem =
+            if (carQueueTimeline.windowCount > 0) carQueueTimeline.itemAt(index) else super.getMediaItemAt(index)
+
+        override fun getCurrentMediaItemIndex(): Int =
+            if (carQueueTimeline.windowCount > 0)
+                carQueueTimeline.currentIndex(currentSongState.songId.value)
+            else super.getCurrentMediaItemIndex()
+
+        override fun getCurrentPeriodIndex(): Int = getCurrentMediaItemIndex()
+
+        override fun getCurrentMediaItem(): MediaItem? =
+            if (carQueueTimeline.windowCount > 0)
+                carQueueTimeline.itemAt(getCurrentMediaItemIndex())
+            else super.getCurrentMediaItem()
+
+        override fun seekTo(mediaItemIndex: Int, positionMs: Long) =
+            jumpToCarQueue(mediaItemIndex, positionMs)
+
+        override fun seekToDefaultPosition(mediaItemIndex: Int) =
+            jumpToCarQueue(mediaItemIndex, 0L)
+
         override fun getAvailableCommands(): Player.Commands =
             super.getAvailableCommands().buildUpon()
                 .add(COMMAND_SEEK_TO_NEXT)
@@ -415,12 +515,14 @@ class PlaybackService : MediaLibraryService() {
                 .add(COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
                 .add(COMMAND_SEEK_FORWARD)
                 .add(COMMAND_SEEK_BACK)
+                .add(COMMAND_SEEK_TO_MEDIA_ITEM)
                 .build()
 
         override fun isCommandAvailable(command: Int): Boolean = when (command) {
             COMMAND_SEEK_TO_NEXT, COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
             COMMAND_SEEK_TO_PREVIOUS, COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
-            COMMAND_SEEK_FORWARD, COMMAND_SEEK_BACK -> true
+            COMMAND_SEEK_FORWARD, COMMAND_SEEK_BACK,
+            COMMAND_SEEK_TO_MEDIA_ITEM -> true
             else -> super.isCommandAvailable(command)
         }
 
@@ -431,6 +533,7 @@ class PlaybackService : MediaLibraryService() {
         private val self = this
 
         override fun addListener(listener: Player.Listener) {
+            carQueueListeners.add(listener)
             // A Proxy, not Kotlin `by` delegation: Player.Listener's methods are all Java
             // defaults, which `by` does not forward, so the session saw no events at all.
             val wrapped = java.lang.reflect.Proxy.newProxyInstance(
@@ -450,6 +553,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun removeListener(listener: Player.Listener) {
+            carQueueListeners.remove(listener)
             super.removeListener(wrappedListeners.remove(listener) ?: listener)
         }
 
@@ -831,6 +935,15 @@ class PlaybackService : MediaLibraryService() {
             mediaId: String,
         ): ListenableFuture<LibraryResult<MediaItem>> = future {
             val item = trackById[mediaId]?.let { playable(it, mediaId) }
+                ?: CarSearchChoicePolicy.folderTarget(mediaId)?.let { target ->
+                    trackById[target]?.let { searchChoiceFolder(it, target) }
+                }
+                ?: CarSearchChoicePolicy.playTarget(mediaId)?.let { target ->
+                    trackById[target]?.let { searchActionItem(it, mediaId, "Atskaņot tagad") }
+                }
+                ?: CarSearchChoicePolicy.addTarget(mediaId)?.let { target ->
+                    trackById[target]?.let { searchActionItem(it, mediaId, "Pievienot rindai") }
+                }
                 ?: browseById[mediaId]
                 ?: (listOf(CarBrowsePolicy.Entry(ROOT, "Sprotify")) + (carRootEntries() + CarBrowsePolicy.library())).firstOrNull { it.id == mediaId }?.let(::carItem)
                 ?: recentCarEntries().firstOrNull { it.id == mediaId }?.let(::carItem)
@@ -848,8 +961,13 @@ class PlaybackService : MediaLibraryService() {
             query: String, page: Int, pageSize: Int, params: LibraryParams?): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = future {
             val songs = voiceCache[query] ?: voiceSongs(VoiceSearchPolicy.Request(query))
             val registered = registerTracks("voice/" + CarBrowsePolicy.encode(query), songs)
+            // A search-result tap must not unconditionally start playback.
+            // Browsing the result reveals two explicit choices.
             val selected = VoiceSearchPolicy.page(songs, page, pageSize).map { song ->
-                registered.first { it.mediaId == CarBrowsePolicy.trackId("voice/" + CarBrowsePolicy.encode(query), song) }
+                val original = registered.first {
+                    it.mediaId == CarBrowsePolicy.trackId("voice/" + CarBrowsePolicy.encode(query), song)
+                }
+                searchChoiceFolder(song, original.mediaId)
             }
             LibraryResult.ofItemList(ImmutableList.copyOf(selected), params)
         }
@@ -872,24 +990,39 @@ class PlaybackService : MediaLibraryService() {
                     return@future MediaSession.MediaItemsWithStartPosition(emptyList(), C.INDEX_UNSET, C.TIME_UNSET)
                 }
                 val id = requested?.mediaId
-                if (id != null && CarBrowsePolicy.radioStation(id) != null) {
-                    playCarRadio(id, request)
+                val toAdd = id?.let(CarSearchChoicePolicy::addTarget)
+                if (toAdd != null) {
+                    val song = trackById[toAdd]
+                    if (song != null && request == carPlayRequest) {
+                        // Insert behind the current song; keep the current track
+                        // and audio stream untouched. Host may send Play after
+                        // selecting the action: suppress that incidental Play.
+                        currentSongState.addToQueue(song)
+                        suppressSearchAddPlayUntil = android.os.SystemClock.elapsedRealtime() + 1200L
+                    }
+                    return@future MediaSession.MediaItemsWithStartPosition(
+                        emptyList(), C.INDEX_UNSET, C.TIME_UNSET
+                    )
+                }
+                val resolvedId = id?.let(CarSearchChoicePolicy::playTarget) ?: id
+                if (resolvedId != null && CarBrowsePolicy.radioStation(resolvedId) != null) {
+                    playCarRadio(resolvedId, request)
                 } else {
-                    val song = id?.let { trackById[it] }
+                    val song = resolvedId?.let { trackById[it] }
                     if (song != null && request == carPlayRequest) {
                         // A selection from the active queue must preserve its
                         // Radio station and use the LATEST live queue, not a
                         // browse snapshot from before Spotify added more songs.
-                        val fromActiveQueue = id?.startsWith(
+                        val fromActiveQueue = resolvedId.startsWith(
                             "song/" + CarBrowsePolicy.encode(CarBrowsePolicy.PLAYING_QUEUE) + "/"
-                        ) == true
+                        )
                         val live = currentSongState.queue.value
-                        val queue = if (fromActiveQueue) live else queueByTrackId[id] ?: listOf(song)
+                        val queue = if (fromActiveQueue) live else queueByTrackId[resolvedId] ?: listOf(song)
                         if (queue.none { it.id == song.id }) return@future MediaSession.MediaItemsWithStartPosition(
                             emptyList(), C.INDEX_UNSET, C.TIME_UNSET
                         )
                         if (!fromActiveQueue) currentSongState.updateQueue(queue)
-                        if (!fromActiveQueue) collectionByTrackId[id]?.let { collection ->
+                        if (!fromActiveQueue) collectionByTrackId[resolvedId]?.let { collection ->
                             currentSongState.collection.value = collection
                             com.music.spotui.data.preferences.HomeHiddenItems.beginReplay(applicationContext, collection.type, collection.id)
                         }
@@ -1040,7 +1173,46 @@ class PlaybackService : MediaLibraryService() {
         fillRadioQueue(false)
     }
 
+    private fun searchChoiceFolder(song: SongsModel, trackId: String): MediaItem =
+        MediaItem.Builder()
+            .setMediaId(CarSearchChoicePolicy.folderId(trackId))
+            .setMediaMetadata(MediaMetadata.Builder()
+                .setTitle(song.title)
+                .setSubtitle(song.singer)
+                .setIsBrowsable(true)
+                .setIsPlayable(false)
+                .apply {
+                    if (song.coverUri.isNotBlank())
+                        setArtworkUri(android.net.Uri.parse(song.coverUri))
+                }
+                .build())
+            .build()
+
+    private fun searchActionItem(song: SongsModel, id: String, title: String): MediaItem =
+        MediaItem.Builder()
+            .setMediaId(id)
+            .setMediaMetadata(MediaMetadata.Builder()
+                .setTitle(title)
+                .setSubtitle("${song.title} • ${song.singer}")
+                .setIsBrowsable(false)
+                .setIsPlayable(true)
+                .apply {
+                    if (song.coverUri.isNotBlank())
+                        setArtworkUri(android.net.Uri.parse(song.coverUri))
+                }
+                .build())
+            .build()
+
     private suspend fun childrenOf(parentId: String): List<MediaItem> = when {
+        CarSearchChoicePolicy.folderTarget(parentId) != null -> {
+            val target = CarSearchChoicePolicy.folderTarget(parentId)!!
+            val song = trackById[target]
+            if (song == null) emptyList()
+            else listOf(
+                searchActionItem(song, CarSearchChoicePolicy.playId(target), "Atskaņot tagad"),
+                searchActionItem(song, CarSearchChoicePolicy.addId(target), "Pievienot rindai"),
+            )
+        }
         parentId == ROOT -> carRootEntries().map(::carItem)
         parentId == CarBrowsePolicy.PLAYING_QUEUE ->
             registerTracks(parentId, currentSongState.queue.value)
@@ -1189,6 +1361,8 @@ class PlaybackService : MediaLibraryService() {
         carControlsObserver?.cancel()
         carControlsObserver = null
         currentSongState.onSmartShuffleRequested = null
+        carQueueListeners.clear()
+        playingQueueObserver?.cancel()
         serviceScope.cancel()
         SongPlayer.onPlayerSwapped = null
         SongPlayer.onStreamFailed = null
