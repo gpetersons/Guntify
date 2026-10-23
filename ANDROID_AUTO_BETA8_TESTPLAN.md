@@ -1,10 +1,11 @@
-# Sprotify Beta 8 Android Auto smoke tests
+# Corrected Sprotify Beta 8 — Android Auto checks
 
-1. Check `versionCode 8` and `versionName 1.0.0-beta.8`; Sprotify installs over Beta 7 without losing local saved music.
-2. In an ordinary playlist, tap Shuffle: OFF -> ON (dot) -> Smart Shuffle (dot + star) -> OFF. A Smart Shuffle selection should request recommendations as the phone does. Check the phone indicator changes too.
-3. Change Shuffle on the phone and return to Android Auto; the car button should reflect all three modes. In Radio and Downloads the phone intentionally permits only OFF/ON.
-4. Verify the current song/artist/artwork, Radio action, Favorite, Repeat and Next. Quickly tap Next without losing the browse view.
-5. On a Car App API 8+ host, open the new MediaPlaybackTemplate: top bar shows the current station/playlist/album/Liked Songs source, not the playing song. The top-right queue action has **an icon only**.
-6. Change Radio/playlist from the phone: the title in the template header updates. Open its queue to read the same shared player list.
-7. On a host using the legacy Android Auto media screen, verify playback still works. Google may retain its built-in 'Ievietot rindā' label and original Now Playing header because those are not controllable with Media3.
-8. Disconnect/reconnect and confirm playback position/session recovery.
+1. Install the new signed Beta 8 APK over the old Beta 8 (or Beta 7). Do not uninstall. Verify all favorites and settings remain intact.
+2. Confirm that the **original Beta 7 Now Playing** is back and **playback works**, without the empty "Nevarēja ielādēt jūsu atlasi" Car App template.
+3. With a playlist, press Shuffle repeatedly: OFF → ON (dot) → SMART (dot + star) → OFF. Verify the phone reflects each mode; Smart Shuffle adds song recommendations.
+4. Radio and Downloads preserve their previous two-state OFF/ON shuffle behavior.
+5. While playing Radio, Liked Songs, a named playlist and an album, check the browse-root/playing-queue source title and whether the host elects to show the provided album/source label. Do **not** expect guaranteed top-header text: legacy Android Auto owns it.
+6. Ensure the Queue action still displays `Ievietot rindā` and opens the shared playback queue.
+7. Confirm song title, artist, artwork, Play Radio, Favorite, Repeat, fast Next, steering-wheel controls, and playback resumption/reconnection all behave like Beta 7.
+
+This is a signed replacement for the withdrawn first Beta 8 release. Both APKs use versionCode 8; install the replacement manually since the in-app update checker might see the same version.

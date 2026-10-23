@@ -1,22 +1,28 @@
-# Sprotify 1.0.0 Beta 8 - Android Auto Smart Shuffle and context
+# Sprotify 1.0.0 Beta 8 — corrected legacy Android Auto release
 
-## New
-- Android Auto Shuffle cycles **OFF -> ON -> SMART -> OFF** using the same `CurrentSongState.cycleShuffle()` as the phone. For Radio and downloaded-local collections it follows the phone's two-state OFF/ON policy.
-- The Shuffle button has a plain crossed-arrows icon for OFF, a dot for ON, and **dot + small star** for Smart Shuffle. Labels update when Shuffle is changed from either phone or car.
-- Added an **optional Car App Library MediaPlaybackTemplate** experience for Car App API 8+ Android Auto hosts. Its header reads the actual current playback source (playlist name, album title, Liked Songs or source-track radio), and the top-right queue action has **only an icon, without a visible title**. Switching playback context on the phone updates the template title.
-- The Car App Library queue screen uses the current shared phone/player queue. It shows song names and performers.
-- Existing **MediaLibraryService** remains available as a fallback for hosts that do not support the newer media template.
+This is a **replacement Beta 8 APK**, rebuilt from the stable Beta 7 Android Auto media player. The previous Beta 8 introduced a Car App API 8 template that could show a source header but failed to load playback on the tested head unit. That experimental template has been fully removed.
+
+## Only two new features
+
+1. **Three Shuffle modes from Android Auto:** OFF (plain icon) → ON (small dot) → SMART (dot + star) → OFF. Android Auto calls the same `CurrentSongState.cycleShuffle()` as the phone, so both controls remain in sync. Radio and Downloads keep the phone's existing OFF/ON-only behavior.
+2. **Playback source information:** Radio station, playlist, album and Liked Songs names are exposed through standard Media3 album metadata and Android Auto browse-root/playing-queue titles. The current song title and artist are preserved. For example `Endless radio` or `Dziesmas, kas tev patīk`. **The Android Auto legacy Now Playing header is controlled by the host:** the source name is not guaranteed to appear exactly in the top bar, despite the metadata being available.
+
+## Restored / deliberately unchanged
+
+- Stable **Beta 7 MediaLibraryService**, ExoPlayer and Spotify Web playback.
+- Original Android Auto Now Playing UI and its built-in `Ievietot rindā` queue button **with text**.
+- Radio button, Repeat, Favorites, artist/title, artwork, fast Next, queue and playback restoration.
+- **No Car App API 8**, Car App Library service or related dependencies/manifest permissions.
 
 ## Installation
-- Signed asset: `Sprotify.apk`
-- Package: `lv.guntify.player` (unchanged).
-- `versionName=1.0.0-beta.8`, `versionCode=8`.
-- Same signing identity, so install **over Beta 7** to retain saved user data. Do not uninstall first.
 
-## Limitations & tests
-- On legacy Android Auto media templates, Google controls the header title and built-in queue button label. **Custom source header and icon-only queue require a host with Car App API 8+ support.** They cannot be guaranteed on all car systems.
-- A new templated-media experience is experimental and has separate Play Store distribution rules. Verify it on the actual head unit; the legacy media player is still supported.
-- Keep testing the existing transport buttons, radio continuation, steering wheel Next, queue and app resume in the car. The Car App Library-specific queue is currently read-only.
-- Physical display and user interaction have not been tested by the CI runner.
+- `Sprotify.apk`, signed using the same key as Beta 7.
+- `versionCode 8`, `versionName 1.0.0-beta.8`.
+- Package `lv.guntify.player` unchanged; install over Beta 7 or the previous Beta 8 **without uninstalling**.
+- Because this replaces an APK with the **same Beta 8 version number**, built-in update checks may not detect it. Download and install this corrected APK manually.
 
-Credits and licensing remain in `LICENSE`, `NOTICE` and `SOURCE.md`.
+## Checks
+
+GitHub Actions run unit tests, desktop UI checks and verify the signed APK package and version. Physical head-unit testing is still needed for source-label placement, Smart Shuffle indicator visibility and playback.
+
+Credits, GPLv3 license and source attribution remain in `LICENSE`, `NOTICE` and `SOURCE.md`.

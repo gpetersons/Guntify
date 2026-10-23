@@ -75,10 +75,6 @@ class PlaybackService : MediaLibraryService() {
     private val toggleFavoriteCommand = SessionCommand("com.music.spotui.action.TOGGLE_FAVORITE", android.os.Bundle.EMPTY)
     private val toggleShuffleCommand = SessionCommand("com.music.spotui.action.TOGGLE_SHUFFLE", android.os.Bundle.EMPTY)
     private val toggleRepeatCommand = SessionCommand("com.music.spotui.action.TOGGLE_REPEAT", android.os.Bundle.EMPTY)
-    // Car App Library API 8 host needs the same platform media-session token
-    // as the legacy Android Auto browser, never a second player instance.
-    private val getCarSessionTokenCommand =
-        SessionCommand("com.music.spotui.action.GET_CAR_SESSION_TOKEN", android.os.Bundle.EMPTY)
 
     // The first action remains Radio so existing Android Auto layouts keep it
     // ahead of optional actions that may move into the overflow menu.
@@ -738,7 +734,6 @@ class PlaybackService : MediaLibraryService() {
                         .add(toggleFavoriteCommand)
                         .add(toggleShuffleCommand)
                         .add(toggleRepeatCommand)
-                        .add(getCarSessionTokenCommand)
                         .build()
                 )
                 .setCustomLayout(carControlButtons(carControlState()))
@@ -750,16 +745,6 @@ class PlaybackService : MediaLibraryService() {
             customCommand: SessionCommand,
             args: android.os.Bundle,
         ): ListenableFuture<SessionResult> {
-            if (customCommand.customAction == getCarSessionTokenCommand.customAction) {
-                if (controller.packageName != packageName) {
-                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
-                }
-                val tokenExtras = android.os.Bundle().apply {
-                    // Media3 1.3.1 exposes the legacy-compatible token directly.
-                    putParcelable("sprotify.compat.token", session.sessionCompatToken)
-                }
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS, tokenExtras))
-            }
             val song = selectedCarTrack()
             val status = when (customCommand.customAction) {
                 startRadioCommand.customAction -> {
@@ -786,8 +771,8 @@ class PlaybackService : MediaLibraryService() {
                 toggleShuffleCommand.customAction -> {
                     if (currentSongState.queue.value.size < 2) SessionResult.RESULT_ERROR_BAD_VALUE
                     else {
-                        // Same OFF -> ON -> SMART -> OFF path as phone player.
-                        // Radio and local downloads deliberately remain OFF/ON.
+                        // Reuse the phone's three-step OFF -> ON -> SMART -> OFF cycle.
+                        // Radio and Downloads keep the existing two-state exception.
                         currentSongState.cycleShuffle()
                         SessionResult.RESULT_SUCCESS
                     }
@@ -824,7 +809,7 @@ class PlaybackService : MediaLibraryService() {
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?,
         ): ListenableFuture<LibraryResult<MediaItem>> =
-            Futures.immediateFuture(LibraryResult.ofItem(folder(ROOT, "Sprotify"), LibraryParams.Builder()
+            Futures.immediateFuture(LibraryResult.ofItem(folder(ROOT, playingSourceName()), LibraryParams.Builder()
                 .setExtras(android.os.Bundle().apply { putBoolean("android.media.browse.SEARCH_SUPPORTED", true) }).build()))
 
         override fun onGetChildren(
@@ -847,7 +832,7 @@ class PlaybackService : MediaLibraryService() {
         ): ListenableFuture<LibraryResult<MediaItem>> = future {
             val item = trackById[mediaId]?.let { playable(it, mediaId) }
                 ?: browseById[mediaId]
-                ?: (listOf(CarBrowsePolicy.Entry(ROOT, "Sprotify")) + (CarBrowsePolicy.root(activeRadioName()) + CarBrowsePolicy.library())).firstOrNull { it.id == mediaId }?.let(::carItem)
+                ?: (listOf(CarBrowsePolicy.Entry(ROOT, "Sprotify")) + (carRootEntries() + CarBrowsePolicy.library())).firstOrNull { it.id == mediaId }?.let(::carItem)
                 ?: recentCarEntries().firstOrNull { it.id == mediaId }?.let(::carItem)
             item?.let { LibraryResult.ofItem(it, null) } ?: LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
         }
@@ -976,6 +961,20 @@ class PlaybackService : MediaLibraryService() {
     private fun activeRadioName(): String? =
         currentSongState.collection.value?.takeIf { it.type == "radio" }?.name
 
+    private fun playingSourceName(): String =
+        CarPlaybackContextPolicy.title(
+            currentSongState.collection.value, currentSongState.title.value
+        )
+
+    // A standard MediaLibraryService cannot customize the host-owned Now
+    // Playing header. Expose the same source as browse-root and queue titles,
+    // which legacy hosts may show as navigation context.
+    private fun carRootEntries() = CarBrowsePolicy.root(activeRadioName()).map { entry ->
+        if (entry.id == CarBrowsePolicy.PLAYING_QUEUE)
+            entry.copy(title = playingSourceName())
+        else entry
+    }
+
     private suspend fun carHomeFeed(): HomeFeedModel = withContext(Dispatchers.IO) {
         // Prefer the phone's already-loaded feed or persisted account-scoped
         // snapshot instantly. Waiting for the remote refresh even with cached
@@ -1042,7 +1041,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private suspend fun childrenOf(parentId: String): List<MediaItem> = when {
-        parentId == ROOT -> CarBrowsePolicy.root(activeRadioName()).map(::carItem)
+        parentId == ROOT -> carRootEntries().map(::carItem)
         parentId == CarBrowsePolicy.PLAYING_QUEUE ->
             registerTracks(parentId, currentSongState.queue.value)
         parentId == CarBrowsePolicy.CONTINUE ->
@@ -1156,7 +1155,9 @@ class PlaybackService : MediaLibraryService() {
                     .setArtist(song.singer)
                     .setSubtitle(song.singer)
                     .setDescription(song.singer)
-                    .setAlbumTitle(song.album)
+                    .setAlbumTitle(collectionByTrackId[id]?.let {
+                        CarPlaybackContextPolicy.title(it, song.title)
+                    } ?: song.album)
                     .setIsBrowsable(false)
                     .setIsPlayable(true)
                     .apply { if (song.coverUri.isNotBlank()) setArtworkUri(android.net.Uri.parse(song.coverUri)) }

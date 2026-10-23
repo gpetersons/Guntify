@@ -22,7 +22,7 @@ Sprotify is a music player that gets to know what you love. Find songs, keep you
 
 **For USpot users:** This is a separate app from USpot. Local data does not transfer automatically. Keep USpot installed until you have verified what you need.
 
-Check for future releases under **Settings → Updates** or on the [Releases page](https://github.com/gpetersons/Sprotify/releases). Beta 5 was the first Sprotify-branded signed release; Beta 6 added Android Auto Now Playing controls; Beta 7 refined the icons and artist subtitles; Beta 8 adds three-state Smart Shuffle and optional modern Android Auto playback templates. Previously published Beta 4 is available under its original Sprotify name.
+Check for future releases under **Settings → Updates** or on the [Releases page](https://github.com/gpetersons/Sprotify/releases). Beta 5 was the first Sprotify-branded signed release; Beta 6 added Android Auto Now Playing controls; Beta 7 refined Android Auto icons and artist metadata. Rebuilt Beta 8 restores the stable Beta 7 player and adds Smart Shuffle plus playback-source metadata; Car App API 8 is not used. Previously published Beta 4 is available under its original Sprotify name.
 
 ## 📸 Take a look around
 
