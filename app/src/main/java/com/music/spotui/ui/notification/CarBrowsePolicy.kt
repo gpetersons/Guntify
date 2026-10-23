@@ -1,5 +1,6 @@
 package com.music.spotui.ui.notification
 
+import com.music.spotui.data.entity.HomeFeedModel
 import com.music.spotui.data.entity.HomeItem
 import com.music.spotui.data.entity.SongsModel
 import java.net.URLDecoder
@@ -10,13 +11,27 @@ object CarBrowsePolicy {
     const val RECENT = "recent"
     const val RECENT_RADIOS = "recent-radios"
     const val LIBRARY = "library"
+    const val PLAYING_QUEUE = "playing-queue"
+    const val CONTINUE = "continue-listening"
+    const val FOR_YOU = "for-you"
+    const val MIXES = "made-for-you"
     data class Entry(val id: String, val title: String, val artwork: String = "", val subtitle: String = "", val playable: Boolean = false)
     fun encode(value: String): String = URLEncoder.encode(value, "UTF-8").replace("+", "%20")
     fun radioId(station: String) = "radio/" + encode(station)
     fun radioStation(id: String): String? = if (!id.startsWith("radio/")) null else
         runCatching { URLDecoder.decode(id.removePrefix("radio/"), "UTF-8").takeIf { it.isNotBlank() } }.getOrNull()
     fun trackId(parent: String, song: SongsModel) = "song/${encode(parent)}/${song.id}"
-    fun root() = listOf(Entry(RECENT, "Recent"), Entry(RECENT_RADIOS, "Recent radios"), Entry("liked", "Liked Songs"), Entry(LIBRARY, "Library"))
+    /** IDs stay stable when a new Radio starts on the phone. */
+    fun root(activeRadioName: String? = null) = listOf(
+        Entry(PLAYING_QUEUE, activeRadioName?.takeIf { it.isNotBlank() }?.let { "Playing: $it" } ?: "Playing queue"),
+        Entry(CONTINUE, "Continue listening"),
+        Entry(FOR_YOU, "Recommended for you"),
+        Entry(MIXES, "Made for you"),
+        Entry(RECENT, "Recently played"),
+        Entry(RECENT_RADIOS, "Your radios"),
+        Entry("liked", "Liked Songs"),
+        Entry(LIBRARY, "Library"),
+    )
     fun library() = listOf(Entry("playlists", "Playlists"), Entry("albums", "Albums"), Entry("downloads", "Downloads"))
     /** Spotify supplies these as playlists, without a reliable Radio type flag.
      * Only radio-named playlist titles qualify; this does not assert Spotify ownership. */
@@ -38,6 +53,53 @@ object CarBrowsePolicy {
             else -> null
         }
     }.distinctBy { it.id }.take(limit.coerceIn(0, 40))
+
+    /** Convert real Home feed collections to browseable Android Auto entries. */
+    fun homeEntry(item: HomeItem): Entry? = when (item) {
+        is HomeItem.Playlist -> if (item.id.isBlank()) null else Entry(
+            when (item.id) {
+                "liked-songs" -> "liked"
+                "downloads", "downloaded-offline" -> "downloads"
+                else -> "playlist/" + encode(item.id)
+            }, item.name, item.imageUrl, item.subtitle.ifBlank { "Playlist" })
+        is HomeItem.Album -> if (item.name.isBlank()) null else Entry(
+            "album/" + encode(item.name) + "/" + encode(item.artists),
+            item.name, item.imageUrl, item.artists.ifBlank { item.subtitle })
+        is HomeItem.Artist -> if (item.name.isBlank()) null else Entry(
+            "artist/" + encode(item.name), item.name, item.imageUrl, "Artist")
+        is HomeItem.Radio -> Entry(
+            radioId(item.seed.spotifyTrackId.ifBlank { item.seed.id.toString() }),
+            item.name, item.imageUrl, "Guntify Radio", true)
+        is HomeItem.RecentTrack -> null
+    }
+
+    /** Same Spotify personalized feed as the phone, no fabricated content. */
+    fun recommendations(feed: HomeFeedModel, mixesOnly: Boolean, limit: Int = 30): List<Entry> =
+        feed.sections.asSequence()
+            .filter { section ->
+                !mixesOnly || section.title.contains("mix", true) ||
+                    section.title.contains("made for you", true) ||
+                    section.title.contains("uniquely yours", true)
+            }
+            .flatMap { it.items.asSequence() }
+            .mapNotNull(::homeEntry)
+            .distinctBy { it.id }
+            .take(limit.coerceIn(0, 40))
+            .toList()
+
+    /** Live track first, then local recent playable tracks, avoiding duplicates. */
+    fun continueTracks(active: SongsModel?, history: List<SongsModel>, limit: Int = 20): List<SongsModel> =
+        (listOfNotNull(active) + history).filter { it.url.isNotBlank() }
+            .distinctBy { it.spotifyTrackId.ifBlank { "local:" + it.id } }
+            .take(limit.coerceIn(0, 40))
+
+    /** Paged MediaLibrary results, including overflow-safe large page requests. */
+    fun <T> page(items: List<T>, page: Int, pageSize: Int): List<T> {
+        if (page < 0 || pageSize <= 0) return emptyList()
+        val offset = page.toLong() * pageSize
+        if (offset >= items.size) return emptyList()
+        return items.drop(offset.toInt()).take(pageSize)
+    }
 
     /** Saved current + next ten first; otherwise start from last track or an original mix anchor. */
     fun radioSongs(seed: SongsModel, last: SongsModel?, anchors: List<SongsModel>, saved: List<SongsModel>): List<SongsModel> {

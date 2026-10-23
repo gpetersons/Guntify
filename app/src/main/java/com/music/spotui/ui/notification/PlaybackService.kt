@@ -25,6 +25,12 @@ import com.music.spotui.audio.RadioPlaybackController
 import com.music.spotui.data.api.Api
 import com.music.spotui.data.api.Response
 import com.music.spotui.data.entity.SongsModel
+import com.music.spotui.data.entity.HomeFeedModel
+import com.music.spotui.data.entity.HomeItem
+import com.music.spotui.data.preferences.RadioSessions
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.music.spotui.di.CurrentSongState
 import com.music.spotui.di.SongPlayer
 import com.music.spotui.di.SpotifyWebPlayer
@@ -85,6 +91,7 @@ class PlaybackService : MediaLibraryService() {
         }
     }
     private var recentRefreshJob: kotlinx.coroutines.Job? = null
+    private var playingQueueObserver: kotlinx.coroutines.Job? = null
     private val recentStores by lazy {
         listOf("spotui_home_frequency_v1", "spotui_radio_sessions").map { getSharedPreferences(it, 0) }
     }
@@ -229,6 +236,15 @@ class PlaybackService : MediaLibraryService() {
             ))
             .build()
         recentStores.forEach { it.registerOnSharedPreferenceChangeListener(recentListener) }
+        // The phone and Android Auto share this actual playback queue. Notify
+        // only the dedicated queue node so album/Now Playing navigation is stable.
+        playingQueueObserver = serviceScope.launch {
+            snapshotFlow { currentSongState.queue.value.map { it.id to it.url } }
+                .distinctUntilChanged()
+                .collect { items ->
+                    mediaSession?.notifyChildrenChanged(CarBrowsePolicy.PLAYING_QUEUE, items.size, null)
+                }
+        }
 
         // When a crossfade promotes a new ExoPlayer instance, re-bind the session to it
         // (runs on the main thread; setPlayer is the supported way to swap a session's player).
@@ -692,7 +708,9 @@ class PlaybackService : MediaLibraryService() {
             pageSize: Int,
             params: LibraryParams?,
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = future {
-            LibraryResult.ofItemList(ImmutableList.copyOf(childrenOf(parentId)), params)
+            LibraryResult.ofItemList(
+                ImmutableList.copyOf(CarBrowsePolicy.page(childrenOf(parentId), page, pageSize)), params
+            )
         }
 
         override fun onGetItem(
@@ -702,7 +720,7 @@ class PlaybackService : MediaLibraryService() {
         ): ListenableFuture<LibraryResult<MediaItem>> = future {
             val item = trackById[mediaId]?.let { playable(it, mediaId) }
                 ?: browseById[mediaId]
-                ?: (listOf(CarBrowsePolicy.Entry(ROOT, "Guntify")) + (CarBrowsePolicy.root() + CarBrowsePolicy.library())).firstOrNull { it.id == mediaId }?.let(::carItem)
+                ?: (listOf(CarBrowsePolicy.Entry(ROOT, "Guntify")) + (CarBrowsePolicy.root(activeRadioName()) + CarBrowsePolicy.library())).firstOrNull { it.id == mediaId }?.let(::carItem)
                 ?: recentCarEntries().firstOrNull { it.id == mediaId }?.let(::carItem)
             item?.let { LibraryResult.ofItem(it, null) } ?: LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
         }
@@ -748,14 +766,20 @@ class PlaybackService : MediaLibraryService() {
                     val song = id?.let { trackById[it] }
                     if (song != null && request == carPlayRequest) {
                         val queue = queueByTrackId[id] ?: listOf(song)
-                        currentSongState.updateQueue(queue)
-                        collectionByTrackId[id]?.let { collection ->
+                        // A selection from the active queue must preserve its
+                        // Radio station and current playback collection.
+                        val fromActiveQueue = id?.startsWith(
+                            "song/" + CarBrowsePolicy.encode(CarBrowsePolicy.PLAYING_QUEUE) + "/"
+                        ) == true
+                        if (!fromActiveQueue) currentSongState.updateQueue(queue)
+                        if (!fromActiveQueue) collectionByTrackId[id]?.let { collection ->
                             currentSongState.collection.value = collection
                             com.music.spotui.data.preferences.HomeHiddenItems.beginReplay(applicationContext, collection.type, collection.id)
                         }
                         val idx = queue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
                         currentSongState.updateSongState(song.coverUri, song.title, song.singer, true, song.id, idx, song.album)
-                        SongPlayer.playSong(song.url, applicationContext)
+                        if (!fromActiveQueue || !SongPlayer.isCurrentRequest(song.url))
+                            SongPlayer.playSong(song.url, applicationContext)
                     }
                 }
                 MediaSession.MediaItemsWithStartPosition(emptyList(), C.INDEX_UNSET, C.TIME_UNSET)
@@ -812,7 +836,34 @@ class PlaybackService : MediaLibraryService() {
 
     private suspend fun recentCarEntries(): List<CarBrowsePolicy.Entry> = CarBrowsePolicy.recent(recentCarItems())
 
-    private suspend fun recentRadioEntries(): List<CarBrowsePolicy.Entry> = CarBrowsePolicy.recentRadios(recentCarItems())
+    private suspend fun recentRadioEntries(): List<CarBrowsePolicy.Entry> {
+        val saved = withContext(Dispatchers.IO) { RadioSessions.get(applicationContext).map { HomeItem.Radio(it) } }
+        return CarBrowsePolicy.recentRadios(saved + recentCarItems())
+    }
+
+    private fun activeRadioName(): String? =
+        currentSongState.collection.value?.takeIf { it.type == "radio" }?.name
+
+    private suspend fun carHomeFeed(): HomeFeedModel {
+        // Share the phone's Spotify Home feed and its offline snapshot cache.
+        // Do not block the head unit indefinitely on an unauthenticated network.
+        return kotlinx.coroutines.withTimeoutOrNull(9_000L) {
+            withContext(Dispatchers.IO) { lastSuccess(repository.provideHomeFeed()) }
+        } ?: Api.HomeCache.home ?: HomeFeedModel()
+    }
+
+    private suspend fun continueCarTracks(): List<SongsModel> = withContext(Dispatchers.IO) {
+        val active = currentSongState.queue.value.firstOrNull { it.id == currentSongState.songId.value }
+        val recent = com.music.spotui.data.preferences.getListeningHistory(applicationContext)
+            .asSequence()
+            .filter { it.title.isNotBlank() && it.url.isNotBlank() }
+            .sortedByDescending { it.ts }
+            .take(50)
+            .map { SongsModel(it.songId, it.title, it.album, it.singer, it.image,
+                it.url, it.spotifyTrackId, durationMs = it.durationMs) }
+            .toList()
+        CarBrowsePolicy.continueTracks(active, recent)
+    }
 
     private suspend fun recentCarItems(): List<com.music.spotui.data.entity.HomeItem> = withContext(Dispatchers.IO) {
         val radios = com.music.spotui.data.preferences.RadioSessions.get(applicationContext).map { com.music.spotui.data.entity.HomeItem.Radio(it) }
@@ -855,7 +906,15 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private suspend fun childrenOf(parentId: String): List<MediaItem> = when {
-        parentId == ROOT -> CarBrowsePolicy.root().map(::carItem)
+        parentId == ROOT -> CarBrowsePolicy.root(activeRadioName()).map(::carItem)
+        parentId == CarBrowsePolicy.PLAYING_QUEUE ->
+            registerTracks(parentId, currentSongState.queue.value)
+        parentId == CarBrowsePolicy.CONTINUE ->
+            registerTracks(parentId, continueCarTracks())
+        parentId == CarBrowsePolicy.FOR_YOU ->
+            CarBrowsePolicy.recommendations(carHomeFeed(), mixesOnly = false).map(::carItem)
+        parentId == CarBrowsePolicy.MIXES ->
+            CarBrowsePolicy.recommendations(carHomeFeed(), mixesOnly = true).map(::carItem)
         parentId == CarBrowsePolicy.RECENT -> recentCarEntries().map(::carItem)
         parentId == CarBrowsePolicy.RECENT_RADIOS -> recentRadioEntries().map(::carItem)
         parentId == CarBrowsePolicy.LIBRARY -> CarBrowsePolicy.library().map(::carItem)
@@ -878,8 +937,13 @@ class PlaybackService : MediaLibraryService() {
                     it.coverUri,
                 )
             }
+        parentId.startsWith("artist/") -> {
+            val artist = android.net.Uri.decode(parentId.removePrefix("artist/"))
+            registerTracks(parentId, lastSuccess(repository.provideArtistSongs(artist)).orEmpty())
+        }
         parentId.startsWith("playlist/") -> {
-            val songs = lastSuccess(repository.providePlaylistSongs(parentId.removePrefix("playlist/")))
+            val playlistId = android.net.Uri.decode(parentId.removePrefix("playlist/"))
+            val songs = lastSuccess(repository.providePlaylistSongs(playlistId))
             registerTracks(parentId, songs.orEmpty())
         }
         parentId.startsWith("album/") -> {
