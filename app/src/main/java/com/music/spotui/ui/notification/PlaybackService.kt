@@ -849,12 +849,16 @@ class PlaybackService : MediaLibraryService() {
     private fun activeRadioName(): String? =
         currentSongState.collection.value?.takeIf { it.type == "radio" }?.name
 
-    private suspend fun carHomeFeed(): HomeFeedModel {
-        // Share the phone's Spotify Home feed and its offline snapshot cache.
-        // Do not block the head unit indefinitely on an unauthenticated network.
-        return kotlinx.coroutines.withTimeoutOrNull(9_000L) {
-            withContext(Dispatchers.IO) { lastSuccess(repository.provideHomeFeed()) }
-        } ?: Api.HomeCache.home ?: HomeFeedModel()
+    private suspend fun carHomeFeed(): HomeFeedModel = withContext(Dispatchers.IO) {
+        // Prefer the phone's already-loaded feed or persisted account-scoped
+        // snapshot instantly. Waiting for the remote refresh even with cached
+        // content caused a long spinner on Android Auto browse.
+        val cached = Api.HomeCache.home
+            ?: com.music.spotui.data.preferences.HomeSnapshotCache.readFeed(applicationContext)
+        if (cached != null) return@withContext cached
+        kotlinx.coroutines.withTimeoutOrNull(8_000L) {
+            lastSuccess(repository.provideHomeFeed())
+        } ?: HomeFeedModel()
     }
 
     private suspend fun continueCarTracks(): List<SongsModel> = withContext(Dispatchers.IO) {
