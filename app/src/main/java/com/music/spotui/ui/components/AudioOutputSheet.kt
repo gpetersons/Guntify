@@ -51,7 +51,7 @@ class AudioOutputs(context: Context) {
     }
     fun select(id: String): Boolean = runCatching {
         if(Build.VERSION.SDK_INT >= 30 && modern != null && !id.startsWith("legacy:")) {
-            modern.systemController.transferableRoutes.firstOrNull { it.id == id }?.let { modern.transferTo(it); return true }
+            modern.routes.firstOrNull { it.id == id }?.let { modern.transferTo(it); return true }
             if(Build.VERSION.SDK_INT >= 34 && modern.showSystemOutputSwitcher()) return true
             return false
         }

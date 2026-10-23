@@ -56,12 +56,6 @@ fun PlaylistEditorSheet(id: String, name: String, navController: NavController, 
         com.music.spotui.di.SongPlayer.playSong(song.url, context)
         player.updateSongState(song.coverUri, song.title, song.singer, true, song.id, index, name)
     }
-    menu?.let { song -> SongOptionsSheet(song, navController, context, onDismiss = { menu = null },
-        onRemoveFromPlaylist = if(tab == "In playlist" && state.editable) ({ removing = song; menu = null }) else null) }
-    removing?.let { song -> AlertDialog(onDismissRequest = { removing = null }, containerColor = AppSurface,
-        title = { Text("Remove this song?",color=AppText) }, text = { Text("Remove ${song.title} from $name? Your Liked Songs won't change.",color=AppSecondary) },
-        confirmButton = { TextButton(enabled=state.editable&&!state.loading&&!state.busy,onClick = { model.remove(song); removing=null }) { Text("Remove",color=AppPalette) } },
-        dismissButton = { TextButton(onClick = { removing=null }) { Text("Cancel",color=AppSecondary) } }) }
     ModalBottomSheet(onDismissRequest = { if(!state.busy) onDismiss() },containerColor=AppSurface,contentColor=AppText,
         sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.92f).navigationBarsPadding().imePadding().padding(horizontal=16.dp)) {
@@ -102,6 +96,7 @@ fun PlaylistEditorSheet(id: String, name: String, navController: NavController, 
                 OutlinedTextField(value=query,onValueChange={query=it;if(source=="Search")picker.search(it)},placeholder={Text(if(source=="Search")"Search Spotify" else "Find a song or playlist")},singleLine=true,modifier=Modifier.fillMaxWidth(),
                     colors=OutlinedTextFieldDefaults.colors(focusedTextColor=AppText,unfocusedTextColor=AppText,focusedBorderColor=AppPalette,unfocusedBorderColor=AppRaised))
             }
+            if(tab=="Add songs" && chosen.size>=50) Text("50 selected. Add these, then choose more.",color=AppSecondary,fontSize=12.sp)
             LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(top=10.dp,bottom=16.dp)) {
                 if(tab=="Add songs" && source=="Playlists" && opened==null) {
                     when(val response=library) {
@@ -130,7 +125,7 @@ fun PlaylistEditorSheet(id: String, name: String, navController: NavController, 
                             if(rows.isEmpty()) item { Text(if(tab=="In playlist")"No songs yet. Add a few favorites." else if(source=="Recommended")"Choose Liked Songs, a playlist, or search Spotify to add songs." else "No songs found.",color=AppSecondary) }
                             itemsIndexed(rows,key={i,s->s.playlistItemUid.ifBlank{"${s.id}:$i"}}) { index,song ->
                                 Row(Modifier.fillMaxWidth().padding(vertical=4.dp).clip(RoundedCornerShape(12.dp)).background(AppRaised.copy(alpha=0.3f)).clickable{
-                                    if(tab=="Add songs") { if(chosen.containsKey(song.spotifyTrackId))chosen.remove(song.spotifyTrackId)else if(chosen.size<50&&song.spotifyTrackId.isNotBlank())chosen[song.spotifyTrackId]=song }
+                                    if(tab=="Add songs") { if(state.editable && !state.busy) { if(chosen.containsKey(song.spotifyTrackId))chosen.remove(song.spotifyTrackId)else if(chosen.size<50&&song.spotifyTrackId.isNotBlank())chosen[song.spotifyTrackId]=song } }
                                     else {
                                         player.updateQueue(rows)
                                         player.activeCollection.value=com.music.spotui.data.entity.PlaybackCollection("playlist:$id","playlist",id,name,state.songs.firstOrNull()?.coverUri.orEmpty(),"Playlist")
@@ -140,7 +135,7 @@ fun PlaylistEditorSheet(id: String, name: String, navController: NavController, 
                                 }.padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
                                     GlideImage(model=song.coverUri,contentDescription=null,modifier=Modifier.size(46.dp).clip(RoundedCornerShape(8.dp)),contentScale=ContentScale.Crop)
                                     Column(Modifier.weight(1f).padding(horizontal=12.dp)){Text(song.title,color=AppText,maxLines=1,overflow=TextOverflow.Ellipsis);Text(song.singer,color=AppSecondary,maxLines=1,fontSize=12.sp)}
-                                    if(tab=="Add songs") Checkbox(checked=chosen.containsKey(song.spotifyTrackId),enabled=state.editable&&!state.busy&&song.spotifyTrackId.isNotBlank(),onCheckedChange={checked->if(!checked)chosen.remove(song.spotifyTrackId)else if(chosen.size<50)chosen[song.spotifyTrackId]=song},colors=CheckboxDefaults.colors(checkedColor=AppPalette))
+                                    if(tab=="Add songs") Checkbox(checked=chosen.containsKey(song.spotifyTrackId),enabled=state.editable&&!state.busy&&song.spotifyTrackId.isNotBlank()&&(chosen.containsKey(song.spotifyTrackId)||chosen.size<50),onCheckedChange={checked->if(!checked)chosen.remove(song.spotifyTrackId)else if(chosen.size<50)chosen[song.spotifyTrackId]=song},colors=CheckboxDefaults.colors(checkedColor=AppPalette))
                                     SongOverflowButton(song.title){menu=song}
                                 }
                             }
@@ -151,6 +146,13 @@ fun PlaylistEditorSheet(id: String, name: String, navController: NavController, 
             if(tab=="Add songs") Button(enabled=state.editable&&!state.busy&&!state.loading&&chosen.isNotEmpty(),onClick={model.add(chosen.values.toList())},modifier=Modifier.fillMaxWidth().padding(bottom=16.dp),colors=ButtonDefaults.buttonColors(containerColor=AppPalette,contentColor=androidx.compose.ui.graphics.Color.Black)) { Text("Add ${chosen.size} song${if(chosen.size==1)"" else "s"}") }
         }
     }
+    menu?.let { song -> SongOptionsSheet(song, navController, context, onDismiss = { menu = null },
+        onRemoveFromPlaylist = if(tab == "In playlist" && state.editable) ({ removing = song; menu = null }) else null) }
+    removing?.let { song -> AlertDialog(onDismissRequest = { removing = null }, containerColor = AppSurface,
+        title = { Text("Remove this song?",color=AppText) }, text = { Text("Remove ${song.title} from $name? Your Liked Songs won't change.",color=AppSecondary) },
+        confirmButton = { TextButton(enabled=state.editable&&!state.loading&&!state.busy,onClick = { model.remove(song); removing=null }) { Text("Remove",color=AppPalette) } },
+        dismissButton = { TextButton(onClick = { removing=null }) { Text("Cancel",color=AppSecondary) } }) }
+
 }
 
 @Composable
