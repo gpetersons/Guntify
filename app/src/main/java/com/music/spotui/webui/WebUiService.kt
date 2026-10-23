@@ -28,7 +28,7 @@ internal object WebUiController {
     fun start(context: Context) {
         state.value = WebUiState(error = "Starting…")
         runCatching { ContextCompat.startForegroundService(context, Intent(context, WebUiService::class.java)) }
-            .onFailure { state.value = WebUiState(error = "Couldn't start. Keep Guntify open and try again.") }
+            .onFailure { state.value = WebUiState(error = "Couldn't start. Keep Sprotify open and try again.") }
     }
     fun stop(context: Context) { context.stopService(Intent(context, WebUiService::class.java)) }
 }
@@ -63,7 +63,7 @@ class WebUiService : Service() {
             val stop = PendingIntent.getService(this, 72, Intent(this,WebUiService::class.java).setAction("STOP"), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             val open = PendingIntent.getActivity(this, 73, Intent(this,MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             val notification = NotificationCompat.Builder(this,"web_ui").setSmallIcon(R.drawable.ic_playing)
-                .setContentTitle("Guntify desktop mode is running").setContentText("Connected browsers can play from this phone. Tap Stop to disconnect.")
+                .setContentTitle("Sprotify desktop mode is running").setContentText("Connected browsers can play from this phone. Tap Stop to disconnect.")
                 .setContentIntent(open).setOngoing(true).addAction(0,"Stop",stop).build()
             ServiceCompat.startForeground(this, 7201, notification, if(Build.VERSION.SDK_INT>=29)ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE else 0)
             val ip = WebUiController.wifiAddress(this) ?: error("Connect your phone to Wi-Fi first.")
@@ -73,10 +73,10 @@ class WebUiService : Service() {
             val started = WebUiServer(applicationContext, ip, port, secret)
             started.start(70_000, false)
             server = started
-            wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"Guntify:WebUI").apply {
+            wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"Sprotify:WebUI").apply {
                 setReferenceCounted(false); acquire(30*60_000L)
             }
-            wifiLock = (applicationContext.getSystemService(WIFI_SERVICE) as WifiManager).createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF,"Guntify:WebUI").apply {
+            wifiLock = (applicationContext.getSystemService(WIFI_SERVICE) as WifiManager).createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF,"Sprotify:WebUI").apply {
                 setReferenceCounted(false); acquire()
             }
             WebUiController.state.value = WebUiState(true,"http://$ip:$port/")

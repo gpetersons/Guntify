@@ -18,7 +18,7 @@ class VoiceSearchActivity : Activity() {
             }
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(request) else startService(request)
         } catch (error: Exception) {
-            android.widget.Toast.makeText(this, "Open Guntify and try the voice request again", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(this, "Open Sprotify and try the voice request again", android.widget.Toast.LENGTH_SHORT).show()
         } finally { finish() }
     }
 }

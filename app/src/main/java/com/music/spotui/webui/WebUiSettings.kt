@@ -41,7 +41,7 @@ internal fun WebUiSettings() {
     fun batterySettings() {
         runCatching { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:${context.packageName}"))) }
     }
-    Text("ŠprotiFy on your computer",color=AppText,fontSize=25.sp,fontWeight=FontWeight.Bold)
+    Text("Sprotify on your computer",color=AppText,fontSize=25.sp,fontWeight=FontWeight.Bold)
     Spacer(Modifier.height(10.dp))
     Text("Play through your computer's speakers using the Spotify account and audio sources already connected on this phone.",color=AppSecondary)
     Spacer(Modifier.height(20.dp))
@@ -53,7 +53,7 @@ internal fun WebUiSettings() {
                 SelectionContainer { Text(state.link.substringBefore('#'),color=AppText,fontSize=20.sp) }
                 Text("The browser connects automatically while desktop mode is running.",color=AppSecondary)
                 TextButton(onClick={
-                    (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("ŠprotiFy desktop mode",state.link))
+                    (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Sprotify desktop mode",state.link))
                     copied=true
                 }) { Text(if(copied)"Address copied" else "Copy address",color=AppPalette) }
                 OutlinedButton(onClick={WebUiController.stop(context);copied=false}) { Text("Stop desktop mode",color=AppText) }
@@ -67,11 +67,11 @@ internal fun WebUiSettings() {
     Spacer(Modifier.height(20.dp))
     Text("How to connect",color=AppText,fontSize=19.sp,fontWeight=FontWeight.Bold)
     Spacer(Modifier.height(10.dp))
-    Text("1. Connect your phone and computer to the same home Wi-Fi/router. A computer connected by Ethernet to that router also works.\n\n2. Start desktop mode, then type the complete http:// address above into the computer's browser.\n\n3. Choose a song and press Play. Sound comes from the computer, not the phone. Keep the browser tab open.\n\n4. Keep the phone on Wi-Fi. Locking its screen is fine; force-stopping ŠprotiFy or changing Wi-Fi will disconnect the browser.",color=AppSecondary)
+    Text("1. Connect your phone and computer to the same home Wi-Fi/router. A computer connected by Ethernet to that router also works.\n\n2. Start desktop mode, then type the complete http:// address above into the computer's browser.\n\n3. Choose a song and press Play. Sound comes from the computer, not the phone. Keep the browser tab open.\n\n4. Keep the phone on Wi-Fi. Locking its screen is fine; force-stopping Sprotify or changing Wi-Fi will disconnect the browser.",color=AppSecondary)
     Spacer(Modifier.height(18.dp))
     Text("Keep the connection alive",color=AppText,fontSize=19.sp,fontWeight=FontWeight.Bold)
     Spacer(Modifier.height(8.dp))
-    Text("ŠprotiFy shows a running notification while serving the browser. If your phone stops the connection with its screen off, open app settings → Battery and choose Unrestricted / Don't optimize. Names vary by phone. This is optional, uses more battery, and can't prevent Android or the manufacturer from stopping the app. Plug in for long sessions.",color=AppSecondary)
+    Text("Sprotify shows a running notification while serving the browser. If your phone stops the connection with its screen off, open app settings → Battery and choose Unrestricted / Don't optimize. Names vary by phone. This is optional, uses more battery, and can't prevent Android or the manufacturer from stopping the app. Plug in for long sessions.",color=AppSecondary)
     TextButton(onClick={batterySettings()}) { Text("Open app & battery settings",color=AppPalette) }
     Spacer(Modifier.height(10.dp))
     Text("Connection tips",color=AppText,fontWeight=FontWeight.Bold)
@@ -81,7 +81,7 @@ internal fun WebUiSettings() {
     Spacer(Modifier.height(130.dp))
     if(showStart) AlertDialog(onDismissRequest={showStart=false},containerColor=AppSurface,
         title={Text("Start your desktop player?",color=AppText)},
-        text={Text("Keep this phone on Wi-Fi while you listen on your computer. A running notification and temporary Wi-Fi/CPU locks help keep the connection available. For long sessions, you can optionally set ŠprotiFy's battery usage to Unrestricted in app settings.",color=AppSecondary)},
+        text={Text("Keep this phone on Wi-Fi while you listen on your computer. A running notification and temporary Wi-Fi/CPU locks help keep the connection available. For long sessions, you can optionally set Sprotify's battery usage to Unrestricted in app settings.",color=AppSecondary)},
         confirmButton={TextButton(onClick={showStart=false;start()}){Text("Start desktop mode",color=AppPalette)}},
         dismissButton={TextButton(onClick={showStart=false}){Text("Not now",color=AppSecondary)}})
 }

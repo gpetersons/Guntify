@@ -1,4 +1,4 @@
-Guntify: independently branded modification of USpot and Spotui.
+Sprotify: independently branded modification of USpot and Spotui.
 Thank you Spotui https://github.com/Spotui/Spotui and USpot https://github.com/rare621/USpot .
 Original notices preserved below.
 

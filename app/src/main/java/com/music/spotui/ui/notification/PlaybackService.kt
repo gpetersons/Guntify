@@ -144,7 +144,7 @@ class PlaybackService : MediaLibraryService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val notification = androidx.core.app.NotificationCompat.Builder(this, channel)
             .setSmallIcon(com.music.spotui.R.drawable.ic_playing)
-            .setContentTitle("Guntify • Resuming playback")
+            .setContentTitle("Sprotify • Resuming playback")
             .setContentText("Restoring your last song…")
             .setContentIntent(open)
             .setOnlyAlertOnce(true)
@@ -697,7 +697,7 @@ class PlaybackService : MediaLibraryService() {
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?,
         ): ListenableFuture<LibraryResult<MediaItem>> =
-            Futures.immediateFuture(LibraryResult.ofItem(folder(ROOT, "Guntify"), LibraryParams.Builder()
+            Futures.immediateFuture(LibraryResult.ofItem(folder(ROOT, "Sprotify"), LibraryParams.Builder()
                 .setExtras(android.os.Bundle().apply { putBoolean("android.media.browse.SEARCH_SUPPORTED", true) }).build()))
 
         override fun onGetChildren(
@@ -720,7 +720,7 @@ class PlaybackService : MediaLibraryService() {
         ): ListenableFuture<LibraryResult<MediaItem>> = future {
             val item = trackById[mediaId]?.let { playable(it, mediaId) }
                 ?: browseById[mediaId]
-                ?: (listOf(CarBrowsePolicy.Entry(ROOT, "Guntify")) + (CarBrowsePolicy.root(activeRadioName()) + CarBrowsePolicy.library())).firstOrNull { it.id == mediaId }?.let(::carItem)
+                ?: (listOf(CarBrowsePolicy.Entry(ROOT, "Sprotify")) + (CarBrowsePolicy.root(activeRadioName()) + CarBrowsePolicy.library())).firstOrNull { it.id == mediaId }?.let(::carItem)
                 ?: recentCarEntries().firstOrNull { it.id == mediaId }?.let(::carItem)
             item?.let { LibraryResult.ofItem(it, null) } ?: LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
         }

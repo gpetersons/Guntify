@@ -203,7 +203,7 @@ function rows(songs, parent = $("content")) {
       b.onclick = () => playList(songs, index, collection);
       const radio = button("◉", () => createRadio(song));
       radio.ariaLabel = `Start radio from ${song.title}`;
-      radio.title = "Start ŠprotiFy Radio";
+      radio.title = "Start Sprotify Radio";
       const queue = button("+", () => enqueue(song));
       queue.ariaLabel = `Add ${song.title} to queue`;
       queue.title = "Add to queue";
@@ -279,7 +279,7 @@ async function navigate(view, push = true) {
         const head = el("div", "section-heading");
         head.append(el("h2", "", "Your rotation"));
         const plus = el("button", "circle", "+");
-        plus.title = "Create ŠprotiFy Radio or Radio Mix";
+        plus.title = "Create Sprotify Radio or Radio Mix";
         plus.onclick = radioChoice;
         head.append(plus);
         const grid = el("div", "shortcut-grid");
@@ -587,7 +587,7 @@ async function search(initialType = "All") {
         "Albums",
         "Artists",
         "Playlists",
-        "ŠprotiFy Radios",
+        "Sprotify Radios",
       ].forEach((label) =>
         filters.append(
           button(
@@ -642,10 +642,10 @@ async function search(initialType = "All") {
         section("Albums", data.albums || []);
       if (type === "All" || type === "Playlists")
         section("Spotify playlists", data.playlists || []);
-      if (type === "All" || type === "ŠprotiFy Radios")
-        section("Your ŠprotiFy Radios", data.radios || []);
+      if (type === "All" || type === "Sprotify Radios")
+        section("Your Sprotify Radios", data.radios || []);
       const groups =
-        type === "ŠprotiFy Radios"
+        type === "Sprotify Radios"
           ? [data.radios]
           : type === "Songs"
             ? [data.songs]
@@ -820,7 +820,7 @@ function renderPlayer() {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: song.title,
       artist: song.subtitle,
-      album: state.collection?.title || "ŠprotiFy",
+      album: state.collection?.title || "Sprotify",
       artwork: song.image ? [{ src: song.image }] : [],
     });
   }
@@ -1288,7 +1288,7 @@ function renderCollection(data) {
       "span",
       "eyebrow",
       item.type === "radio"
-        ? "ŠPROTIFY RADIO • CONTINUOUS RECOMMENDATIONS"
+        ? "SPROTIFY RADIO • CONTINUOUS RECOMMENDATIONS"
         : item.type.toUpperCase(),
     ),
     el("h1", "", item.title),
@@ -1464,7 +1464,7 @@ function downloadSongs(songs) {
   }
   confirmAction(
     "Download on your phone?",
-    `Save ${songs.length} songs using ŠprotiFy’s existing download manager. Downloads are stored on the phone, and can stream to this computer while desktop mode is connected.`,
+    `Save ${songs.length} songs using Sprotify’s existing download manager. Downloads are stored on the phone, and can stream to this computer while desktop mode is connected.`,
     async () => {
       await api("download", { songs: songs.map((s) => s.key) });
       toast("Downloads added on your phone");
@@ -1514,7 +1514,7 @@ function songMenu(song) {
       () => toggleLike(song),
     ],
     ["Add to playlist", () => playlistPicker(song)],
-    ["Start ŠprotiFy Radio", () => createRadio(song)],
+    ["Start Sprotify Radio", () => createRadio(song)],
     [
       song.downloaded ? "Remove download from phone" : "Download on phone",
       () => {
@@ -1663,7 +1663,7 @@ function renderLibraryItems(items, view) {
     el(
       "h2",
       "",
-      view === "radios" ? "Saved ŠprotiFy stations" : "Saved collections",
+      view === "radios" ? "Saved Sprotify stations" : "Saved collections",
     ),
     button("+", view === "radios" ? radioChoice : createPlaylist, "circle"),
   );
@@ -1688,7 +1688,7 @@ function renderLibraryItems(items, view) {
       ["All", "All"],
       ["playlist", "Playlists"],
       ["album", "Albums"],
-      ["radio", "ŠprotiFy Radios"],
+      ["radio", "Sprotify Radios"],
     ])
       filters.append(
         button(
@@ -1774,13 +1774,13 @@ async function playlistPicker(song) {
 function radioChoice() {
   const d = dialog("Create a station");
   d.append(
-    button("ŠprotiFy Radio", () => radioCreator(false), "menu-action"),
-    button("ŠprotiFy Radio Mix", () => radioCreator(true), "menu-action"),
+    button("Sprotify Radio", () => radioCreator(false), "menu-action"),
+    button("Sprotify Radio Mix", () => radioCreator(true), "menu-action"),
   );
 }
 async function radioCreator(mix) {
   const d = dialog(
-    mix ? "Create ŠprotiFy Radio Mix" : "Create ŠprotiFy Radio",
+    mix ? "Create Sprotify Radio Mix" : "Create Sprotify Radio",
     mix
       ? "Choose up to 5 songs. Search Spotify or pick from your playlists and Liked Songs."
       : "Choose one song to start your station.",
@@ -2336,7 +2336,7 @@ async function renderSettings(generation) {
     el(
       "p",
       "muted",
-      "Back up your local history, radios and settings. Account credentials are excluded. Backups from regular ŠprotiFy and the Web Preview are compatible.",
+      "Back up your local history, radios and settings. Account credentials are excluded. Backups from regular Sprotify and the Web Preview are compatible.",
     ),
   );
   backup.append(
@@ -2352,7 +2352,7 @@ async function renderSettings(generation) {
         const url = URL.createObjectURL(blob);
         const a = el("a");
         a.href = url;
-        a.download = "ŠprotiFy-backup.zip";
+        a.download = "Sprotify-backup.zip";
         document.body.append(a);
         a.click();
         a.remove();
@@ -2373,7 +2373,7 @@ async function renderSettings(generation) {
       return;
     }
     confirmAction(
-      "Import this ŠprotiFy backup?",
+      "Import this Sprotify backup?",
       "This replaces local history, radios and settings on your phone. Export current data first. Your connected account credentials are preserved.",
       async () => {
         audio.pause();
@@ -2409,7 +2409,7 @@ async function renderSettings(generation) {
       `Using the Spotify account connected on your phone${data.name ? ": " + data.name : ""}. Spotify sign-in, YouTube sign-in, music-source setup, Android permissions and Android Auto remain in the Android app.`,
     ),
   );
-  const about = group("About ŠprotiFy");
+  const about = group("About Sprotify");
   about.append(
     image("/logo.svg", "about-logo"),
     el(
@@ -2420,7 +2420,7 @@ async function renderSettings(generation) {
     el(
       "small",
       "",
-      `ŠprotiFy ${data.version || "1.1"}${data.build ? " · build " + data.build : ""} · Desktop & Browser.`,
+      `Sprotify ${data.version || "1.1"}${data.build ? " · build " + data.build : ""} · Desktop & Browser.`,
     ),
   );
 }
@@ -2678,7 +2678,7 @@ async function playlistRecommendations(item) {
       el(
         "p",
         "muted",
-        "Based on your Spotify preferences and qualified ŠprotiFy listening.",
+        "Based on your Spotify preferences and qualified Sprotify listening.",
       ),
     );
     data.songs.forEach((song) => {

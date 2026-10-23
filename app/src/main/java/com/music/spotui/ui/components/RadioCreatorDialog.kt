@@ -48,9 +48,9 @@ fun RadioCreationMenu(onCreated:(String)->Unit) {
         MaterialTheme(colorScheme=MaterialTheme.colorScheme.copy(surface=AppSurface),shapes=MaterialTheme.shapes.copy(extraSmall=RoundedCornerShape(20.dp))) {
             DropdownMenu(expanded=expanded,onDismissRequest={expanded=false},modifier=Modifier.widthIn(min=260.dp,max=320.dp)) {
                 Text("CREATE A STATION",color=AppSecondary,fontSize=11.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(horizontal=16.dp,vertical=10.dp))
-                DropdownMenuItem(text={Column{Text("Guntify Radio",color=AppText,fontWeight=FontWeight.Bold);Text("Start with one song",color=AppSecondary,fontSize=12.sp)}},
+                DropdownMenuItem(text={Column{Text("Sprotify Radio",color=AppText,fontWeight=FontWeight.Bold);Text("Start with one song",color=AppSecondary,fontSize=12.sp)}},
                     onClick={expanded=false;mix=false})
-                DropdownMenuItem(text={Column{Text("Guntify Radio Mix",color=AppText,fontWeight=FontWeight.Bold);Text("Blend up to five songs",color=AppSecondary,fontSize=12.sp)}},
+                DropdownMenuItem(text={Column{Text("Sprotify Radio Mix",color=AppText,fontWeight=FontWeight.Bold);Text("Blend up to five songs",color=AppSecondary,fontSize=12.sp)}},
                     onClick={expanded=false;mix=true})
             }
         }
@@ -89,7 +89,7 @@ fun RadioCreatorDialog(mix:Boolean,onDismiss:()->Unit,onCreated:(String)->Unit,m
                     }
                     Row(verticalAlignment=Alignment.CenterVertically,modifier=Modifier.padding(bottom=12.dp)) {
                         Column {
-                            Text(if(mix)"Guntify Radio Mix" else "Guntify Radio",color=AppText,fontSize=25.sp,fontWeight=FontWeight.Bold)
+                            Text(if(mix)"Sprotify Radio Mix" else "Sprotify Radio",color=AppText,fontSize=25.sp,fontWeight=FontWeight.Bold)
                             Text(if(mix)"Your songs. One continuous mix." else "One song. A station that keeps going.",color=AppSecondary,fontSize=12.sp)
                         }
                     }
@@ -195,7 +195,7 @@ fun RadioCreatorDialog(mix:Boolean,onDismiss:()->Unit,onCreated:(String)->Unit,m
     val visible=saved.sortedByDescending{com.music.spotui.data.preferences.LibraryPins.contains(context,"radio:${it.spotifyTrackId.ifBlank{it.id.toString()}}")}.also{pinRevision}.filter{query.isBlank() || it.title.contains(query,true) || it.singer.contains(query,true)}
     val player:com.music.spotui.ui.viewmodel.PlayerViewModel=hiltViewModel()
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=16.dp,end=16.dp,bottom=com.music.spotui.ui.navigation.LocalBottomOverlayInset.current+24.dp,top=12.dp)) {
-        if(visible.isEmpty())item{Text("Your Guntify radios appear here. Create one using + on Home.",color=AppSecondary)}
+        if(visible.isEmpty())item{Text("Your Sprotify radios appear here. Create one using + on Home.",color=AppSecondary)}
         items(visible,key={it.spotifyTrackId.ifBlank{it.id.toString()}}) { song ->
             val id=song.spotifyTrackId.ifBlank{song.id.toString()}
             val active=player.activeCollection.value?.key=="radio:$id"
@@ -205,7 +205,7 @@ fun RadioCreatorDialog(mix:Boolean,onDismiss:()->Unit,onCreated:(String)->Unit,m
                 GlideImage(model=song.coverUri,contentDescription=null,modifier=Modifier.size(60.dp))
                 Column(Modifier.weight(1f).padding(start=14.dp)) {
                     Text(com.music.spotui.data.preferences.RadioSessions.stationName(song),color=if(active)AppPalette else AppText,fontWeight=FontWeight.SemiBold)
-                    Text(if(com.music.spotui.data.preferences.RadioSessions.isMix(id))"Guntify Radio Mix · ${song.singer}" else "Guntify Radio · ${song.singer}",color=AppSecondary,fontSize=12.sp)
+                    Text(if(com.music.spotui.data.preferences.RadioSessions.isMix(id))"Sprotify Radio Mix · ${song.singer}" else "Sprotify Radio · ${song.singer}",color=AppSecondary,fontSize=12.sp)
                 }
                 if(active)PlayingBars(player.currentSongPlayingState.value)
                 PinButton("radio:$id")

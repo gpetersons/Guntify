@@ -1,4 +1,4 @@
-name: Guntify - Build and test
+name: Sprotify - Build and test
 on:
   push:
     branches: [main, 'fix/**', 'release/**', 'branding/**']
@@ -31,9 +31,9 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew :app:assembleDebug :app:testDebugUnitTest :spotify:test :app:lintVitalRelease --no-daemon --max-workers=2
-      - name: Upload Guntify test APK
+      - name: Upload Sprotify test APK
         uses: actions/upload-artifact@v4
         with:
-          name: Guntify-debug-APK
+          name: Sprotify-debug-APK
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error

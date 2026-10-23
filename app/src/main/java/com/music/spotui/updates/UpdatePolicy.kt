@@ -9,7 +9,7 @@ data class AppRelease(val code: Long, val version: String, val tag: String, val 
 
 /** Accept only a stable, versioned APK from our own repository. Never compare display versions. */
 object UpdatePolicy {
-    const val REPO = "gpetersons/Guntify"
+    const val REPO = "gpetersons/Sprotify"
     const val API = "https://api.github.com/repos/$REPO/releases?per_page=20"
     const val MAX_APK_BYTES = 150L * 1024 * 1024
     /** The /releases/latest endpoint excludes pre-releases, so use published releases. */
@@ -36,7 +36,7 @@ object UpdatePolicy {
         require(j.getString("html_url") == page) { "Unexpected release repository." }
         val assets = j.getJSONArray("assets")
         val apks = (0 until assets.length()).map { assets.getJSONObject(it) }
-            .filter { it.optString("name") in setOf("Guntify.apk", "SprotiFy.apk") &&
+            .filter { it.optString("name") in setOf("Guntify.apk", "SprotiFy.apk", "Sprotify.apk") &&
                 it.optString("state") == "uploaded" }
         require(apks.size == 1) { "The release APK is not ready yet." }
         val asset = apks.single()

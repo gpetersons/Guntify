@@ -81,7 +81,7 @@ internal class WebUiBackend(private val context: Context) {
         val json = JSONObject().put("key", key).put("title", item.name).put("image", remoteImage(item.imageUrl))
             .put("type", key.substringBefore(':')).put("subtitle", when (item) {
                 is HomeItem.Playlist -> "Playlist"
-                is HomeItem.Radio -> "Guntify Radio"
+                is HomeItem.Radio -> "Sprotify Radio"
                 is HomeItem.Album -> item.artists.ifBlank { "Album" }
                 else -> "Artist"
             })
@@ -209,7 +209,7 @@ internal class WebUiBackend(private val context: Context) {
                         when (val collection = collections[ticket.collection]) {
                             is HomeItem.Playlist -> HomeFrequency.record(context, "playlist", collection.id, collection.name, collection.imageUrl, collection.subtitle)
                             is HomeItem.Album -> HomeFrequency.record(context, "album", "${collection.name}|${collection.artists}", collection.name, collection.imageUrl, collection.artists)
-                            is HomeItem.Radio -> HomeFrequency.record(context, "radio", collection.seed.spotifyTrackId, collection.name, collection.imageUrl, "Guntify Radio")
+                            is HomeItem.Radio -> HomeFrequency.record(context, "radio", collection.seed.spotifyTrackId, collection.name, collection.imageUrl, "Sprotify Radio")
                             else -> Unit
                         }
                         if (radio != null) RadioSessions.qualified(context, radio.spotifyTrackId, s, "web:${body.optString("ticket")}")
@@ -334,7 +334,7 @@ internal class WebUiBackend(private val context: Context) {
             cacheLibraryEntries(context, Api.HomeCache.library.orEmpty())
             val saved = com.music.spotui.data.api.SpotifyMutations.run(context) { Spotify.addToLibrary(listOf("spotify:playlist:${created.id}")) }
             if(saved.isSuccess)com.music.spotui.data.preferences.CreatedPlaylists.markSaved(context,created.id)
-            JSONObject().put("item", mapped).put("warning",if(saved.isSuccess)""else"Playlist created and kept in Guntify. Saving to Spotify is pending; retry saving it from your phone.")
+            JSONObject().put("item", mapped).put("warning",if(saved.isSuccess)""else"Playlist created and kept in Sprotify. Saving to Spotify is pending; retry saving it from your phone.")
         }
         "addToPlaylist" -> {
             val song = song(body)

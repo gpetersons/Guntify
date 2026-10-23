@@ -7,11 +7,11 @@ import org.junit.Test
 
 class UpdatePolicyTest {
     private fun release(code: Int = 76) = JSONObject().put("tag_name", "v1.1-build-$code")
-        .put("html_url", "https://github.com/gpetersons/Guntify/releases/tag/v1.1-build-$code")
+        .put("html_url", "https://github.com/gpetersons/Sprotify/releases/tag/v1.1-build-$code")
         .put("draft", false).put("prerelease", false).put("body", "What's new")
         .put("assets", JSONArray().put(JSONObject().put("name", "Guntify.apk").put("state", "uploaded")
             .put("size", 30_000_000).put("digest", "sha256:" + "a".repeat(64))
-            .put("browser_download_url", "https://github.com/gpetersons/Guntify/releases/download/v1.1-build-$code/Guntify.apk")))
+            .put("browser_download_url", "https://github.com/gpetersons/Sprotify/releases/download/v1.1-build-$code/Guntify.apk")))
     @Test fun sameDisplayVersionCanHaveNewerBuild() { val r=UpdatePolicy.parse(release().toString())!!;assertEquals(76L,r.code);assertEquals("1.1",r.version) }
     @Test fun buildNumbersAreNumeric() { assertEquals(100L,UpdatePolicy.parse(release(100).toString())!!.code) }
     @Test fun draftsAndMislabeledPrereleasesAreNeverOffered() {
@@ -22,7 +22,7 @@ class UpdatePolicyTest {
     @Test fun wrongRepositoryIsRejected() { rejected(release().put("html_url","https://github.com/other/Guntify/releases/tag/v1.1-build-76")) }
     @Test fun missingOrAmbiguousApkIsRejected() { rejected(release().put("assets",JSONArray()));val r=release();r.getJSONArray("assets").put(r.getJSONArray("assets").getJSONObject(0));rejected(r) }
     @Test fun previewApkIsNotAProductionUpdate() { val r=release();r.getJSONArray("assets").getJSONObject(0).put("name","Guntify-Desktop-Preview.apk");rejected(r) }
-    @Test fun arbitraryDownloadRedirectAndInsecureUrlAreRejected() { for(url in listOf("http://github.com/gpetersons/Guntify/releases/download/v1.1-build-76/Guntify.apk","https://evil.invalid/Guntify.apk","https://github.com.evil.invalid/gpetersons/Guntify/releases/download/v1.1-build-76/Guntify.apk")){val r=release();r.getJSONArray("assets").getJSONObject(0).put("browser_download_url",url);rejected(r)} }
+    @Test fun arbitraryDownloadRedirectAndInsecureUrlAreRejected() { for(url in listOf("http://github.com/gpetersons/Sprotify/releases/download/v1.1-build-76/Guntify.apk","https://evil.invalid/Guntify.apk","https://github.com.evil.invalid/gpetersons/Sprotify/releases/download/v1.1-build-76/Guntify.apk")){val r=release();r.getJSONArray("assets").getJSONObject(0).put("browser_download_url",url);rejected(r)} }
     @Test fun checksumIsRequired() { val r=release();r.getJSONArray("assets").getJSONObject(0).remove("digest");rejected(r) }
     @Test fun oversizedAssetIsRejected() { val r=release();r.getJSONArray("assets").getJSONObject(0).put("size",UpdatePolicy.MAX_APK_BYTES+1);rejected(r) }
     @Test fun unknownTagCannotMasqueradeAsCurrent() { rejected(release().put("tag_name","latest")) }
@@ -33,11 +33,11 @@ class UpdatePolicyTest {
     private fun beta(code: Int = 4): JSONObject = release(code).apply {
         val tag = "v1.0.0-beta.$code"
         put("tag_name", tag)
-        put("html_url", "https://github.com/gpetersons/Guntify/releases/tag/$tag")
+        put("html_url", "https://github.com/gpetersons/Sprotify/releases/tag/$tag")
         put("prerelease", true)
         getJSONArray("assets").getJSONObject(0).apply {
-            put("name", "SprotiFy.apk")
-            put("browser_download_url", "https://github.com/gpetersons/Guntify/releases/download/$tag/SprotiFy.apk")
+            put("name", "Sprotify.apk")
+            put("browser_download_url", "https://github.com/gpetersons/Sprotify/releases/download/$tag/Sprotify.apk")
         }
     }
 
@@ -45,7 +45,7 @@ class UpdatePolicyTest {
         val r = UpdatePolicy.parse(beta().toString())!!
         assertEquals(4L, r.code)
         assertEquals("1.0.0-beta.4", r.version)
-        assertTrue(r.apk.endsWith("/SprotiFy.apk"))
+        assertTrue(r.apk.endsWith("/Sprotify.apk"))
     }
     @Test fun betaMustBeMarkedPrerelease() {
         assertNull(UpdatePolicy.parse(beta().put("prerelease", false).toString()))
@@ -62,6 +62,20 @@ class UpdatePolicyTest {
         val r = beta()
         r.getJSONArray("assets").put(r.getJSONArray("assets").getJSONObject(0))
         rejected(r)
+    }
+
+    @Test fun previouslyPublishedAssetNamesStaySupported() {
+        val oldBeta = beta(4)
+        oldBeta.getJSONArray("assets").getJSONObject(0).apply {
+            put("name", "SprotiFy.apk")
+            put("browser_download_url", "https://github.com/gpetersons/Sprotify/releases/download/v1.0.0-beta.4/SprotiFy.apk")
+        }
+        assertEquals(4L, UpdatePolicy.parse(oldBeta.toString())!!.code)
+        val legacy = release(3)
+        assertEquals(3L, UpdatePolicy.parse(legacy.toString())!!.code)
+    }
+    @Test fun newRepositoryAddressIsMandatory() {
+        rejected(beta().put("html_url", "https://github.com/gpetersons/Guntify/releases/tag/v1.0.0-beta.4"))
     }
 
 }

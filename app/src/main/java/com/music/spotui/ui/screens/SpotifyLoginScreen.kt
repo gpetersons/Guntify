@@ -247,7 +247,7 @@ private fun LoginForm(
         Spacer(Modifier.height(72.dp))
         androidx.compose.foundation.Image(
             painter = painterResource(id = R.drawable.logo),
-            contentDescription = "Guntify",
+            contentDescription = "Sprotify",
             modifier = Modifier.size(56.dp),
         )
         Spacer(Modifier.height(28.dp))
