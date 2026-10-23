@@ -21,7 +21,7 @@ object PlaybackDiagnostics {
     }
     fun report(c:Context):String {
         val list=rows(c)
-        return "Guntify playback diagnostics\nLocal events; no credentials or stream URLs\n"+(0 until list.length()).joinToString("\n") {
+        return "Sprotify playback diagnostics\nLocal events; no credentials or stream URLs\n"+(0 until list.length()).joinToString("\n") {
             val row=list.getJSONObject(it)
             java.text.SimpleDateFormat("MM-dd HH:mm:ss",java.util.Locale.US).format(java.util.Date(row.optLong("time")))+"  "+row.optString("event")+"  "+row.optString("detail")
         }

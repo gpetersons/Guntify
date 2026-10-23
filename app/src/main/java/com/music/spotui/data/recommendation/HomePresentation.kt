@@ -61,6 +61,6 @@ object HomePresentationBuilder {
         }
         val ready=HomePresentationPolicy.prepare(feed, discovered, local, frequent, hidden, fraction, accountName, HomeRecents.maxItems(context), recent)
         val saved=radios.filter { HomeHiddenItems.key(it) !in hidden }.distinctBy { HomeHiddenItems.key(it) }.take(20)
-        return if(saved.isEmpty())ready else ready.copy(sections=ready.sections+HomeSection("Your Guntify radios",saved))
+        return if(saved.isEmpty())ready else ready.copy(sections=ready.sections+HomeSection("Your Sprotify radios",saved))
     }
 }

@@ -53,8 +53,8 @@ object RadioSessions {
         require(songs.isNotEmpty() && input.size <= 5 && (mix || songs.size == 1)) { "Choose one to five catalog songs." }
         if (!mix) { remember(context,songs.first()); return songs.first() }
         val id = MIX_PREFIX + java.util.UUID.randomUUID().toString()
-        val marker = songs.first().copy(id=id.hashCode(),title=name.trim().take(80).ifBlank { "Guntify Radio Mix" },
-            album="Guntify Radio Mix",singer="${songs.size} songs",url="",spotifyTrackId=id)
+        val marker = songs.first().copy(id=id.hashCode(),title=name.trim().take(80).ifBlank { "Sprotify Radio Mix" },
+            album="Sprotify Radio Mix",singer="${songs.size} songs",url="",spotifyTrackId=id)
         val array=JSONArray().also { a -> songs.forEach { a.put(encode(it)) } }
         store(context).edit().putString("mix:$id",array.toString()).apply()
         remember(context,marker)

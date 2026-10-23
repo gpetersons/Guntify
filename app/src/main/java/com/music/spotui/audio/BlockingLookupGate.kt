@@ -21,7 +21,7 @@ class BlockingLookupGate {
                     // accidentally releasing a newer worker's permit.
                     occupied.set(false)
                     result.fold(continuation::resume, continuation::resumeWithException)
-                }, "Guntify-legacy-stream-lookup").apply { isDaemon = true }
+                }, "Sprotify-legacy-stream-lookup").apply { isDaemon = true }
                 continuation.invokeOnCancellation { worker.interrupt() }
                 try { worker.start() }
                 catch (error: Throwable) { occupied.set(false); continuation.resumeWithException(error) }

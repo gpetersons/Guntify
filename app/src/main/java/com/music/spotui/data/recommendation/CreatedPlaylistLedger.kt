@@ -18,7 +18,7 @@ object CreatedPlaylistLedger {
     fun merge(owner: String, records: List<CreatedPlaylistRecord>, remote: List<LibraryEntry>): List<LibraryEntry> {
         val keys=remote.filter { it.isPlaylist }.map { it.spotifyId }.toSet()
         return LibraryIdentityPolicy.unique(remote + records.filter { it.owner==owner && it.id !in keys }.map {
-            LibraryEntry(it.id,it.name,"Playlist • Saved in Guntify",it.cover,true)
+            LibraryEntry(it.id,it.name,"Playlist • Saved in Sprotify",it.cover,true)
         })
     }
     fun reconcile(owner: String, records: List<CreatedPlaylistRecord>, remote: List<LibraryEntry>): List<CreatedPlaylistRecord> = records.map { record ->
