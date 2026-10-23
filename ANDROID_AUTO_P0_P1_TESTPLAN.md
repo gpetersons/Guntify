@@ -1,6 +1,6 @@
 # Android Auto P0/P1 test plan
 
-This PR intentionally does not change Guntify's Android Auto home/library layout (P2).
+This PR intentionally does not change Sprotify's Android Auto home/library layout (P2).
 
 ## P0: retain Now Playing during async stream resolution
 
@@ -19,7 +19,7 @@ This PR intentionally does not change Guntify's Android Auto home/library layout
 
 ## Automation and rollout
 
-- GitHub Actions **Guntify - Build and test** runs on pull requests: Android debug build, unit tests and lint.
+- GitHub Actions **Sprotify - Build and test** runs on pull requests: Android debug build, unit tests and lint.
 - The new `CarRadioActionPolicyTest` covers current vs stale/unplayable track selection.
 - Android Auto DHU/emulator and physical head unit tests are **still required**: library unit tests cannot prove that Android Auto preserves UI navigation across MediaSession events.
 - P2 recommendations and redesigned Home browser are explicitly excluded.

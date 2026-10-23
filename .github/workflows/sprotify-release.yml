@@ -1,4 +1,4 @@
-name: ŠprotiFy - Publish signed beta
+name: Sprotify - Publish signed beta
 on:
   # Publish a new signed beta only when the app version is incremented on main.
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: guntify-release
+  group: sprotify-release
   cancel-in-progress: false
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Restore independent ŠprotiFy signing identity
+      - name: Restore independent Sprotify signing identity
         env:
           KEYSTORE_BASE64: ${{ secrets.GUNTIFY_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.GUNTIFY_STORE_PASSWORD }}
@@ -54,7 +54,7 @@ jobs:
       - name: Test desktop UI
         working-directory: webui-tests
         run: npm install --no-audit --no-fund && npm test
-      - name: Test and build signed ŠprotiFy APK
+      - name: Test and build signed Sprotify APK
         run: |
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest :spotify:test :app:assembleRelease --no-daemon --max-workers=2
@@ -73,17 +73,17 @@ jobs:
           if ("name='lv.guntify.player'" not in info or
                   "versionCode='4'" not in info or
                   "versionName='1.0.0-beta.4'" not in info):
-              raise SystemExit('Unexpected ŠprotiFy APK identity or version.')
-          print('Signed ŠprotiFy package verified.')
+              raise SystemExit('Unexpected Sprotify APK identity or version.')
+          print('Signed Sprotify package verified.')
           PY
       - name: Package source and APK
         run: |
           mkdir -p release
-          cp app/build/outputs/apk/release/app-release.apk release/SprotiFy.apk
-          git archive --format=zip --prefix=SprotiFy/ -o release/SprotiFy-source.zip HEAD
+          cp app/build/outputs/apk/release/app-release.apk release/Sprotify.apk
+          git archive --format=zip --prefix=Sprotify/ -o release/Sprotify-source.zip HEAD
           cp LICENSE NOTICE SOURCE.md release/
-          (cd release && sha256sum SprotiFy.apk SprotiFy-source.zip > SHA256SUMS.txt)
-      - name: Publish ŠprotiFy Beta 4 update
+          (cd release && sha256sum Sprotify.apk Sprotify-source.zip > SHA256SUMS.txt)
+      - name: Publish Sprotify Beta 4 update
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -92,4 +92,4 @@ jobs:
             echo "Release already exists. Refusing to overwrite signed release."
             exit 1
           fi
-          gh release create "$tag" release/* --target "$GITHUB_SHA" --title "ŠprotiFy 1.0.0 Beta 4" --notes-file RELEASE_NOTES.md --prerelease
+          gh release create "$tag" release/* --target "$GITHUB_SHA" --title "Sprotify 1.0.0 Beta 4" --notes-file RELEASE_NOTES.md --prerelease
