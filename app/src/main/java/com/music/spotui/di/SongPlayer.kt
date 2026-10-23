@@ -261,7 +261,7 @@ object SongPlayer {
 
     private var playbackResolveJob: kotlinx.coroutines.Job? = null
 
-    fun playSong(song: String, context: Context) {
+    fun playSong(song: String, context: Context, debounceMs: Long = 0L) {
         recoveryAllowed = true
         onPlaybackRequestChanged?.invoke()
         playbackResolveJob?.cancel(); playbackResolveJob = null
@@ -325,6 +325,10 @@ object SongPlayer {
         }
         playbackResolveJob = scope.launch {
             try {
+                // Android Auto rapid skips cancel an obsolete lookup before it
+                // starts. Current request/visit and old audio are invalidated
+                // immediately above, so late results cannot overtake the newest.
+                if (debounceMs > 0L) delay(debounceMs)
                 if (wantsQuickStart(song, appContext)) {
                     val started = kotlinx.coroutines.withTimeoutOrNull(STARTUP_TIMEOUT_MS) {
                         quickStartThenUpgrade(song, appContext)

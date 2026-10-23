@@ -19,8 +19,8 @@ android {
         minSdk = 26
         targetSdk = 34
         // Increment for every signed Guntify release to support in-place updates.
-        versionCode = 2
-        versionName = "1.0.0-beta.2"
+        versionCode = 3
+        versionName = "1.0.0-beta.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

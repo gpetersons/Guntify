@@ -22,6 +22,7 @@ import com.google.common.util.concurrent.SettableFuture
 import com.music.spotui.MainActivity
 import com.music.spotui.R
 import com.music.spotui.audio.RadioPlaybackController
+import com.music.spotui.audio.AndroidAutoSkipPolicy
 import com.music.spotui.data.api.Api
 import com.music.spotui.data.api.Response
 import com.music.spotui.data.entity.SongsModel
@@ -63,6 +64,17 @@ class PlaybackService : MediaLibraryService() {
 
     private val startRadioCommand = SessionCommand("com.music.spotui.action.START_RADIO", android.os.Bundle.EMPTY)
 
+    // Media3 CommandButton defaults to disabled. Android Auto may choose to show
+    // enabled custom actions in Now Playing or its overflow menu.
+    private val radioControls by lazy {
+        listOf(CommandButton.Builder()
+            .setDisplayName("Play Radio")
+            .setIconResId(R.drawable.ic_car_radio)
+            .setSessionCommand(startRadioCommand)
+            .setEnabled(true)
+            .build())
+    }
+
     private var mediaSession: MediaLibrarySession? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -85,15 +97,28 @@ class PlaybackService : MediaLibraryService() {
         }
     }
     private var recentRefreshJob: kotlinx.coroutines.Job? = null
+    private var lastRecentSnapshot: List<CarBrowsePolicy.Entry>? = null
+    private var lastRadioSnapshot: List<CarBrowsePolicy.Entry>? = null
     private val recentStores by lazy {
         listOf("spotui_home_frequency_v1", "spotui_radio_sessions").map { getSharedPreferences(it, 0) }
     }
     private val recentListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
         recentRefreshJob?.cancel()
         recentRefreshJob = serviceScope.launch {
-            kotlinx.coroutines.delay(200L)
-            mediaSession?.notifyChildrenChanged(CarBrowsePolicy.RECENT, recentCarEntries().size, null)
-            mediaSession?.notifyChildrenChanged(CarBrowsePolicy.RECENT_RADIOS, recentRadioEntries().size, null)
+            kotlinx.coroutines.delay(250L)
+            // Per-track history writes frequently changed preferences without
+            // changing Android Auto's browse rows. Notifying on every write made
+            // some hosts rebuild their current view during rapid Next requests.
+            val recent = recentCarEntries()
+            val radios = recentRadioEntries()
+            if (AndroidAutoBrowseRefreshPolicy.changed(lastRecentSnapshot, recent)) {
+                mediaSession?.notifyChildrenChanged(CarBrowsePolicy.RECENT, recent.size, null)
+            }
+            if (AndroidAutoBrowseRefreshPolicy.changed(lastRadioSnapshot, radios)) {
+                mediaSession?.notifyChildrenChanged(CarBrowsePolicy.RECENT_RADIOS, radios.size, null)
+            }
+            lastRecentSnapshot = recent
+            lastRadioSnapshot = radios
         }
     }
     private var webPlayer: WebMediaPlayer? = null
@@ -220,13 +245,7 @@ class PlaybackService : MediaLibraryService() {
             .setSessionActivity(sessionActivity)
             // Media3 1.3 custom action is forwarded to legacy Android Auto controls.
             // Auto decides whether it fits in the transport row or overflow menu.
-            .setCustomLayout(listOf(
-                CommandButton.Builder()
-                    .setDisplayName("Start Radio")
-                    .setIconResId(R.drawable.ic_car_radio)
-                    .setSessionCommand(startRadioCommand)
-                    .build()
-            ))
+            .setCustomLayout(radioControls)
             .build()
         recentStores.forEach { it.registerOnSharedPreferenceChangeListener(recentListener) }
 
@@ -395,7 +414,10 @@ class PlaybackService : MediaLibraryService() {
             song.coverUri, song.title, song.singer, true,
             song.id, nextIdx, song.album
         )
-        SongPlayer.playSong(song.url, applicationContext)
+        // A short coalescing window prevents several simultaneous CDN/YouTube
+        // resolutions when the driver presses Next rapidly. Prepared tracks
+        // still start immediately inside SongPlayer.
+        SongPlayer.playSong(song.url, applicationContext, AndroidAutoSkipPolicy.lookupDelayMs(manual, forward))
     }
 
     private var smartJob: kotlinx.coroutines.Job? = null
@@ -422,6 +444,9 @@ class PlaybackService : MediaLibraryService() {
                 currentSongState.addSmartSuggestions(suggestions.filter { com.music.spotui.data.preferences.RadioTaste.allowed(applicationContext, it) })
         }
     }
+
+    private val radioContinuationGate = RadioContinuationGate()
+    private var radioEndJob: kotlinx.coroutines.Job? = null
 
     /**
      * A track played to its end (screen on or off): repeat it, play the next queue
@@ -451,19 +476,31 @@ class PlaybackService : MediaLibraryService() {
         val tasteRevision=com.music.spotui.data.preferences.RadioTaste.revision.value
         val generation = currentSongState.generation
         val endedId = currentSongState.songId.value
-        serviceScope.launch {
-            val fresh = continuationFor(generation, endedId, queue).await()
-                .filter { next -> currentSongState.queue.value.none { it.id == next.id } }
-            if (tasteRevision!=com.music.spotui.data.preferences.RadioTaste.revision.value || generation != currentSongState.generation || endedId != currentSongState.songId.value) return@launch
-            val liveQueue = currentSongState.queue.value
-            val liveIndex = liveQueue.indexOfFirst { it.id == endedId }
-            if (liveIndex in 0 until liveQueue.size - 1) { advance(forward = true); return@launch }
-            if (fresh.isEmpty()) {
-                currentSongState.updatePlayingState(false)
-                return@launch
+        val request = RadioContinuationGate.Request(generation, endedId, tasteRevision)
+        // Last-track Next, end callback and car controls may all fire while the
+        // same recommendations request is pending. Advance at most once.
+        if (!radioContinuationGate.begin(request)) return
+        radioEndJob?.cancel()
+        radioEndJob = serviceScope.launch {
+            try {
+                val fresh = continuationFor(generation, endedId, queue).await()
+                    .filter { next -> currentSongState.queue.value.none { it.id == next.id } }
+                if (tasteRevision!=com.music.spotui.data.preferences.RadioTaste.revision.value || generation != currentSongState.generation || endedId != currentSongState.songId.value) return@launch
+                val liveQueue = currentSongState.queue.value
+                val liveIndex = liveQueue.indexOfFirst { it.id == endedId }
+                if (liveIndex in 0 until liveQueue.size - 1) { advance(forward = true); return@launch }
+                if (fresh.isEmpty()) {
+                    currentSongState.updatePlayingState(false)
+                    return@launch
+                }
+                currentSongState.updateQueue(currentSongState.queue.value + if (currentSongState.activeRadioSeed != null) fresh.take(10) else fresh, preserveSession = true)
+                currentSongState.queue.value.getOrNull(liveIndex + 1)?.let {
+                    SongPlayer.prefetch(it.url, applicationContext)
+                }
+                advance(forward = true)
+            } finally {
+                radioContinuationGate.finish(request)
             }
-            currentSongState.updateQueue(currentSongState.queue.value + if (currentSongState.activeRadioSeed != null) fresh.take(10) else fresh, preserveSession = true)
-            advance(forward = true)
         }
     }
 
@@ -542,6 +579,7 @@ class PlaybackService : MediaLibraryService() {
                 val failedCurrent = streamRecovery.isRecovering &&
                     !SongPlayer.isPlaying() && SongPlayer.isCurrentRequest(current.url)
                 currentSongState.replaceRadioQueue(next)
+                next.getOrNull(nextCurrent + 1)?.let { SongPlayer.prefetch(it.url, applicationContext) }
                 if (!currentSongState.repeat.value && (ended || failedCurrent)) {
                     if (failedCurrent) streamRecovery.recovered()
                     advance(forward = true)
@@ -632,6 +670,7 @@ class PlaybackService : MediaLibraryService() {
                         .add(startRadioCommand)
                         .build()
                 )
+                .setCustomLayout(radioControls)
                 .build()
 
         override fun onCustomCommand(
@@ -848,8 +887,12 @@ class PlaybackService : MediaLibraryService() {
 
     private suspend fun childrenOf(parentId: String): List<MediaItem> = when {
         parentId == ROOT -> CarBrowsePolicy.root().map(::carItem)
-        parentId == CarBrowsePolicy.RECENT -> recentCarEntries().map(::carItem)
-        parentId == CarBrowsePolicy.RECENT_RADIOS -> recentRadioEntries().map(::carItem)
+        parentId == CarBrowsePolicy.RECENT -> recentCarEntries().also {
+            lastRecentSnapshot = it
+        }.map(::carItem)
+        parentId == CarBrowsePolicy.RECENT_RADIOS -> recentRadioEntries().also {
+            lastRadioSnapshot = it
+        }.map(::carItem)
         parentId == CarBrowsePolicy.LIBRARY -> CarBrowsePolicy.library().map(::carItem)
         parentId == NODE_LIKED ->
             registerTracks(NODE_LIKED, lastSuccess(repository.provideLikedSongs()).orEmpty())

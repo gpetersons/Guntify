@@ -71,8 +71,8 @@ jobs:
               raise SystemExit('Release APK failed signature verification.')
           info = subprocess.check_output([str(tools/'aapt'), 'dump', 'badging', str(apk)], text=True).splitlines()[0]
           if ("name='lv.guntify.player'" not in info or
-                  "versionCode='2'" not in info or
-                  "versionName='1.0.0-beta.2'" not in info):
+                  "versionCode='3'" not in info or
+                  "versionName='1.0.0-beta.3'" not in info):
               raise SystemExit('Unexpected Guntify APK identity or version.')
           print('Signed Guntify package verified.')
           PY
@@ -83,13 +83,13 @@ jobs:
           git archive --format=zip --prefix=Guntify/ -o release/Guntify-source.zip HEAD
           cp LICENSE NOTICE SOURCE.md release/
           (cd release && sha256sum Guntify.apk Guntify-source.zip > SHA256SUMS.txt)
-      - name: Publish Guntify Beta 2 update
+      - name: Publish Guntify Beta 3 update
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag=v1.0.0-beta.2
+          tag=v1.0.0-beta.3
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Release already exists. Refusing to overwrite signed release."
             exit 1
           fi
-          gh release create "$tag" release/* --target "$GITHUB_SHA" --title "Guntify 1.0.0 Beta 2" --notes-file RELEASE_NOTES.md --prerelease
+          gh release create "$tag" release/* --target "$GITHUB_SHA" --title "Guntify 1.0.0 Beta 3" --notes-file RELEASE_NOTES.md --prerelease

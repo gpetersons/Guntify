@@ -75,6 +75,7 @@ class RadioPlaybackController @Inject constructor(
                     .distinctBy { it.id }.take(10)
                 if (fresh.isNotEmpty()) {
                     state.updateQueue(live + fresh, preserveSession = true)
+                    fresh.firstOrNull()?.let { SongPlayer.prefetch(it.url, app) }
                 }
             }
         }

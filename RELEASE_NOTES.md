@@ -1,25 +1,29 @@
-# Guntify 1.0.0 Beta 2: Android Auto improvements
+# Guntify 1.0.0 Beta 3: Android Auto stability
 
-This beta contains the P0 and P1 Android Auto improvements from Pull Request #3.
+Based on real-world Android Auto testing, this release targets rapid Next requests, unnecessary browse refreshes, and the missing Radio action.
 
-- **Start Radio** action for the currently playing song in Android Auto, with a dedicated icon. Depending on the head unit, the action may appear under the overflow menu.
-- The phone and Android Auto Start Radio actions now use the same radio playback controller.
-- Keep the current media item in the playback session while the next stream is being resolved, reducing unexpected Now Playing resets.
-- Improved recovery when a radio track cannot be played and new recommendations are available.
-- Additional tests and an Android Auto validation checklist in `ANDROID_AUTO_P0_P1_TESTPLAN.md`.
+- **Play Radio** is now explicitly enabled and advertised in the media session custom layout, including on controller connection. Android Auto decides its exact placement; some head units may still hide custom actions.
+- **Rapid Next** in Android Auto coalesces short bursts of manual skips before launching expensive remote stream lookups, while keeping the latest selected track and canceling old requests.
+- **Radio queue end** now has a single-flight guard: repeated Next and end events cannot concurrently launch duplicate radio continuation requests and skip multiple songs.
+- **Browse refresh** messages are only sent when Recent/Recent radios rows actually change, not each time listening history is written.
+- **Upcoming streams** get a best-effort background prefetch when fresh radio recommendations are added. Remote stream availability can still cause delays.
+- New unit tests cover single-flight continuation, browse-change detection and manual-skip lookup delay.
 
-## Updating from Beta 1
+## Updating from Beta 2
 
-Beta 2 keeps the application ID `lv.guntify.player` and uses the existing Guntify release signing identity. Its Android `versionCode` is **2** (Beta 1 was 1). Install the signed `Guntify.apk` from this release over Beta 1 rather than uninstalling Beta 1 first.
+The app ID stays `lv.guntify.player` with the **same Guntify signing identity** and Android `versionCode=3`. Install this release's signed `Guntify.apk` directly over Beta 2 (`versionCode=2`) without uninstalling. Back up important settings before testing a beta.
 
-Your existing app data should normally be retained when updating in place. Back up important settings before installing a beta. If Android rejects the update due to a signature mismatch, **do not uninstall Beta 1**; report the error first.
+If Android rejects the update due to a signature mismatch, **do not uninstall Beta 2**: report the error first.
 
-## Scope and testing
+## Android Auto manual acceptance checks
 
-This release includes **P0 and P1 only**. The redesigned Android Auto Home and recommendations UI (P2) is deferred.
+1. Rapidly tap Next in Radio and in an album, especially while the next track is still loading. Check whether the screen remains on Now Playing or the selected album.
+2. Check the native Android Auto Queue screen during radio continuation and verify tracks reappear without losing playback.
+3. Look for **Play Radio** on Now Playing (possibly overflow), start it and verify the current song does not restart.
+4. Pause, disconnect the car and reconnect; the existing playback position and station should restore.
 
-Automated tests are not a replacement for physical Android Auto testing: check Radio, next/previous, queue refresh and unavailable tracks on your car display.
+**Known limits:** Android Auto owns its system playback screen, so apps cannot force the position or visibility of every action. This release reduces likely causes of screen resets but actual head-unit validation is needed. P2 Home recommendations layout is not included.
 
-**Security note:** A full independent security audit and real-device network traffic assessment have not been completed.
+**Security note:** A full independent security audit and real-device network traffic assessment are still pending.
 
-**Acknowledgments:** [Spotui](https://github.com/Spotui/Spotui) and [USpot](https://github.com/rare621/USpot). Original GPLv3 copyright and attribution notices remain in LICENSE and NOTICE.
+**Acknowledgments:** [Spotui](https://github.com/Spotui/Spotui) and [USpot](https://github.com/rare621/USpot), original GPLv3 source and license notices preserved.
