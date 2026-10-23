@@ -98,7 +98,6 @@ class PlaybackService : MediaLibraryService() {
         return CarNowPlayingControlsPolicy.State(
             hasTrack = current != null,
             hasMultipleTracks = currentSongState.queue.value.size > 1,
-            radioActive = current != null && currentSongState.collection.value?.type == "radio",
             shuffleActive = currentSongState.shuffle.value,
             repeatActive = currentSongState.repeat.value,
             liked = current != null && isSongLiked(applicationContext, current.id.toString()),
@@ -109,7 +108,7 @@ class PlaybackService : MediaLibraryService() {
         listOf(
             CommandButton.Builder()
                 .setDisplayName(CarNowPlayingControlsPolicy.radioLabel(state))
-                .setIconResId(if (state.radioActive) R.drawable.ic_car_radio_active else R.drawable.ic_car_radio)
+                .setIconResId(R.drawable.ic_car_radio)
                 .setSessionCommand(startRadioCommand)
                 .setEnabled(state.hasTrack)
                 .build(),
@@ -1131,7 +1130,10 @@ class PlaybackService : MediaLibraryService() {
             .setMediaMetadata(
                 MediaMetadata.Builder()
                     .setTitle(song.title)
+                    .setDisplayTitle(song.title)
                     .setArtist(song.singer)
+                    .setSubtitle(song.singer)
+                    .setDescription(song.singer)
                     .setAlbumTitle(song.album)
                     .setIsBrowsable(false)
                     .setIsPlayable(true)

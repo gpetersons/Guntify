@@ -583,7 +583,10 @@ object SongPlayer {
             ?: boundState?.album?.value.orEmpty()
         val metadata = androidx.media3.common.MediaMetadata.Builder()
             .setTitle(title)
+            .setDisplayTitle(title)
             .setArtist(artist)
+            .setSubtitle(artist)
+            .setDescription(artist)
             // Android Auto controls its Now Playing layout; retain song/artist
             // and attach the active Radio station as standard album metadata.
             .setAlbumTitle(albumLabel)
