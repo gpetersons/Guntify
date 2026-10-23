@@ -365,7 +365,7 @@ private fun HomeShortcutGrid(navController: NavController, items: List<HomeItem>
                             Column(Modifier.weight(1f).padding(end = 10.dp)) {
                                 Text(item.name, color = com.music.spotui.ui.theme.AppText, fontWeight = FontWeight.SemiBold,
                                     fontSize = 13.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                Text(when (item) { is HomeItem.Radio -> "Guntify Radio"; is HomeItem.Album -> "Album"; else -> "Playlist" },
+                                Text(when (item) { is HomeItem.Radio -> "ŠprotiFy Radio"; is HomeItem.Album -> "Album"; else -> "Playlist" },
                                     color = com.music.spotui.ui.theme.AppSecondary, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                             }
                             if (active) com.music.spotui.ui.components.PlayingBars(player.currentSongPlayingState.value)
@@ -411,7 +411,7 @@ private fun HomeFeedCard(item: HomeItem, onRemove: () -> Unit = {}, onClick: () 
         is HomeItem.Album -> item.subtitle
         is HomeItem.Playlist -> item.subtitle
         is HomeItem.Artist -> "Artist"
-        is HomeItem.Radio -> "Guntify Radio"
+        is HomeItem.Radio -> "ŠprotiFy Radio"
         is HomeItem.RecentTrack -> item.song.singer
     }
     Column(
