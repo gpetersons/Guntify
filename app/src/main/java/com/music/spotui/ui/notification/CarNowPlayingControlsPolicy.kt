@@ -12,6 +12,7 @@ object CarNowPlayingControlsPolicy {
         val hasTrack: Boolean,
         val hasMultipleTracks: Boolean,
         val shuffleActive: Boolean,
+        val smartShuffleActive: Boolean,
         val repeatActive: Boolean,
         val liked: Boolean,
     )
@@ -21,6 +22,10 @@ object CarNowPlayingControlsPolicy {
     fun radioLabel(@Suppress("UNUSED_PARAMETER") state: State) = "Play Radio"
     fun favoriteLabel(state: State) =
         if (state.liked) "Remove from Liked Songs" else "Add to Liked Songs"
-    fun shuffleLabel(state: State) = if (state.shuffleActive) "Shuffle on" else "Shuffle"
+    fun shuffleLabel(state: State) = when {
+        state.smartShuffleActive -> "Smart Shuffle"
+        state.shuffleActive -> "Shuffle on"
+        else -> "Shuffle"
+    }
     fun repeatLabel(state: State) = if (state.repeatActive) "Repeat on" else "Repeat"
 }

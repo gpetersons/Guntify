@@ -18,8 +18,8 @@ android {
         minSdk = 26
         targetSdk = 34
         // Increment for every signed Sprotify release to support in-place updates.
-        versionCode = 7
-        versionName = "1.0.0-beta.7"
+        versionCode = 8
+        versionName = "1.0.0-beta.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -87,6 +87,10 @@ dependencies {
     implementation("org.nanohttpd:nanohttpd:2.3.1")
 
     implementation("androidx.core:core-ktx:1.13.1")
+    // Optional Car App API 8 media templates; classic MediaLibraryService remains a fallback.
+    implementation("androidx.car.app:app:1.7.0")
+    implementation("androidx.car.app:app-projected:1.7.0")
+    implementation("androidx.media:media:1.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.2")
     implementation("androidx.activity:activity-compose:1.9.0")
     implementation(platform("androidx.compose:compose-bom:2024.06.00"))

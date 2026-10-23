@@ -75,6 +75,10 @@ class PlaybackService : MediaLibraryService() {
     private val toggleFavoriteCommand = SessionCommand("com.music.spotui.action.TOGGLE_FAVORITE", android.os.Bundle.EMPTY)
     private val toggleShuffleCommand = SessionCommand("com.music.spotui.action.TOGGLE_SHUFFLE", android.os.Bundle.EMPTY)
     private val toggleRepeatCommand = SessionCommand("com.music.spotui.action.TOGGLE_REPEAT", android.os.Bundle.EMPTY)
+    // Car App Library API 8 host needs the same platform media-session token
+    // as the legacy Android Auto browser, never a second player instance.
+    private val getCarSessionTokenCommand =
+        SessionCommand("com.music.spotui.action.GET_CAR_SESSION_TOKEN", android.os.Bundle.EMPTY)
 
     // The first action remains Radio so existing Android Auto layouts keep it
     // ahead of optional actions that may move into the overflow menu.
@@ -99,6 +103,7 @@ class PlaybackService : MediaLibraryService() {
             hasTrack = current != null,
             hasMultipleTracks = currentSongState.queue.value.size > 1,
             shuffleActive = currentSongState.shuffle.value,
+            smartShuffleActive = currentSongState.smartShuffle.value,
             repeatActive = currentSongState.repeat.value,
             liked = current != null && isSongLiked(applicationContext, current.id.toString()),
         )
@@ -120,7 +125,11 @@ class PlaybackService : MediaLibraryService() {
                 .build(),
             CommandButton.Builder()
                 .setDisplayName(CarNowPlayingControlsPolicy.shuffleLabel(state))
-                .setIconResId(if (state.shuffleActive) R.drawable.ic_car_shuffle_active else R.drawable.ic_car_shuffle)
+                .setIconResId(when {
+                    state.smartShuffleActive -> R.drawable.ic_car_shuffle_smart
+                    state.shuffleActive -> R.drawable.ic_car_shuffle_active
+                    else -> R.drawable.ic_car_shuffle
+                })
                 .setSessionCommand(toggleShuffleCommand)
                 .setEnabled(state.hasMultipleTracks)
                 .build(),
@@ -729,6 +738,7 @@ class PlaybackService : MediaLibraryService() {
                         .add(toggleFavoriteCommand)
                         .add(toggleShuffleCommand)
                         .add(toggleRepeatCommand)
+                        .add(getCarSessionTokenCommand)
                         .build()
                 )
                 .setCustomLayout(carControlButtons(carControlState()))
@@ -740,6 +750,16 @@ class PlaybackService : MediaLibraryService() {
             customCommand: SessionCommand,
             args: android.os.Bundle,
         ): ListenableFuture<SessionResult> {
+            if (customCommand.customAction == getCarSessionTokenCommand.customAction) {
+                if (controller.packageName != packageName) {
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
+                }
+                val tokenExtras = android.os.Bundle().apply {
+                    // Media3 1.3.1 exposes the legacy-compatible token directly.
+                    putParcelable("sprotify.compat.token", session.sessionCompatToken)
+                }
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS, tokenExtras))
+            }
             val song = selectedCarTrack()
             val status = when (customCommand.customAction) {
                 startRadioCommand.customAction -> {
@@ -766,7 +786,9 @@ class PlaybackService : MediaLibraryService() {
                 toggleShuffleCommand.customAction -> {
                     if (currentSongState.queue.value.size < 2) SessionResult.RESULT_ERROR_BAD_VALUE
                     else {
-                        currentSongState.updateShuffleState(!currentSongState.shuffle.value)
+                        // Same OFF -> ON -> SMART -> OFF path as phone player.
+                        // Radio and local downloads deliberately remain OFF/ON.
+                        currentSongState.cycleShuffle()
                         SessionResult.RESULT_SUCCESS
                     }
                 }
