@@ -11,13 +11,14 @@ object CarNowPlayingControlsPolicy {
     data class State(
         val hasTrack: Boolean,
         val hasMultipleTracks: Boolean,
-        val radioActive: Boolean,
         val shuffleActive: Boolean,
         val repeatActive: Boolean,
         val liked: Boolean,
     )
 
-    fun radioLabel(state: State) = if (state.radioActive) "Radio playing" else "Play Radio"
+    // Radio uses one neutral icon/label; the host does not reliably show
+    // active/inactive command graphics. Playback context stays in the queue.
+    fun radioLabel(@Suppress("UNUSED_PARAMETER") state: State) = "Play Radio"
     fun favoriteLabel(state: State) =
         if (state.liked) "Remove from Liked Songs" else "Add to Liked Songs"
     fun shuffleLabel(state: State) = if (state.shuffleActive) "Shuffle on" else "Shuffle"

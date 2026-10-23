@@ -7,19 +7,18 @@ import org.junit.Test
 
 class CarNowPlayingControlsPolicyTest {
     private fun state(
-        radio: Boolean = false,
         shuffle: Boolean = false,
         repeat: Boolean = false,
         liked: Boolean = false,
     ) = CarNowPlayingControlsPolicy.State(
         hasTrack = true, hasMultipleTracks = true,
-        radioActive = radio, shuffleActive = shuffle,
+        shuffleActive = shuffle,
         repeatActive = repeat, liked = liked,
     )
 
-    @Test fun radioActionReflectsCurrentPlaybackContext() {
+    @Test fun radioActionAlwaysUsesNeutralLabel() {
         assertEquals("Play Radio", CarNowPlayingControlsPolicy.radioLabel(state()))
-        assertEquals("Radio playing", CarNowPlayingControlsPolicy.radioLabel(state(radio = true)))
+        assertEquals("Play Radio", CarNowPlayingControlsPolicy.radioLabel(state(shuffle = true)))
     }
 
     @Test fun likedSongsActionReflectsSavedStatus() {
@@ -37,6 +36,6 @@ class CarNowPlayingControlsPolicyTest {
     @Test fun singleSongChangeDoesNotRequireLayoutRefreshWhenActionStatesMatch() {
         assertEquals(state(), state())
         assertNotEquals(state(), state(liked = true))
-        assertNotEquals(state(), state(radio = true))
+        assertNotEquals(state(), state(repeat = true))
     }
 }
