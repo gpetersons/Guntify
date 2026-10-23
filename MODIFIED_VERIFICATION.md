@@ -1,5 +1,16 @@
 # Build 76 checks and device limits
 
+## Passed before publication
+
+[GitHub Actions run 39879466038](https://github.com/rare621/USpot/actions/runs/39879466038), source commit `135614b4d9a66c2d47882df1b091ad220066bd53`:
+
+- APK assembly, app unit tests, Spotify-module unit tests and simulated browser checks passed.
+- Production signing certificate, APK v2 signature, application ID `com.music.spotui.modified` and versionCode 76 verified.
+- Release published after all files were uploaded.
+
+## Checks and limits
+
+
 The release workflow must compile the Android app, pass app and Spotify-module unit tests, pass simulated browser checks and verify the existing production signing certificate, package and build before publication.
 
 Playlist contract tests check the Web Player changes endpoint for additions, real Spotify track URIs, one request on HTTP 429 and rejection of embedded errors. Removal retains the app's original GraphQL path; tests check specific occurrence UIDs and refuse missing UIDs or URI-only fallback. Library mutations use the currently observed Web Player document hash with the former hash retained as an explicit fallback.
