@@ -1,6 +1,6 @@
-# ŠprotiFy Android Auto Now Playing controls — PR test plan
+# Sprotify Android Auto Now Playing controls — PR test plan
 
-This PR is **not a Beta 5 release**. Do not change `versionCode=4` or `versionName=1.0.0-beta.4` until a later, separately approved release.
+Beta 6 includes this Android Auto change set. Install the signed `1.0.0-beta.6` APK over Beta 5; retain the `lv.guntify.player` application ID.
 
 ## Existing media display
 
@@ -23,9 +23,9 @@ This PR is **not a Beta 5 release**. Do not change `versionCode=4` or `versionNa
 - Rapid Next in an album and Radio, using both car controls and steering wheel: no unexpected navigation back to browse root.
 - Open the Android Auto Queue, play to the final radio track and let it extend. No empty library or lost Now Playing.
 - Pause/resume, disconnect car, force-close phone UI and reconnect; session/position must recover.
-- Run GitHub Actions Android debug build, unit tests, and release lint on PR branch.
+- Verify GitHub Actions Android debug build, unit tests, release lint, and signed-release verification.
 
 ## Not included
 
-- No Beta 5 version bump, signed release, or merge with main.
+- This document is a post-release Android Auto smoke-test plan; Beta 6 is a signed update.
 - No Car App Library UI rewrite, Artists browser, streaming codec/bitrate text, or personalized Home redesign.
