@@ -174,6 +174,8 @@ class PlaybackService : MediaLibraryService() {
     private var carQueueTimeline = CarQueueTimeline(emptyList(), "")
     private val carQueueListeners = linkedSetOf<Player.Listener>()
     private var lastCarQueueSongId: Int? = null
+    private var lastCarQueueIds: List<Pair<Int, String>> = emptyList()
+    private var lastCarQueueSource: String = ""
     private var suppressSearchAddPlayUntil = 0L
 
     private fun jumpToCarQueue(index: Int, positionMs: Long) {
@@ -190,32 +192,41 @@ class PlaybackService : MediaLibraryService() {
 
     private fun publishCarQueueTimeline() {
         val songs = currentSongState.queue.value
-        val previousSongId = lastCarQueueSongId
         val selectedSongId = currentSongState.songId.value
-        carQueueTimeline = CarQueueTimeline(songs, playingSourceName())
+        val ids = songs.map { it.id to it.url }
+        val source = playingSourceName()
+        val timelineChanged = ids != lastCarQueueIds || source != lastCarQueueSource
+        val songChanged = lastCarQueueSongId != selectedSongId
+        if (!timelineChanged && !songChanged) return
+        if (timelineChanged) {
+            carQueueTimeline = CarQueueTimeline(songs, source)
+            lastCarQueueIds = ids
+            lastCarQueueSource = source
+        }
         lastCarQueueSongId = selectedSongId
         val sessionPlayer = mediaSession?.player ?: return
-        val changedSong = previousSongId != selectedSongId
-        // Explicit events are needed because queue-only changes don't touch the
-        // one-item physical ExoPlayer playlist. Media3 can then publish its
-        // legacy Queue and active item to Android Auto.
+        // Don't emit a full TIMELINE_CHANGED when only the current cursor
+        // moves. Some Android Auto versions jumped out of the queue/browse UI
+        // on every Next when the timeline was unnecessarily reset.
         val flags = androidx.media3.common.FlagSet.Builder()
-            .add(Player.EVENT_TIMELINE_CHANGED)
-            .apply { if (changedSong) add(Player.EVENT_MEDIA_ITEM_TRANSITION) }
+            .apply { if (timelineChanged) add(Player.EVENT_TIMELINE_CHANGED) }
+            .apply { if (songChanged) add(Player.EVENT_MEDIA_ITEM_TRANSITION) }
             .build()
-        val eventList = Player.Events(flags)
+        val events = Player.Events(flags)
         carQueueListeners.toList().forEach { listener ->
-            listener.onTimelineChanged(carQueueTimeline, Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED)
-            if (changedSong) {
+            if (timelineChanged)
+                listener.onTimelineChanged(carQueueTimeline, Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED)
+            if (songChanged) {
                 listener.onMediaItemTransition(
                     carQueueTimeline.songs.indexOfFirst { it.id == selectedSongId }
                         .takeIf { it >= 0 }?.let(carQueueTimeline::itemAt),
                     Player.MEDIA_ITEM_TRANSITION_REASON_SEEK,
                 )
             }
-            listener.onEvents(sessionPlayer, eventList)
+            listener.onEvents(sessionPlayer, events)
         }
-        mediaSession?.notifyChildrenChanged(CarBrowsePolicy.PLAYING_QUEUE, songs.size, null)
+        if (timelineChanged)
+            mediaSession?.notifyChildrenChanged(CarBrowsePolicy.PLAYING_QUEUE, songs.size, null)
     }
     private val recentStores by lazy {
         listOf("spotui_home_frequency_v1", "spotui_radio_sessions").map { getSharedPreferences(it, 0) }
@@ -348,6 +359,8 @@ class PlaybackService : MediaLibraryService() {
 
         webPlayer = WebMediaPlayer(mainLooper, currentSongState) { forward -> advance(forward,manual=true) }
         carQueueTimeline = CarQueueTimeline(currentSongState.queue.value, playingSourceName())
+        lastCarQueueIds = currentSongState.queue.value.map { it.id to it.url }
+        lastCarQueueSource = playingSourceName()
         lastCarQueueSongId = currentSongState.songId.value
 
         mediaSession = MediaLibrarySession.Builder(this, wrap(base), LibraryCallback())
