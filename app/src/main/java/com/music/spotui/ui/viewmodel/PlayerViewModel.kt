@@ -10,6 +10,7 @@ import com.music.spotui.data.api.Response
 import com.music.spotui.data.entity.SongsModel
 import com.music.spotui.di.CurrentSongState
 import com.music.spotui.di.SongPlayer
+import com.music.spotui.audio.RadioPlaybackController
 import com.music.spotui.ui.navigation.artistRoute
 import com.music.spotui.ui.repository.AppRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,7 +24,7 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltViewModel
-class PlayerViewModel @Inject constructor(private val currentSongState: CurrentSongState, private val repository: AppRepository) : ViewModel(){
+class PlayerViewModel @Inject constructor(private val currentSongState: CurrentSongState, private val repository: AppRepository, private val radioPlayback: RadioPlaybackController) : ViewModel(){
 
     val currentSongTitle: State<String> get() = currentSongState.title
     val currentSongSinger: State<String> get() = currentSongState.singer
@@ -39,29 +40,9 @@ class PlayerViewModel @Inject constructor(private val currentSongState: CurrentS
     fun updateQueue(songs: List<SongsModel>) = currentSongState.updateQueue(songs)
     fun startShuffled(songs: List<SongsModel>) = currentSongState.startShuffled(songs)
 
-    /** Convert the current stream to Radio without seeking or resolving it again. */
+    /** Phone and Android Auto must take the same route into Radio playback. */
     fun startRadioFromSong(song: SongsModel, context: Context) {
-        val keepStream = currentSongId.value == song.id && currentSongState.queue.value.any { it.id == song.id } &&
-            (SongPlayer.isPrepared() || SongPlayer.isPlaying() || (SongPlayer.webPlaybackActive() && SongPlayer.getDuration() > 0L))
-        val wasPlaying = currentSongPlayingState.value
-        com.music.spotui.data.preferences.RadioSessions.remember(context, song)
-        currentSongState.updateQueue(listOf(song))
-        currentSongState.activateRadio(song.spotifyTrackId.ifBlank { song.id.toString() })
-        markRadio(song)
-        updateSongState(song.coverUri, song.title, song.singer, if (keepStream) wasPlaying else true, song.id, 0, song.album)
-        if (!keepStream) SongPlayer.playSong(song.url, context)
-        val seed = song.spotifyTrackId.takeIf { it.isNotBlank() } ?: return
-        val generation = currentSongState.generation
-        viewModelScope.launch(Dispatchers.IO) {
-            val recommendations = runCatching { repository.provideRadioRecommendations(seed, com.music.spotui.data.preferences.RadioSessions.recommendationSeed(context, seed)) }.getOrDefault(emptyList())
-            val queueNow = currentSongState.queue.value
-            if (generation == currentSongState.generation && queueNow.size == 1 && queueNow[0].id == song.id && currentSongId.value == song.id) {
-                val fresh = recommendations.filter { it.id != song.id }.distinctBy { it.id }.take(10)
-                if (fresh.isNotEmpty()) withContext(Dispatchers.Main) {
-                    if (generation == currentSongState.generation) currentSongState.updateQueue(queueNow + fresh, preserveSession = true)
-                }
-            }
-        }
+        radioPlayback.startRadioFromSong(song, context, viewModelScope)
     }
 
     /** Restart a saved radio from its last played track and a freshly curated queue. */
