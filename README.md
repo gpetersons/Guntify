@@ -12,7 +12,7 @@
   · <a href="https://github.com/rare621/USpot/releases/latest/download/USpot-source.zip">Source code</a>
 </p>
 
-**Version 1.1 · build 74 · Android 8.0 or newer**
+**Version 1.1 · build 75 · Android 8.0 or newer**
 
 USpot builds on [Spotui](https://github.com/Spotui/Spotui), adding a Home that learns from your listening, saved radio stations, radio mixes and more ways to make the player your own. Spotify supplies catalog and account information; music playback uses the existing YouTube and alternative-source integrations.
 
@@ -41,6 +41,8 @@ A little discovery, a little radio, and a whole lot of your music. 🎧
 1. **Download and install** the APK using the button above. Android may ask you to allow installation from your browser.
 2. **Sign in to Spotify** to load the account content available to the app.
 3. **Play your music.** Home starts with available Spotify content and gradually learns what you enjoy in USpot.
+
+**New: Settings → Updates** checks official GitHub releases. New releases prompt you to Install or Cancel; Android confirms installation after the APK checksum, package and signing certificate are checked. Install this build once to receive future prompts.
 
 Already using USpot? Install the new APK **over your current app**. Export a backup in Settings first, and avoid uninstalling if you want to keep your local data. Updates require the same signing key; official builds keep using the repository's existing key.
 
@@ -135,7 +137,7 @@ chmod +x gradlew
 
 The [workflow](.github/workflows/build-spotui-modified.yml) runs on pushes to `main` and manual runs. After successful checks it publishes **USpot.apk**, **USpot-source.zip**, **LICENSE**, **NOTICE** and **SOURCE.md**. Source archives come from the same commit used for the APK.
 
-The application ID remains `com.music.spotui.modified`. Existing installations need the same signing key and a higher versionCode to update; build 74 uses versionName `1.1` and versionCode `74`. Never commit private signing material or replace the official key just to make a build succeed. Local debug builds may use a different key.
+The application ID remains `com.music.spotui.modified`. Existing installations need the same signing key and a higher versionCode to update; build 75 uses versionName `1.1` and versionCode `75`. Never commit private signing material or replace the official key just to make a build succeed. Local debug builds may use a different key.
 
 See [SOURCE.md](SOURCE.md) for signing configuration and corresponding-source information. Older source versions remain in Git history.
 

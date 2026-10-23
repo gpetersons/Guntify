@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
             SpotuiTheme {
                 // A surface container using the 'background' color from the theme
                     App()
+                    com.music.spotui.updates.UpdateUiHost()
 
             }
         }

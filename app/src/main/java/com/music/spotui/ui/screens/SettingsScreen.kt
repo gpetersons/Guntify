@@ -164,11 +164,12 @@ fun SettingsScreen(navController: NavController) {
         ) {
             if (category == null) {
                 SettingsProfileHeader()
-                listOf("Desktop & Browser", "Playback", "Appearance", "Smart Downloads", "Data & backup", "Music sources", "Home", "Account", "About").forEach { name ->
+                listOf("Updates", "Desktop & Browser", "Playback", "Appearance", "Smart Downloads", "Data & backup", "Music sources", "Home", "Account", "About").forEach { name ->
                     Text(name + "  ›", color = com.music.spotui.ui.theme.AppText, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { category = name }.padding(vertical = 18.dp))
                 }
             }
+            if (category == "Updates") com.music.spotui.updates.UpdateSettings()
             if (category == "Desktop & Browser") com.music.spotui.webui.WebUiSettings()
             if (category == "Data & backup") BackupControls()
             if (category == "Smart Downloads") SmartDownloadSettings()

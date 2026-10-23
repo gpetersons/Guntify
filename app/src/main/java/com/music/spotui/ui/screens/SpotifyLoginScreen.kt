@@ -469,7 +469,11 @@ private fun finishLogin(
             if (SpotifyTokenProvider.ensureToken(activity, force = true)) {
                 withContext(Dispatchers.Main) { setStatus("Success!") }
                 delay(300)
-                withContext(Dispatchers.Main) { onSuccess() }
+                withContext(Dispatchers.Main) {
+                    com.music.spotui.di.SpotifyWebPlayer.attach(activity)
+                    com.music.spotui.di.SpotifyWebPlayer.refreshLogin(activity)
+                    onSuccess()
+                }
                 return@launch
             }
             Timber.e("Spotify token fetch failed (attempt ${attempt + 1})")

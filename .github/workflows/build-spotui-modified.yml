@@ -47,7 +47,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew :app:assembleDebug --no-daemon --max-workers=2
-          ./gradlew :app:testDebugUnitTest --no-daemon --max-workers=2
+          ./gradlew :app:testDebugUnitTest :spotify:test --no-daemon --max-workers=2
       - name: Verify in-place update identity
         env:
           EXPECTED_CERT: 72feb004ee3aa78eca4b954c6d448b774a41166af77a35b2d4b59cdb9a2752ed
@@ -63,7 +63,8 @@ jobs:
           if 'Verified using v2 scheme (APK Signature Scheme v2): true' not in sig:
               raise SystemExit('APK v2 signature verification failed.')
           badging = subprocess.check_output([str(tools / 'aapt'), 'dump', 'badging', apk], text=True)
-          if "name='com.music.spotui.modified'" not in badging.splitlines()[0] or "versionCode='74'" not in badging.splitlines()[0]:
+          expected_code = re.search(r'versionCode = (\d+)', pathlib.Path('app/build.gradle.kts').read_text()).group(1)
+          if "name='com.music.spotui.modified'" not in badging.splitlines()[0] or f"versionCode='{expected_code}'" not in badging.splitlines()[0]:
               raise SystemExit('Wrong package or version. Refusing to publish a separate preview app as an update.')
           print('Production signer, package, version and APK signature verified.')
           PYVERIFY

@@ -407,6 +407,7 @@ internal class WebUiBackend(private val context: Context) {
             JSONObject().put("smartEnabled", SmartDownloads.enabled(context)).put("smartCount", SmartDownloads.count(context))
                 .put("smartWifi", SmartDownloads.wifiOnly(context)).put("personalization", HomePersonalization.enabled(context))
                 .put("strength", HomePersonalization.strength(context)).put("name", com.music.spotui.data.api.ProfileCache.name)
+                .put("version", com.music.spotui.BuildConfig.VERSION_NAME).put("build", com.music.spotui.BuildConfig.VERSION_CODE)
         }
         else -> error("Unknown action")
     }

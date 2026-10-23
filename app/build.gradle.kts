@@ -19,7 +19,7 @@ android {
         minSdk = 26
         targetSdk = 34
         // Must exceed every published build: 1.5 shipped as versionCode 14 ("1.4").
-        versionCode = 74
+        versionCode = 75
         versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -52,12 +52,6 @@ android {
     }
 
     buildTypes {
-        debug {
-            if (providers.gradleProperty("uspotWebPreview").orNull == "true") {
-                applicationIdSuffix = ".desktoppreview"
-                manifestPlaceholders["uspotAppLabel"] = "USpot Desktop Preview"
-            }
-        }
         release {
             isMinifyEnabled = false
             proguardFiles(

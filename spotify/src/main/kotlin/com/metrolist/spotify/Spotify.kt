@@ -251,6 +251,10 @@ object Spotify {
             val response =
                 gqlClient.post(GQL_URL) {
                     header("Authorization", "Bearer $token")
+                    SpotifyWebSession.current()?.let { session ->
+                        header("client-token", session.clientToken)
+                        session.userAgent?.let { header("User-Agent", it) }
+                    }
                     setBody(
                         TextContent(
                             body.toString(),
@@ -1047,6 +1051,10 @@ object Spotify {
         val endpoint = "Web Player playlist create"
         val response = gqlClient.post("https://spclient.wg.spotify.com/playlist/v2/playlist") {
             header("Authorization", "Bearer $token")
+            SpotifyWebSession.current()?.let { session ->
+                header("client-token", session.clientToken)
+                session.userAgent?.let { header("User-Agent", it) }
+            }
             setBody(TextContent(delta.toString(), ContentType.Application.Json))
         }
         val raw = response.bodyAsText()

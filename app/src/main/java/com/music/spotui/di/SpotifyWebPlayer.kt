@@ -147,6 +147,7 @@ object SpotifyWebPlayer {
                     request: android.webkit.WebResourceRequest?,
                 ): android.webkit.WebResourceResponse? {
                     if (request == null) return null
+                    com.metrolist.spotify.SpotifyWebSession.capture(request.url.toString(), request.requestHeaders)
                     return interceptForAds(appContext, request) ?: super.shouldInterceptRequest(view, request)
                 }
 

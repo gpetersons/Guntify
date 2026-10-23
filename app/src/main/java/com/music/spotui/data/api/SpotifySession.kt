@@ -22,7 +22,7 @@ object SpotifySession {
     }
 
     fun setSpDc(context: Context, value: String) {
-        if (spDc(context) != value.trim()) { ProfileCache.clear(); Api.HomeCache.clear(); com.music.spotui.data.preferences.HomeSnapshotCache.clear(context) }
+        if (spDc(context) != value.trim()) { com.metrolist.spotify.SpotifyWebSession.clear(); ProfileCache.clear(); Api.HomeCache.clear(); com.music.spotui.data.preferences.HomeSnapshotCache.clear(context) }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_SP_DC, value.trim())
