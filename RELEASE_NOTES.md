@@ -1,30 +1,28 @@
-# Sprotify 1.0.0 Beta 9 — Android Auto Queue and Search
+# Sprotify 1.0.0 Beta 8 — corrected legacy Android Auto release
 
-## New in Beta 9
+This is a **replacement Beta 8 APK**, rebuilt from the stable Beta 7 Android Auto media player. The previous Beta 8 introduced a Car App API 8 template that could show a source header but failed to load playback on the tested head unit. That experimental template has been fully removed.
 
-### Show the real playback queue
-- Android Auto's MediaSession is given a **read-only timeline projection** of Sprotify's in-app queue instead of just the one resolved ExoPlayer stream.
-- Queue rows include the song title, performer, cover art and current playlist/radio context. The active index is taken from the same queue and song ID used on the phone.
-- Changing or expanding the queue notifies Android Auto without reloading unrelated album/radio browse screens. Selecting a different queued track uses Sprotify's established stream-resolution flow, not an expiring URL.
-- The familiar Android Auto **Ievietot rindā** button and stable Beta 8 media player are retained. Android Auto chooses the exact **Now Playing / Next From** headings and queue scroll layout.
+## Only two new features
 
-### Search: Play now or Add to queue
-- Tapping a result returned by **Android Auto's browsable search** opens two actions: **Atskaņot tagad** and **Pievienot rindai**.
-- **Pievienot rindai** calls the same `CurrentSongState.addToQueue(song)` path as the phone. It inserts a track after the current item, without replacing the playlist or intentionally starting the selected song.
-- **Atskaņot tagad** preserves immediate playback for people who explicitly choose it.
-- Voice-command **Play from search** still starts playback, as expected when the driver asks to play a track.
-- Some Android Auto hosts may not present all browser search result/action affordances; verify on the head unit.
+1. **Three Shuffle modes from Android Auto:** OFF (plain icon) → ON (small dot) → SMART (dot + star) → OFF. Android Auto calls the same `CurrentSongState.cycleShuffle()` as the phone, so both controls remain in sync. Radio and Downloads keep the phone's existing OFF/ON-only behavior.
+2. **Playback source information:** Radio station, playlist, album and Liked Songs names are exposed through standard Media3 album metadata and Android Auto browse-root/playing-queue titles. The current song title and artist are preserved. For example `Endless radio` or `Dziesmas, kas tev patīk`. **The Android Auto legacy Now Playing header is controlled by the host:** the source name is not guaranteed to appear exactly in the top bar, despite the metadata being available.
 
-## Unchanged
-- Existing Beta 8 player, Radio, Shuffle OFF/ON/SMART, Repeat, Favorite, covers, current title/artist, stream preparation, playback restoration, and Android Auto browse tree.
-- The queue button text is unchanged because its label belongs to Android Auto.
-- **No Car App API 8**, new templated media screen, or additional playback engine.
+## Restored / deliberately unchanged
 
-## Install and verification
-- Signed `Sprotify.apk`, package `lv.guntify.player`.
-- Version `1.0.0-beta.9` / `versionCode=9`.
-- Install over the existing signed Beta 8 without uninstalling, to preserve user data.
-- CI validates Kotlin compilation, unit tests, signed release identity and APK metadata.
-- Test the **real car**: open queue during playback, check multiple tracks, current/next indication, select a later queue item, use search > Add, and verify the current song does not restart.
+- Stable **Beta 7 MediaLibraryService**, ExoPlayer and Spotify Web playback.
+- Original Android Auto Now Playing UI and its built-in `Ievietot rindā` queue button **with text**.
+- Radio button, Repeat, Favorites, artist/title, artwork, fast Next, queue and playback restoration.
+- **No Car App API 8**, Car App Library service or related dependencies/manifest permissions.
 
-**Limitation:** The MediaSession timeline projection primarily covers the usual ExoPlayer audio path. Web-player-specific rendering and the host's section titles/menus remain Android Auto-dependent; a successful build is not a physical compatibility guarantee.
+## Installation
+
+- `Sprotify.apk`, signed using the same key as Beta 7.
+- `versionCode 8`, `versionName 1.0.0-beta.8`.
+- Package `lv.guntify.player` unchanged; install over Beta 7 or the previous Beta 8 **without uninstalling**.
+- Because this replaces an APK with the **same Beta 8 version number**, built-in update checks may not detect it. Download and install this corrected APK manually.
+
+## Checks
+
+GitHub Actions run unit tests, desktop UI checks and verify the signed APK package and version. Physical head-unit testing is still needed for source-label placement, Smart Shuffle indicator visibility and playback.
+
+Credits, GPLv3 license and source attribution remain in `LICENSE`, `NOTICE` and `SOURCE.md`.
