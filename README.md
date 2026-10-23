@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/sprotify-icon.svg" width="140" alt="Sprotify logo" />
+  <img src="assets/sprotify-icon.svg" width="140" alt="Sprotify icon: three black sardines in a green circle inside a black rounded-square frame" />
 </p>
 <h1 align="center">Sprotify</h1>
 <p align="center">🎶 Your favorites. Your discoveries. Your kind of radio.</p>
