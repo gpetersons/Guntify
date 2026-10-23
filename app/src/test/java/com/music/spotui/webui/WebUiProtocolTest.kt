@@ -23,8 +23,8 @@ class WebUiProtocolTest {
         catch (_: IllegalArgumentException) { }
     }
     @Test fun cookiesUseExactNameAndDoNotAcceptPrefixes() {
-        assertEquals("abc", WebUiProtocol.cookie("other=x; uspot_web=abc; another=y"))
-        assertEquals("", WebUiProtocol.cookie("not_uspot_web=abc"))
+        assertEquals("abc", WebUiProtocol.cookie("other=x; guntify_web=abc; another=y"))
+        assertEquals("", WebUiProtocol.cookie("not_guntify_web=abc"))
         assertEquals("", WebUiProtocol.cookie(null))
         assertTrue(WebUiProtocol.sameSecret("abc", "abc"))
         assertFalse(WebUiProtocol.sameSecret("abc", "abd"))
@@ -37,6 +37,9 @@ class WebUiProtocolTest {
     }
     @Test fun foreignOriginsAndNullTextAreRejected() {
         assertTrue(WebUiProtocol.allowedOrigin(null, "192.168.1.9:8765"))
+        assertFalse(WebUiProtocol.sameOrigin(null, "192.168.1.9:8765"))
+        assertTrue(WebUiProtocol.sameOrigin("http://192.168.1.9:8765", "192.168.1.9:8765"))
+        assertFalse(WebUiProtocol.sameOrigin("https://evil.example", "192.168.1.9:8765"))
         assertTrue(WebUiProtocol.allowedOrigin("http://192.168.1.9:8765", "192.168.1.9:8765"))
         listOf("null", "https://evil.example", "http://192.168.1.9:8765.evil.example", "http://192.168.1.9:9000").forEach {
             assertFalse(WebUiProtocol.allowedOrigin(it, "192.168.1.9:8765"))

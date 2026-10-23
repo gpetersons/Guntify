@@ -19,7 +19,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.RejectedExecutionException
 
 /** One explicitly started Wi-Fi session; never accepts arbitrary URLs or file paths. */
-internal class WebUiServer(private val context: Context, private val address: String, port: Int, private val secret: String) : NanoHTTPD(address, port) {
+internal class WebUiServer(private val context: Context, private val address: String, port: Int, private val access: WebUiAccess) : NanoHTTPD(address, port) {
     private val authority = "$address:$port"
     private val backend = WebUiBackend(context)
     private val lookups = Semaphore(2)
@@ -43,8 +43,11 @@ internal class WebUiServer(private val context: Context, private val address: St
             }
         })
     }
+    fun currentPin(): String = access.currentPin()
+
     override fun stop() {
         closed = true
+        access.invalidate()
         backend.close()
         active.forEach { runCatching { it.close() } }
         active.clear()
@@ -72,12 +75,39 @@ internal class WebUiServer(private val context: Context, private val address: St
             val mime = when(path) { "/app.js" -> "text/javascript"; "/style.css" -> "text/css"; "/logo.svg" -> "image/svg+xml"; else -> "text/html; charset=utf-8" }
             return newChunkedResponse(Response.Status.OK, mime, context.assets.open(asset)).also(::headers)
         }
-        if (path == "/session" && session.method == Method.GET) {
-            return json(Response.Status.OK, JSONObject().put("ok", true)).also {
-                it.addHeader("Set-Cookie", "uspot_web=$secret; HttpOnly; SameSite=Strict; Path=/")
-            }
+        // Never mint a browser session with GET. Every new browser needs the PIN
+        // currently visible on the Android device.
+        if (path == "/session") return error(Response.Status.NOT_FOUND, "Not found")
+        if (path == "/pair") {
+            if (session.method != Method.POST) return error(Response.Status.METHOD_NOT_ALLOWED, "Use POST.")
+            if (!WebUiProtocol.sameOrigin(session.headers["origin"], authority))
+                return error(Response.Status.FORBIDDEN, "This browser origin is not allowed.")
+            val type = session.headers["content-type"]?.substringBefore(';')?.trim()?.lowercase()
+            val size = session.headers["content-length"]?.toLongOrNull()
+            if (type != "application/json" || size == null || size !in 1..128 || session.headers.containsKey("transfer-encoding"))
+                return error(Response.Status.BAD_REQUEST, "Invalid pairing request.")
+            return try {
+                val files = HashMap<String, String>()
+                session.parseBody(files)
+                val pin = JSONObject(files["postData"] ?: "{}").optString("pin")
+                val result = access.pair(pin)
+                when (result.result) {
+                    WebUiAccess.Result.PAIRED -> json(Response.Status.OK, JSONObject().put("ok", true)).also {
+                        it.addHeader("Set-Cookie", "guntify_web=${result.session}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800")
+                    }
+                    WebUiAccess.Result.RATE_LIMITED -> error(Response.Status.TOO_MANY_REQUESTS, "Too many attempts. Try again in one minute or generate a new PIN on the phone.")
+                    WebUiAccess.Result.EXPIRED -> error(Response.Status.UNAUTHORIZED, "PIN expired. Use the new PIN shown on the phone.")
+                    WebUiAccess.Result.CLOSED -> error(Response.Status.SERVICE_UNAVAILABLE, "Desktop mode stopped.")
+                    WebUiAccess.Result.INVALID -> error(Response.Status.UNAUTHORIZED, "Incorrect PIN. Check the code on the phone.")
+                }
+            } catch (_: Exception) { error(Response.Status.BAD_REQUEST, "Invalid pairing request.") }
         }
-        val authenticated = WebUiProtocol.sameSecret(secret, WebUiProtocol.cookie(session.headers["cookie"]))
+        val authenticated = access.authorized(session.headers["cookie"])
+        // Browsers include Origin on same-origin writes. Reject missing/foreign
+        // origins as an extra CSRF barrier for all state-changing endpoints.
+        if ((path == "/api" || path == "/restore") &&
+            !WebUiProtocol.sameOrigin(session.headers["origin"], authority))
+            return error(Response.Status.FORBIDDEN, "This browser origin is not allowed.")
         if (path == "/ping" && session.method == Method.GET) {
             return if (authenticated) json(Response.Status.OK, JSONObject().put("ok", true))
             else error(Response.Status.UNAUTHORIZED, "Reconnect this browser.")

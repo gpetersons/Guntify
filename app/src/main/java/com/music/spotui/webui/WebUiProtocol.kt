@@ -8,8 +8,9 @@ internal object WebUiProtocol {
     fun sameSecret(expected: String, supplied: String): Boolean = supplied.length == expected.length &&
         MessageDigest.isEqual(expected.toByteArray(Charsets.UTF_8), supplied.toByteArray(Charsets.UTF_8))
     fun cookie(header: String?): String = header.orEmpty().split(';').map(String::trim)
-        .firstOrNull { it.startsWith("uspot_web=") }?.substringAfter('=').orEmpty()
+        .firstOrNull { it.startsWith("guntify_web=") }?.substringAfter('=').orEmpty()
     fun allowedOrigin(origin: String?, authority: String) = origin == null || origin == "http://$authority"
+    fun sameOrigin(origin: String?, authority: String) = origin == "http://$authority"
 
     data class Window(val start: Long, val end: Long) { val length: Long get() = end - start + 1 }
     fun range(header: String?, total: Long): Window? {
