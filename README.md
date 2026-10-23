@@ -3,14 +3,14 @@
 </p>
 <h1 align="center">Sprotify</h1>
 <p align="center">🎶 Your favorites. Your discoveries. Your kind of radio.</p>
-<p align="center"><strong><a href="https://github.com/gpetersons/Sprotify/releases/download/v1.0.0-beta.6/Sprotify.apk">⬇️ Download Sprotify Beta 6 (signed Android APK)</a></strong> · <a href="https://github.com/gpetersons/Sprotify/releases">All releases</a></p>
+<p align="center"><strong><a href="https://github.com/gpetersons/Sprotify/releases/download/v1.0.0-beta.7/Sprotify.apk">⬇️ Download Sprotify Beta 7 (signed Android APK)</a></strong> · <a href="https://github.com/gpetersons/Sprotify/releases">All releases</a></p>
 
-> **Updating from an older Sprotify or Guntify build?** Sprotify Beta 6 uses the same Android package ID (`lv.guntify.player`) and signing identity. Install the signed Beta 6 APK over your current app to keep local data. **Do not uninstall first.** Previously published releases retain their original APK names; they remain available under [Releases](https://github.com/gpetersons/Sprotify/releases).
+> **Updating from an older Sprotify or Guntify build?** Sprotify Beta 7 uses the same Android package ID (`lv.guntify.player`) and signing identity. Install the signed Beta 7 APK over your current app to keep local data. **Do not uninstall first.** Previously published releases retain their original APK names; they remain available under [Releases](https://github.com/gpetersons/Sprotify/releases).
 
 Sprotify is a music player that gets to know what you love. Find songs, keep your favorites together, and make your own radio stations. 🎧
 
 **Android 8.0 or newer**  
-**Latest version:** 1.0.0-beta.6 (build 6)
+**Latest version:** 1.0.0-beta.7 (build 7)
 
 ## 🚀 Start listening
 
@@ -22,7 +22,7 @@ Sprotify is a music player that gets to know what you love. Find songs, keep you
 
 **For USpot users:** This is a separate app from USpot. Local data does not transfer automatically. Keep USpot installed until you have verified what you need.
 
-Check for future releases under **Settings → Updates** or on the [Releases page](https://github.com/gpetersons/Sprotify/releases). Beta 5 was the first Sprotify-branded signed release; Beta 6 adds Android Auto Now Playing controls. Previously published Beta 4 is available under its original Sprotify name.
+Check for future releases under **Settings → Updates** or on the [Releases page](https://github.com/gpetersons/Sprotify/releases). Beta 5 was the first Sprotify-branded signed release; Beta 6 added Android Auto Now Playing controls; Beta 7 refines their icons and sends artist subtitles for Android Auto. Previously published Beta 4 is available under its original Sprotify name.
 
 ## 📸 Take a look around
 
@@ -84,4 +84,4 @@ Thanks also to Meld, Neptune, SpotiFLAC, SimpMusic and the other projects credit
 
 Sprotify is an independent fork of USpot, originally based on Spotui. It is not affiliated with Spotify or YouTube. Available music and account features depend on those services.
 
-[License](LICENSE) · [Credits](NOTICE) · [Beta 6 source archive](https://github.com/gpetersons/Sprotify/releases/download/v1.0.0-beta.6/Sprotify-source.zip) · [Current development source](https://github.com/gpetersons/Sprotify)
+[License](LICENSE) · [Credits](NOTICE) · [Beta 7 source archive](https://github.com/gpetersons/Sprotify/releases/download/v1.0.0-beta.7/Sprotify-source.zip) · [Current development source](https://github.com/gpetersons/Sprotify)

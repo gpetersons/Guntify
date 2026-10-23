@@ -18,8 +18,8 @@ android {
         minSdk = 26
         targetSdk = 34
         // Increment for every signed Sprotify release to support in-place updates.
-        versionCode = 6
-        versionName = "1.0.0-beta.6"
+        versionCode = 7
+        versionName = "1.0.0-beta.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
