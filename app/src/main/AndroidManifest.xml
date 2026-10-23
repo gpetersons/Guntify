@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <!-- Car App Library playback header and icon-only queue on API 8+ hosts. -->
+    <uses-permission android:name="androidx.car.app.MEDIA_TEMPLATES"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
@@ -59,6 +61,18 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- New media templates are optional; the MediaLibraryService remains
+             for existing Android Auto versions and classic media browsing. -->
+        <meta-data android:name="androidx.car.app.minCarApiLevel" android:value="8"/>
+        <service
+            android:name=".ui.notification.SprotifyCarAppService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService"/>
+                <category android:name="androidx.car.app.category.MEDIA"/>
+            </intent-filter>
+        </service>
 
         <!-- Android Auto: declares the app as a media app for the car. -->
         <meta-data
