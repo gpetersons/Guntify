@@ -15,11 +15,11 @@ android {
 
     defaultConfig {
         applicationId = "lv.guntify.player"
-                minSdk = 26
+        minSdk = 26
         targetSdk = 34
-        // Increment for every signed Guntify release to support in-place updates.
-        versionCode = 4
-        versionName = "1.0.0-beta.4"
+        // Increment for every signed Sprotify release to support in-place updates.
+        versionCode = 5
+        versionName = "1.0.0-beta.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -27,7 +27,7 @@ android {
         }
     }
 
-    // Independent Guntify signing. Never use the upstream USpot key.
+    // Independent Sprotify signing; legacy GUNTIFY_* secrets remain for update compatibility.
     val ciKeystore = System.getenv("GUNTIFY_SIGNING_KEYSTORE")?.takeIf { it.isNotBlank() }
     val localKeys = rootProject.file("keystore.properties").takeIf { it.exists() }
         ?.let { f -> Properties().apply { f.inputStream().use { load(it) } } }
