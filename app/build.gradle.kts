@@ -18,9 +18,9 @@ android {
         manifestPlaceholders["guntifyAppLabel"] = "Guntify"
         minSdk = 26
         targetSdk = 34
-        // Must exceed every published build: 1.5 shipped as versionCode 14 ("1.4").
-        versionCode = 1
-        versionName = "1.0.0-beta.1"
+        // Increment for every signed Guntify release to support in-place updates.
+        versionCode = 2
+        versionName = "1.0.0-beta.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
