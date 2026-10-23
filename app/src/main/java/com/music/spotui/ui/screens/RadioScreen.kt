@@ -78,9 +78,9 @@ fun RadioScreen(navController: NavController, seedId: String, player: PlayerView
                 } }
             }
         } else com.music.spotui.ui.components.CollectionArtwork(seed?.coverUri.orEmpty(), "Radio artwork", Modifier)
-        Text(seed?.let { RadioSessions.stationName(it) } ?: "USpot Radio", color = com.music.spotui.ui.theme.AppText, fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 24.dp))
+        Text(seed?.let { RadioSessions.stationName(it) } ?: "Guntify Radio", color = com.music.spotui.ui.theme.AppText, fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 24.dp))
         Row(verticalAlignment=Alignment.CenterVertically) {
-            Text("USpot Radio • Continuous music", color = com.music.spotui.ui.theme.AppPalette,modifier=Modifier.weight(1f))
+            Text("Guntify Radio • Continuous music", color = com.music.spotui.ui.theme.AppPalette,modifier=Modifier.weight(1f))
             com.music.spotui.ui.components.PinButton("radio:$seedId")
         }
         Text(if(mix)"${anchors.size} songs blended" else seed?.singer.orEmpty(),color=com.music.spotui.ui.theme.AppSecondary,modifier=Modifier.padding(vertical=8.dp))

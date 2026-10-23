@@ -1,0 +1,88 @@
+name: Guntify - Publish signed beta
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: guntify-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore independent Guntify signing identity
+        env:
+          KEYSTORE_BASE64: ${{ secrets.GUNTIFY_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.GUNTIFY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.GUNTIFY_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.GUNTIFY_KEY_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import base64, os, pathlib
+          keys = ('KEYSTORE_BASE64','STORE_PASSWORD','KEY_ALIAS','KEY_PASSWORD')
+          if not all(os.environ.get(k, '').strip() for k in keys):
+              raise SystemExit('Missing GUNTIFY signing secrets. No release will be published.')
+          path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'guntify-release.jks'
+          path.write_bytes(base64.b64decode(''.join(os.environ['KEYSTORE_BASE64'].split()), validate=True))
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write(f'GUNTIFY_SIGNING_KEYSTORE={path}\n')
+              f.write('GUNTIFY_STORE_PASSWORD=' + os.environ['STORE_PASSWORD'] + '\n')
+              f.write('GUNTIFY_KEY_ALIAS=' + os.environ['KEY_ALIAS'] + '\n')
+              f.write('GUNTIFY_KEY_PASSWORD=' + os.environ['KEY_PASSWORD'] + '\n')
+          PY
+      - name: Test desktop UI
+        working-directory: webui-tests
+        run: npm install --no-audit --no-fund && npm test
+      - name: Test and build signed Guntify APK
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:testDebugUnitTest :spotify:test :app:assembleRelease --no-daemon --max-workers=2
+      - name: Verify signed APK metadata
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, subprocess
+          tools = pathlib.Path(os.environ['ANDROID_HOME']) / 'build-tools' / '35.0.0'
+          apk = pathlib.Path('app/build/outputs/apk/release/app-release.apk')
+          if not apk.is_file():
+              raise SystemExit('No signed release APK produced.')
+          signed = subprocess.check_output([str(tools/'apksigner'), 'verify', '--verbose', '--print-certs', str(apk)], text=True)
+          if 'Verified using v2 scheme (APK Signature Scheme v2): true' not in signed:
+              raise SystemExit('Release APK failed signature verification.')
+          info = subprocess.check_output([str(tools/'aapt'), 'dump', 'badging', str(apk)], text=True).splitlines()[0]
+          if "name='lv.guntify.player'" not in info or "versionCode='1'" not in info:
+              raise SystemExit('Unexpected Guntify APK identity or version.')
+          print('Signed Guntify package verified.')
+          PY
+      - name: Package source and APK
+        run: |
+          mkdir -p release
+          cp app/build/outputs/apk/release/app-release.apk release/Guntify.apk
+          git archive --format=zip --prefix=Guntify/ -o release/Guntify-source.zip HEAD
+          cp LICENSE NOTICE SOURCE.md release/
+          (cd release && sha256sum Guntify.apk Guntify-source.zip > SHA256SUMS.txt)
+      - name: Publish independent first Guntify pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=v1.0.0-beta.1
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release already exists. Refusing to overwrite signed release."
+            exit 1
+          fi
+          gh release create "$tag" release/* --target "$GITHUB_SHA" --title "Guntify 1.0.0 Beta 1" --notes-file RELEASE_NOTES.md --prerelease

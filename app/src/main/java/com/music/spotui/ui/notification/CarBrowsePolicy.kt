@@ -28,7 +28,7 @@ object CarBrowsePolicy {
     }
     fun recent(items: List<HomeItem>, limit: Int = 40): List<Entry> = items.mapNotNull { item ->
         when (item) {
-            is HomeItem.Radio -> Entry(radioId(item.seed.spotifyTrackId.ifBlank { item.seed.id.toString() }), item.name, item.imageUrl, "USpot Radio", true)
+            is HomeItem.Radio -> Entry(radioId(item.seed.spotifyTrackId.ifBlank { item.seed.id.toString() }), item.name, item.imageUrl, "Guntify Radio", true)
             is HomeItem.Playlist -> if (item.id.isBlank()) null else Entry(when (item.id) {
                 "liked-songs" -> "liked"
                 "downloads", "downloaded-offline" -> "downloads"

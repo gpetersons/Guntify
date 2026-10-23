@@ -119,7 +119,7 @@ object AppUpdates {
                     val dir = File(c.cacheDir, "updates").apply { mkdirs() }
                     dir.listFiles()?.forEach { it.delete() }
                     val part = File(dir, "update.part"); partial = part
-                    val call = client.newCall(Request.Builder().url(release.apk).header("User-Agent", "USpot updater").build())
+                    val call = client.newCall(Request.Builder().url(release.apk).header("User-Agent", "Guntify updater").build())
                     activeDownload = call
                     val handle = currentCoroutineContext().job.invokeOnCompletion { if (it is CancellationException) call.cancel() }
                     try {
@@ -177,7 +177,7 @@ object AppUpdates {
 
     fun openInstaller(context: Context) {
         try {
-            kotlin.check(context.packageManager.canRequestPackageInstalls()) { "Allow updates from USpot in Android's install-permission settings, then tap Install again." }
+            kotlin.check(context.packageManager.canRequestPackageInstalls()) { "Allow updates from Guntify in Android's install-permission settings, then tap Install again." }
             val file = readyFile?.takeIf { it.isFile } ?: error("Download the update again before installing.")
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.updates", file)
             context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")

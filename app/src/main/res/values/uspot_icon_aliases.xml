@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <item type="drawable" name="logo">@drawable/uspot_logo</item>
-    <item type="mipmap" name="ic_launcher">@drawable/uspot_logo</item>
-    <item type="mipmap" name="ic_launcher_round">@drawable/uspot_logo</item>
-    <item type="mipmap" name="ic_launcher_foreground">@drawable/uspot_logo</item>
-</resources>

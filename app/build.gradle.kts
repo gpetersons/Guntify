@@ -14,13 +14,13 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.music.spotui.modified"
-        manifestPlaceholders["uspotAppLabel"] = "USpot"
+        applicationId = "lv.guntify.player"
+        manifestPlaceholders["guntifyAppLabel"] = "Guntify"
         minSdk = 26
         targetSdk = 34
         // Must exceed every published build: 1.5 shipped as versionCode 14 ("1.4").
-        versionCode = 82
-        versionName = "1.1"
+        versionCode = 1
+        versionName = "1.0.0-beta.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -28,26 +28,25 @@ android {
         }
     }
 
-    // One fixed release key, kept out of git in keystore.properties (storeFile,
-    // storePassword, keyAlias, keyPassword). Releases used to be signed with whatever
-    // debug key the building machine had, so 1.4 and 1.5 could not upgrade each other.
-    val releaseKeys = rootProject.file("keystore.properties").takeIf { it.exists() }
+    // Independent Guntify signing. Never use the upstream USpot key.
+    val ciKeystore = System.getenv("GUNTIFY_SIGNING_KEYSTORE")?.takeIf { it.isNotBlank() }
+    val localKeys = rootProject.file("keystore.properties").takeIf { it.exists() }
         ?.let { f -> Properties().apply { f.inputStream().use { load(it) } } }
     signingConfigs {
-        // CI supplies the saved key. Never generate a different key for each USpot update.
-        getByName("debug") {
-            System.getenv("USPOT_SIGNING_KEYSTORE")?.takeIf { it.isNotBlank() }?.let { key ->
-                storeFile = file(key)
-                storePassword = System.getenv("USPOT_STORE_PASSWORD")?.takeIf { it.isNotBlank() } ?: "android"
-                keyAlias = System.getenv("USPOT_KEY_ALIAS")?.takeIf { it.isNotBlank() } ?: "androiddebugkey"
-                keyPassword = System.getenv("USPOT_KEY_PASSWORD")?.takeIf { it.isNotBlank() } ?: "android"
+        if (ciKeystore != null) {
+            create("guntifyRelease") {
+                storeFile = file(ciKeystore)
+                storePassword = requireNotNull(System.getenv("GUNTIFY_STORE_PASSWORD"))
+                keyAlias = requireNotNull(System.getenv("GUNTIFY_KEY_ALIAS"))
+                keyPassword = requireNotNull(System.getenv("GUNTIFY_KEY_PASSWORD"))
             }
-        }
-        if (releaseKeys != null) create("release") {
-            storeFile = rootProject.file(releaseKeys.getProperty("storeFile"))
-            storePassword = releaseKeys.getProperty("storePassword")
-            keyAlias = releaseKeys.getProperty("keyAlias")
-            keyPassword = releaseKeys.getProperty("keyPassword")
+        } else if (localKeys != null) {
+            create("guntifyRelease") {
+                storeFile = rootProject.file(requireNotNull(localKeys.getProperty("storeFile")))
+                storePassword = requireNotNull(localKeys.getProperty("storePassword"))
+                keyAlias = requireNotNull(localKeys.getProperty("keyAlias"))
+                keyPassword = requireNotNull(localKeys.getProperty("keyPassword"))
+            }
         }
     }
 
@@ -58,9 +57,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Falls back to this machine's debug key without keystore.properties; such a
-            // build only upgrades installs signed by that same machine.
-            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            // Without a dedicated signing key, release remains unsigned; such a
+            // build must not be published.
+            signingConfig = signingConfigs.findByName("guntifyRelease")
         }
     }
     compileOptions {

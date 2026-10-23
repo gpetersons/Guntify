@@ -203,7 +203,7 @@ function rows(songs, parent = $("content")) {
       b.onclick = () => playList(songs, index, collection);
       const radio = button("◉", () => createRadio(song));
       radio.ariaLabel = `Start radio from ${song.title}`;
-      radio.title = "Start USpot Radio";
+      radio.title = "Start Guntify Radio";
       const queue = button("+", () => enqueue(song));
       queue.ariaLabel = `Add ${song.title} to queue`;
       queue.title = "Add to queue";
@@ -279,7 +279,7 @@ async function navigate(view, push = true) {
         const head = el("div", "section-heading");
         head.append(el("h2", "", "Your rotation"));
         const plus = el("button", "circle", "+");
-        plus.title = "Create USpot Radio or Radio Mix";
+        plus.title = "Create Guntify Radio or Radio Mix";
         plus.onclick = radioChoice;
         head.append(plus);
         const grid = el("div", "shortcut-grid");
@@ -587,7 +587,7 @@ async function search(initialType = "All") {
         "Albums",
         "Artists",
         "Playlists",
-        "USpot Radios",
+        "Guntify Radios",
       ].forEach((label) =>
         filters.append(
           button(
@@ -642,10 +642,10 @@ async function search(initialType = "All") {
         section("Albums", data.albums || []);
       if (type === "All" || type === "Playlists")
         section("Spotify playlists", data.playlists || []);
-      if (type === "All" || type === "USpot Radios")
-        section("Your USpot Radios", data.radios || []);
+      if (type === "All" || type === "Guntify Radios")
+        section("Your Guntify Radios", data.radios || []);
       const groups =
-        type === "USpot Radios"
+        type === "Guntify Radios"
           ? [data.radios]
           : type === "Songs"
             ? [data.songs]
@@ -820,7 +820,7 @@ function renderPlayer() {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: song.title,
       artist: song.subtitle,
-      album: state.collection?.title || "USpot",
+      album: state.collection?.title || "Guntify",
       artwork: song.image ? [{ src: song.image }] : [],
     });
   }
@@ -1464,7 +1464,7 @@ function downloadSongs(songs) {
   }
   confirmAction(
     "Download on your phone?",
-    `Save ${songs.length} songs using USpot’s existing download manager. Downloads are stored on the phone, and can stream to this computer while desktop mode is connected.`,
+    `Save ${songs.length} songs using Guntify’s existing download manager. Downloads are stored on the phone, and can stream to this computer while desktop mode is connected.`,
     async () => {
       await api("download", { songs: songs.map((s) => s.key) });
       toast("Downloads added on your phone");
@@ -1514,7 +1514,7 @@ function songMenu(song) {
       () => toggleLike(song),
     ],
     ["Add to playlist", () => playlistPicker(song)],
-    ["Start USpot Radio", () => createRadio(song)],
+    ["Start Guntify Radio", () => createRadio(song)],
     [
       song.downloaded ? "Remove download from phone" : "Download on phone",
       () => {
@@ -1663,7 +1663,7 @@ function renderLibraryItems(items, view) {
     el(
       "h2",
       "",
-      view === "radios" ? "Saved USpot stations" : "Saved collections",
+      view === "radios" ? "Saved Guntify stations" : "Saved collections",
     ),
     button("+", view === "radios" ? radioChoice : createPlaylist, "circle"),
   );
@@ -1688,7 +1688,7 @@ function renderLibraryItems(items, view) {
       ["All", "All"],
       ["playlist", "Playlists"],
       ["album", "Albums"],
-      ["radio", "USpot Radios"],
+      ["radio", "Guntify Radios"],
     ])
       filters.append(
         button(
@@ -1774,13 +1774,13 @@ async function playlistPicker(song) {
 function radioChoice() {
   const d = dialog("Create a station");
   d.append(
-    button("USpot Radio", () => radioCreator(false), "menu-action"),
-    button("USpot Radio Mix", () => radioCreator(true), "menu-action"),
+    button("Guntify Radio", () => radioCreator(false), "menu-action"),
+    button("Guntify Radio Mix", () => radioCreator(true), "menu-action"),
   );
 }
 async function radioCreator(mix) {
   const d = dialog(
-    mix ? "Create USpot Radio Mix" : "Create USpot Radio",
+    mix ? "Create Guntify Radio Mix" : "Create Guntify Radio",
     mix
       ? "Choose up to 5 songs. Search Spotify or pick from your playlists and Liked Songs."
       : "Choose one song to start your station.",
@@ -2336,7 +2336,7 @@ async function renderSettings(generation) {
     el(
       "p",
       "muted",
-      "Back up your local history, radios and settings. Account credentials are excluded. Backups from regular USpot and the Web Preview are compatible.",
+      "Back up your local history, radios and settings. Account credentials are excluded. Backups from regular Guntify and the Web Preview are compatible.",
     ),
   );
   backup.append(
@@ -2352,7 +2352,7 @@ async function renderSettings(generation) {
         const url = URL.createObjectURL(blob);
         const a = el("a");
         a.href = url;
-        a.download = "USpot-backup.zip";
+        a.download = "Guntify-backup.zip";
         document.body.append(a);
         a.click();
         a.remove();
@@ -2373,7 +2373,7 @@ async function renderSettings(generation) {
       return;
     }
     confirmAction(
-      "Import this USpot backup?",
+      "Import this Guntify backup?",
       "This replaces local history, radios and settings on your phone. Export current data first. Your connected account credentials are preserved.",
       async () => {
         audio.pause();
@@ -2409,9 +2409,9 @@ async function renderSettings(generation) {
       `Using the Spotify account connected on your phone${data.name ? ": " + data.name : ""}. Spotify sign-in, YouTube sign-in, music-source setup, Android permissions and Android Auto remain in the Android app.`,
     ),
   );
-  const about = group("About USpot");
+  const about = group("About Guntify");
   about.append(
-    image("/logo.png", "about-logo"),
+    image("/logo.svg", "about-logo"),
     el(
       "p",
       "",
@@ -2420,7 +2420,7 @@ async function renderSettings(generation) {
     el(
       "small",
       "",
-      `USpot ${data.version || "1.1"}${data.build ? " · build " + data.build : ""} · Desktop & Browser.`,
+      `Guntify ${data.version || "1.1"}${data.build ? " · build " + data.build : ""} · Desktop & Browser.`,
     ),
   );
 }
@@ -2678,7 +2678,7 @@ async function playlistRecommendations(item) {
       el(
         "p",
         "muted",
-        "Based on your Spotify preferences and qualified USpot listening.",
+        "Based on your Spotify preferences and qualified Guntify listening.",
       ),
     );
     data.songs.forEach((song) => {
