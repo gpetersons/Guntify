@@ -542,6 +542,14 @@ class PlaybackService : MediaLibraryService() {
                 val failedCurrent = streamRecovery.isRecovering &&
                     !SongPlayer.isPlaying() && SongPlayer.isCurrentRequest(current.url)
                 currentSongState.replaceRadioQueue(next)
+                // Prepare the next Radio track only while the current one is
+                // still audible. When advancing immediately, avoid two competing
+                // remote lookups for the same track.
+                if (!ended && !failedCurrent) {
+                    next.getOrNull(nextCurrent + 1)?.let {
+                        SongPlayer.prefetch(it.url, applicationContext)
+                    }
+                }
                 if (!currentSongState.repeat.value && (ended || failedCurrent)) {
                     if (failedCurrent) streamRecovery.recovered()
                     advance(forward = true)
