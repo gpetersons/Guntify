@@ -17,7 +17,7 @@ w.HTMLDialogElement.prototype.close=function(){this.open=false};
 
 const songs=Array.from({length:8},(_,i)=>({key:`s${i}`,type:'song',title:`Song ${i}`,subtitle:'Test artist',image:'',duration:200000}));
 const playlist={key:'playlist:example',type:'playlist',title:'Test playlist',subtitle:'Playlist',image:''};
-const radio={mode:'balanced',anchors:[songs[0]],key:'radio:s0',type:'radio',title:'Song 0 Radio',subtitle:'ŠprotiFy Radio',image:''};
+const radio={mode:'balanced',anchors:[songs[0]],key:'radio:s0',type:'radio',title:'Song 0 Radio',subtitle:'Sprotify Radio',image:''};
 const created={...playlist,key:'playlist:created',title:'New test playlist',canRecommend:true};
 const liked={...playlist,key:'playlist:liked-songs',title:'Liked Songs'};
 const downloads={...playlist,key:'playlist:downloaded-offline',title:'Downloaded'};
@@ -88,7 +88,7 @@ const text=id=>w.document.getElementById(id).textContent;
  // Search results can play, enqueue, and create a real API-backed station.
  w.document.getElementById('search').value='test';w.document.getElementById('search').dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter'}));await tick();
  assert.match(text('content'),/Results for/);click('.track-name');await tick();assert.equal(text('title'),'Song 0');assert.equal(calls.filter(c=>c.action==='resolve').at(-1).collection,'');
- currentTime=42;const loadsBeforeRadio=loads;click('.track-row button[title="Start ŠprotiFy Radio"]');await tick();assert.match(text('content'),/ŠPROTIFY RADIO/);assert.equal(w.__state.collection.type,'radio');
+ currentTime=42;const loadsBeforeRadio=loads;click('.track-row button[title="Start Sprotify Radio"]');await tick();assert.match(text('content'),/SPROTIFY RADIO/);assert.equal(w.__state.collection.type,'radio');
  assert.equal(currentTime,42);assert.equal(loads,loadsBeforeRadio);assert.equal(w.__state.ticket,'adopted-ticket');
  assert.equal(w.document.querySelectorAll('#content .track-row').length,0,'Radio must not render as a playlist');
  assert.match(text('content'),/Stay close/);assert.match(text('content'),/Explore more/);
@@ -145,7 +145,7 @@ const text=id=>w.document.getElementById(id).textContent;
  [...w.document.querySelectorAll('#content button')].find(b=>b.textContent==='Retry').click();await tick();assert.equal(calls.filter(c=>c.action==='retryDownload').at(-1).key,songs[1].key);
  [...w.document.querySelectorAll('#content button')].find(b=>b.textContent==='Cancel').click();await tick();assert.equal(calls.filter(c=>c.action==='cancelDownload').at(-1).key,songs[0].key);
  w.document.getElementById('search').value='Song';await w.__search();await tick();assert.match(text('content'),/TOP RESULT/);
- [...w.document.querySelectorAll('#content .chip')].find(b=>b.textContent==='ŠprotiFy Radios').click();await tick();assert.equal(w.document.querySelectorAll('#content .track-row').length,0);assert.match(text('content'),/Song 0 Radio/);
+ [...w.document.querySelectorAll('#content .chip')].find(b=>b.textContent==='Sprotify Radios').click();await tick();assert.equal(w.document.querySelectorAll('#content .track-row').length,0);assert.match(text('content'),/Song 0 Radio/);
  await w.__navigate('settings');assert.ok(w.document.querySelectorAll('details.settings-group').length>3);
  assert.equal(errors.length,0,errors.join('\n'));console.log('PASS: navigation, collection retry, queue next/previous, smart-shuffle cycle, radio modes without restart, manual FIFO queue, confirmed likes and mutation errors, settings and no-code connection, shuffle restoration, add-next, 30-second history qualification, search playback, radio creation, theme switching, no-restart radio adoption, exhausted-radio refill, and failed-lookup recovery (simulated phone/audio).');
  dom.window.close();
