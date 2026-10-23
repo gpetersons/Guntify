@@ -25,17 +25,11 @@ class PlaylistChangesTest {
         })
         try { PlaylistChanges(client).add("abc123",listOf("spotify:track:song1"),"account-token");assertEquals(1,requests) } finally {client.close()}
     }
-    @Test fun removalTargetsOneOccurrenceByUid() = runBlocking {
-        val client=HttpClient(MockEngine { request ->
-            assertEquals(HttpMethod.Post,request.method)
-            val op=Json.parseToJsonElement((request.body as TextContent).text).jsonObject["deltas"]!!.jsonArray[0].jsonObject["ops"]!!.jsonArray.single().jsonObject
-            assertEquals("REM",op["kind"]!!.jsonPrimitive.content)
-            val item=op["rem"]!!.jsonObject["items"]!!.jsonArray.single().jsonObject
-            assertEquals("second-occurrence",item["uid"]!!.jsonPrimitive.content)
-            assertEquals("spotify:track:song1",item["uri"]!!.jsonPrimitive.content)
-            respond("{}",HttpStatusCode.OK)
-        })
-        try { PlaylistChanges(client).remove("abc123",listOf(Spotify.PlaylistItemRef("spotify:track:song1","second-occurrence")),"token") } finally {client.close()}
+    @Test fun removalTargetsOneOccurrenceByUid() {
+        val variables=playlistRemovalVariables("abc123",listOf(Spotify.PlaylistItemRef("spotify:track:song1","second-occurrence")))
+        assertEquals("spotify:playlist:abc123",variables["playlistUri"]!!.jsonPrimitive.content)
+        assertEquals(listOf("second-occurrence"),variables["uids"]!!.jsonArray.map { it.jsonPrimitive.content })
+        assertFalse(variables.containsKey("uris"))
     }
     @Test fun rateLimitDoesNotRetryOrSwitchToAnotherWriteEndpoint() = runBlocking {
         var requests=0
@@ -50,9 +44,8 @@ class PlaylistChangesTest {
         val client=HttpClient(MockEngine { respond("{\"error\":{\"message\":\"not allowed\"}}",HttpStatusCode.OK) })
         try { try{PlaylistChanges(client).add("abc123",listOf("spotify:track:song1"),"token");fail("False success")}catch(_:Spotify.SpotifyException){} }finally{client.close()}
     }
-    @Test fun missingUidCannotRemoveEveryCopyOfASong() = runBlocking {
-        var requests=0;val client=HttpClient(MockEngine{requests++;respond("{}")})
-        try{try{PlaylistChanges(client).remove("abc123",listOf(Spotify.PlaylistItemRef("spotify:track:song1","")),"token");fail("Missing uid accepted")}catch(_:IllegalArgumentException){};assertEquals(0,requests)}finally{client.close()}
+    @Test fun missingUidCannotRemoveEveryCopyOfASong() {
+        try { playlistRemovalVariables("abc123",listOf(Spotify.PlaylistItemRef("spotify:track:song1","")));fail("Missing UID accepted") } catch(_:IllegalArgumentException) {}
     }
     @Test fun expiredLibraryHashStillHasAnExplicitFallback() {
         assertEquals("7c5a69420e2bfae3da5cc4e14cbc8bb3f6090f80afc00ffc179177f19be3f33d",SpotifyHashProvider.getHash("removeFromLibrary"))

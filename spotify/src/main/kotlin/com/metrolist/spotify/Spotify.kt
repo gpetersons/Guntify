@@ -1054,7 +1054,8 @@ object Spotify {
      * (returned by fetchPlaylist in each content item).
      */
     suspend fun removeTracksFromPlaylist(playlistId: String, items: List<PlaylistItemRef>): Result<Unit> = runCatching {
-        PlaylistChanges(gqlClient).remove(playlistId, items, accessToken ?: throw SpotifyException(401, "Not authenticated"))
+        graphqlPost(operationName = "removeFromPlaylist", variables = playlistRemovalVariables(playlistId, items))
+        Unit
     }
 
     /**

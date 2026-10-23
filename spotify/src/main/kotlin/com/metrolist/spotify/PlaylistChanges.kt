@@ -14,11 +14,6 @@ internal class PlaylistChanges(private val client: HttpClient) {
         put("kind", "ADD")
         putJsonObject("add") { put("addLast", true); putJsonArray("items") { uris.forEach { uri -> add(buildJsonObject { put("uri", uri) }) } } }
     })
-    suspend fun remove(id: String, items: List<Spotify.PlaylistItemRef>, token: String) = change(id, token, buildJsonObject {
-        require(items.isNotEmpty() && items.size <= 100 && items.all { it.uid.isNotBlank() && Regex("spotify:track:[A-Za-z0-9]+").matches(it.uri) })
-        put("kind", "REM")
-        putJsonObject("rem") { put("itemsAsKey", true); putJsonArray("items") { items.forEach { item -> add(buildJsonObject { put("uri", item.uri); put("uid", item.uid) }) } } }
-    })
     private suspend fun change(id: String, token: String, operation: JsonObject) {
         require(Regex("[A-Za-z0-9]+").matches(id)) { "Invalid playlist" }
         val body = buildJsonObject { putJsonArray("deltas") { add(buildJsonObject {
@@ -39,5 +34,15 @@ internal class PlaylistChanges(private val client: HttpClient) {
             if (result["error"] != null || (result["errors"] as? JsonArray)?.isNotEmpty() == true)
                 throw Spotify.SpotifyException(400, "Spotify did not accept the playlist change", endpoint = "Playlist songs")
         }
+    }
+}
+
+/** Keep removal on the original UID-based GraphQL path. Never fall back to URI-only removal. */
+internal fun playlistRemovalVariables(id: String, items: List<Spotify.PlaylistItemRef>): JsonObject {
+    require(Regex("[A-Za-z0-9]+").matches(id))
+    require(items.isNotEmpty() && items.size <= 100 && items.all { it.uid.isNotBlank() })
+    return buildJsonObject {
+        put("playlistUri", "spotify:playlist:$id")
+        putJsonArray("uids") { items.forEach { add(it.uid) } }
     }
 }

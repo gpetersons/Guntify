@@ -7,7 +7,7 @@ permissions:
   contents: write
 concurrency:
   group: uspot-release
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build:
     if: github.ref == 'refs/heads/main'
@@ -91,7 +91,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$USPOT_TAG" >/dev/null 2>&1; then
-            echo 'Release already exists; increase versionCode before publishing another build.'
-            exit 0
+            if [ "$(gh release view "$USPOT_TAG" --json isDraft --jq .isDraft)" != "true" ]; then
+              echo 'Release already published; increase versionCode for another update.'
+              exit 0
+            fi
+          else
+            gh release create "$USPOT_TAG" --draft --target "$(git rev-parse HEAD)" --title "$USPOT_TITLE" --notes-file RELEASE_NOTES.md
           fi
-          gh release create "$USPOT_TAG" release/* --target "$(git rev-parse HEAD)" --title "$USPOT_TITLE" --notes-file RELEASE_NOTES.md --latest
+          gh release upload "$USPOT_TAG" release/* --clobber
+          gh release edit "$USPOT_TAG" --target "$(git rev-parse HEAD)" --title "$USPOT_TITLE" --notes-file RELEASE_NOTES.md --draft=false --latest

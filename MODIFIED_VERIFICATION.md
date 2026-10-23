@@ -2,7 +2,7 @@
 
 The release workflow must compile the Android app, pass app and Spotify-module unit tests, pass simulated browser checks and verify the existing production signing certificate, package and build before publication.
 
-Playlist contract tests check the Web Player changes endpoint, adding real Spotify track URIs, removing a specific playlist occurrence using its UID, refusing missing UIDs, one request on HTTP 429 and rejecting error responses. Library mutations use the currently observed Web Player document hash with the former hash retained as an explicit fallback.
+Playlist contract tests check the Web Player changes endpoint for additions, real Spotify track URIs, one request on HTTP 429 and rejection of embedded errors. Removal retains the app's original GraphQL path; tests check specific occurrence UIDs and refuse missing UIDs or URI-only fallback. Library mutations use the currently observed Web Player document hash with the former hash retained as an explicit fallback.
 
 New screens reuse the existing Spotify authentication, repositories, player, download controls and song menu. Playlists can only be edited when the current account owns them. Library removal unfollows a playlist; it does not delete playlist contents.
 
