@@ -533,8 +533,16 @@ class PlaybackService : MediaLibraryService() {
             val nextCurrent = next.indexOfFirst { it.id == current.id }
             if (nextCurrent in 0 until next.lastIndex) {
                 val ended = SongPlayer.hasEnded()
+                // A failed final stream is usually paused/READY rather than
+                // ENDED. If new Radio suggestions arrive while recovery waits,
+                // go to the next track instead of retrying the failed one.
+                val failedCurrent = streamRecovery.isRecovering &&
+                    !SongPlayer.isPlaying() && SongPlayer.isCurrentRequest(current.url)
                 currentSongState.replaceRadioQueue(next)
-                if (ended && !currentSongState.repeat.value) advance(forward = true)
+                if (!currentSongState.repeat.value && (ended || failedCurrent)) {
+                    if (failedCurrent) streamRecovery.recovered()
+                    advance(forward = true)
+                }
             }
         }
     }
