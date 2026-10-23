@@ -755,7 +755,8 @@ class PlaybackService : MediaLibraryService() {
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
                 }
                 val tokenExtras = android.os.Bundle().apply {
-                    putParcelable("sprotify.platform.token", session.platformToken)
+                    // Media3 1.3.1 exposes the legacy-compatible token directly.
+                    putParcelable("sprotify.compat.token", session.sessionCompatToken)
                 }
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS, tokenExtras))
             }

@@ -95,11 +95,10 @@ class SprotifyCarAppService : CarAppService() {
                             val reply = result.get()
                             if (reply.resultCode == SessionResult.RESULT_SUCCESS) {
                                 @Suppress("DEPRECATION")
-                                val platform = reply.extras.getParcelable<android.media.session.MediaSession.Token>(
-                                    "sprotify.platform.token"
+                                val compat = reply.extras.getParcelable<MediaSessionCompat.Token>(
+                                    "sprotify.compat.token"
                                 )
-                                if (platform != null) {
-                                    val compat = MediaSessionCompat.Token.fromToken(platform)
+                                if (compat != null) {
                                     (context.getCarService(CarContext.MEDIA_PLAYBACK_SERVICE)
                                         as MediaPlaybackManager).registerMediaPlaybackToken(compat)
                                 }
