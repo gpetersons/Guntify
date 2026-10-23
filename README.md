@@ -4,7 +4,6 @@
 <h1 align="center">ŠprotiFy</h1>
 <p align="center">🎶 Your favorites. Your discoveries. Your kind of radio.</p>
 <p align="center"><strong><a href="https://github.com/gpetersons/Guntify/releases/download/v1.0.0-beta.2/Guntify.apk">⬇️ Download the latest signed Android beta (v1.0.0-beta.2)</a></strong> · <a href="https://github.com/gpetersons/Guntify/releases">All releases</a></p>
-<p align="center"><strong><a href="https://github.com/gpetersons/Guntify/releases/download/">⬇️ Download Guntify for Android</a></strong> · <a href="https://github.com/gpetersons/Guntify/releases">What's new</a></p>
 
 > **Branding update in progress:** ŠprotiFy is the new name of Guntify. The latest published, signed Beta 2 APK still displays **Guntify**. The ŠprotiFy name and sardine icon are prepared in [PR #7](https://github.com/gpetersons/Guntify/pull/7) and are **not yet included in that download**.
 
