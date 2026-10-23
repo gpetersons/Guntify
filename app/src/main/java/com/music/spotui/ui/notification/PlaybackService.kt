@@ -22,6 +22,10 @@ import com.google.common.util.concurrent.SettableFuture
 import com.music.spotui.MainActivity
 import com.music.spotui.R
 import com.music.spotui.audio.RadioPlaybackController
+import com.music.spotui.data.api.SpotifySync
+import com.music.spotui.data.preferences.addLikedSongId
+import com.music.spotui.data.preferences.isSongLiked
+import com.music.spotui.data.preferences.removeLikedSongId
 import com.music.spotui.data.api.Api
 import com.music.spotui.data.api.Response
 import com.music.spotui.data.entity.SongsModel
@@ -68,6 +72,75 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var radioPlayback: RadioPlaybackController
 
     private val startRadioCommand = SessionCommand("com.music.spotui.action.START_RADIO", android.os.Bundle.EMPTY)
+    private val toggleFavoriteCommand = SessionCommand("com.music.spotui.action.TOGGLE_FAVORITE", android.os.Bundle.EMPTY)
+    private val toggleShuffleCommand = SessionCommand("com.music.spotui.action.TOGGLE_SHUFFLE", android.os.Bundle.EMPTY)
+    private val toggleRepeatCommand = SessionCommand("com.music.spotui.action.TOGGLE_REPEAT", android.os.Bundle.EMPTY)
+
+    // The first action remains Radio so existing Android Auto layouts keep it
+    // ahead of optional actions that may move into the overflow menu.
+    private val carCommands by lazy {
+        listOf(startRadioCommand, toggleFavoriteCommand, toggleShuffleCommand, toggleRepeatCommand)
+    }
+    private var lastCarControlState: CarNowPlayingControlsPolicy.State? = null
+    private var carControlsObserver: kotlinx.coroutines.Job? = null
+    private val likedSongsPrefs by lazy {
+        getSharedPreferences("LikedSongs", android.content.Context.MODE_PRIVATE)
+    }
+    private val likedSongsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        serviceScope.launch { refreshCarControls() }
+    }
+
+    private fun selectedCarTrack(): SongsModel? =
+        CarRadioActionPolicy.currentTrack(currentSongState.queue.value, currentSongState.songId.value)
+
+    private fun carControlState(): CarNowPlayingControlsPolicy.State {
+        val current = selectedCarTrack()
+        return CarNowPlayingControlsPolicy.State(
+            hasTrack = current != null,
+            hasMultipleTracks = currentSongState.queue.value.size > 1,
+            radioActive = current != null && currentSongState.collection.value?.type == "radio",
+            shuffleActive = currentSongState.shuffle.value,
+            repeatActive = currentSongState.repeat.value,
+            liked = current != null && isSongLiked(applicationContext, current.id.toString()),
+        )
+    }
+
+    private fun carControlButtons(state: CarNowPlayingControlsPolicy.State): List<CommandButton> =
+        listOf(
+            CommandButton.Builder()
+                .setDisplayName(CarNowPlayingControlsPolicy.radioLabel(state))
+                .setIconResId(if (state.radioActive) R.drawable.ic_car_radio_active else R.drawable.ic_car_radio)
+                .setSessionCommand(startRadioCommand)
+                .setEnabled(state.hasTrack)
+                .build(),
+            CommandButton.Builder()
+                .setDisplayName(CarNowPlayingControlsPolicy.favoriteLabel(state))
+                .setIconResId(if (state.liked) R.drawable.ic_car_favorite_added else R.drawable.ic_car_favorite_add)
+                .setSessionCommand(toggleFavoriteCommand)
+                .setEnabled(state.hasTrack)
+                .build(),
+            CommandButton.Builder()
+                .setDisplayName(CarNowPlayingControlsPolicy.shuffleLabel(state))
+                .setIconResId(if (state.shuffleActive) R.drawable.ic_car_shuffle_active else R.drawable.ic_car_shuffle)
+                .setSessionCommand(toggleShuffleCommand)
+                .setEnabled(state.hasMultipleTracks)
+                .build(),
+            CommandButton.Builder()
+                .setDisplayName(CarNowPlayingControlsPolicy.repeatLabel(state))
+                .setIconResId(if (state.repeatActive) R.drawable.ic_car_repeat_active else R.drawable.ic_car_repeat)
+                .setSessionCommand(toggleRepeatCommand)
+                .setEnabled(state.hasTrack)
+                .build(),
+        )
+
+    private fun refreshCarControls() {
+        val state = carControlState()
+        // Replacing layout on every song would disrupt some Android Auto hosts.
+        // Publish only if actual action state or availability changed.
+        if (state == lastCarControlState) return
+        lastCarControlState = state
+        mediaSession?.setCustomLayout(carControlButtons(state))
+    }
 
     private var mediaSession: MediaLibrarySession? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -227,15 +300,15 @@ class PlaybackService : MediaLibraryService() {
             .setSessionActivity(sessionActivity)
             // Media3 1.3 custom action is forwarded to legacy Android Auto controls.
             // Auto decides whether it fits in the transport row or overflow menu.
-            .setCustomLayout(listOf(
-                CommandButton.Builder()
-                    .setDisplayName("Start Radio")
-                    .setIconResId(R.drawable.ic_car_radio)
-                    .setSessionCommand(startRadioCommand)
-                    .build()
-            ))
+            .setCustomLayout(carControlButtons(carControlState()))
             .build()
         recentStores.forEach { it.registerOnSharedPreferenceChangeListener(recentListener) }
+        likedSongsPrefs.registerOnSharedPreferenceChangeListener(likedSongsListener)
+        carControlsObserver = serviceScope.launch {
+            snapshotFlow { carControlState() }
+                .distinctUntilChanged()
+                .collect { refreshCarControls() }
+        }
         // The phone and Android Auto share this actual playback queue. Notify
         // only the dedicated queue node so album/Now Playing navigation is stable.
         playingQueueObserver = serviceScope.launch {
@@ -654,8 +727,12 @@ class PlaybackService : MediaLibraryService() {
                     MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                         .buildUpon()
                         .add(startRadioCommand)
+                        .add(toggleFavoriteCommand)
+                        .add(toggleShuffleCommand)
+                        .add(toggleRepeatCommand)
                         .build()
                 )
+                .setCustomLayout(carControlButtons(carControlState()))
                 .build()
 
         override fun onCustomCommand(
@@ -664,18 +741,47 @@ class PlaybackService : MediaLibraryService() {
             customCommand: SessionCommand,
             args: android.os.Bundle,
         ): ListenableFuture<SessionResult> {
-            if (customCommand.customAction != startRadioCommand.customAction) {
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+            val song = selectedCarTrack()
+            val status = when (customCommand.customAction) {
+                startRadioCommand.customAction -> {
+                    if (song == null) SessionResult.RESULT_ERROR_BAD_VALUE
+                    else if (currentSongState.collection.value?.type == "radio") {
+                        // Tapping active Radio again must not restart the current track.
+                        SessionResult.RESULT_SUCCESS
+                    } else if (radioPlayback.startRadioFromSong(song, applicationContext, serviceScope)) {
+                        SessionResult.RESULT_SUCCESS
+                    } else SessionResult.RESULT_ERROR_BAD_VALUE
+                }
+                toggleFavoriteCommand.customAction -> {
+                    if (song == null) SessionResult.RESULT_ERROR_BAD_VALUE
+                    else {
+                        val nowSaved = !isSongLiked(applicationContext, song.id.toString())
+                        if (nowSaved) addLikedSongId(applicationContext, song.id.toString())
+                        else removeLikedSongId(applicationContext, song.id.toString())
+                        currentSongState.updateLikeState(nowSaved)
+                        // Same local preference and Spotify sync path as the phone menu.
+                        SpotifySync.setTrackSaved(applicationContext, song.spotifyTrackId, nowSaved)
+                        SessionResult.RESULT_SUCCESS
+                    }
+                }
+                toggleShuffleCommand.customAction -> {
+                    if (currentSongState.queue.value.size < 2) SessionResult.RESULT_ERROR_BAD_VALUE
+                    else {
+                        currentSongState.updateShuffleState(!currentSongState.shuffle.value)
+                        SessionResult.RESULT_SUCCESS
+                    }
+                }
+                toggleRepeatCommand.customAction -> {
+                    if (song == null) SessionResult.RESULT_ERROR_BAD_VALUE
+                    else {
+                        currentSongState.updateRepeatState(!currentSongState.repeat.value)
+                        SessionResult.RESULT_SUCCESS
+                    }
+                }
+                else -> SessionResult.RESULT_ERROR_NOT_SUPPORTED
             }
-            // Use the shared in-app track identity, not ExoPlayer's resolved
-            // YouTube stream URI, so the radio recommendations use Spotify IDs.
-            val song = CarRadioActionPolicy.currentTrack(
-                currentSongState.queue.value, currentSongState.songId.value
-            ) ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
-            val started = radioPlayback.startRadioFromSong(song, applicationContext, serviceScope)
-            return Futures.immediateFuture(SessionResult(
-                if (started) SessionResult.RESULT_SUCCESS else SessionResult.RESULT_ERROR_BAD_VALUE
-            ))
+            refreshCarControls()
+            return Futures.immediateFuture(SessionResult(status))
         }
 
         override fun onPlaybackResumption(
@@ -1054,6 +1160,9 @@ class PlaybackService : MediaLibraryService() {
     override fun onDestroy() {
         clearResumingNotification()
         recentStores.forEach { it.unregisterOnSharedPreferenceChangeListener(recentListener) }
+        likedSongsPrefs.unregisterOnSharedPreferenceChangeListener(likedSongsListener)
+        carControlsObserver?.cancel()
+        carControlsObserver = null
         currentSongState.onSmartShuffleRequested = null
         serviceScope.cancel()
         SongPlayer.onPlayerSwapped = null
