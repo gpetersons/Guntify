@@ -22,11 +22,20 @@ const created={...playlist,key:'playlist:created',title:'New test playlist',canR
 const liked={...playlist,key:'playlist:liked-songs',title:'Liked Songs'};
 const downloads={...playlist,key:'playlist:downloaded-offline',title:'Downloaded'};
 let failMutation=false,failCollection=false,failResolve=false,paused=true,currentTime=0,loads=0;
+let paired=false, pairAttempts=0;
 Object.defineProperties(w.HTMLMediaElement.prototype,{paused:{get(){return paused}},duration:{get(){return 200}},readyState:{get(){return 4}},currentTime:{get(){return currentTime},set(v){currentTime=v}}});
 w.HTMLMediaElement.prototype.play=function(){paused=false;this.dispatchEvent(new w.Event('playing'));return Promise.resolve()};
 w.HTMLMediaElement.prototype.pause=function(){paused=true;this.dispatchEvent(new w.Event('pause'))};
 w.HTMLMediaElement.prototype.load=function(){loads++;currentTime=0};
 w.fetch=async(url,opts={})=>{
+ if(url==='/session')return {ok:false,status:404,json:async()=>({error:'Not found'})};
+ if(url==='/pair'){
+   pairAttempts++;
+   const pin=JSON.parse(opts.body).pin;
+   if(pin==='12345678'){paired=true;return {ok:true,status:200,json:async()=>({ok:true})};}
+   return {ok:false,status:401,json:async()=>({error:'Incorrect PIN'})};
+ }
+ if(!paired)return {ok:false,status:401,json:async()=>({error:'Pairing required'})};
  const req=opts.body?JSON.parse(opts.body):{action:'ping'};calls.push(req);
  let data={ok:true},status=200;
  switch(req.action){
@@ -62,7 +71,21 @@ const tick=()=>new Promise(resolve=>setTimeout(resolve,15));
 const click=q=>{const e=w.document.querySelector(q);assert.ok(e,`Missing ${q}`);e.click()};
 const text=id=>w.document.getElementById(id).textContent;
 (async()=>{
- await tick();assert.equal(w.document.getElementById('shell').hidden,false);assert.match(text('content'),/Your rotation/);
+ await tick();
+ assert.equal(w.document.getElementById('shell').hidden,true,'No desktop API before pairing');
+ assert.equal(w.document.getElementById('pair').hidden,false);
+ assert.equal(calls.length,0,'Anonymous browser must not load the library');
+ const form=w.document.getElementById('pair-form'), pin=w.document.getElementById('pair-pin');
+ assert.ok(form);
+ pin.value='11111111';form.dispatchEvent(new w.Event('submit',{cancelable:true}));
+ await tick();assert.equal(w.document.getElementById('shell').hidden,true);
+ assert.match(text('pair-error'),/Incorrect PIN/);
+ pin.value='12345678';form.dispatchEvent(new w.Event('submit',{cancelable:true}));
+ await tick();await tick();
+ assert.equal(pairAttempts,2);
+ assert.equal(pin.value,'','PIN must not remain in the input');
+ assert.equal(w.document.getElementById('shell').hidden,false);
+ assert.match(text('content'),/Your rotation/);
  // Playback uses the actual selected collection and maintains the next queue item.
  click('.shortcut');await tick();assert.match(text('content'),/8 songs/);click('.collection-actions .primary');await tick();
  assert.equal(text('title'),'Song 0');assert.equal(text('queue-count'),'7 songs');assert.equal(calls.find(c=>c.action==='resolve').collection,playlist.key);
@@ -102,7 +125,7 @@ const text=id=>w.document.getElementById(id).textContent;
  click('#like-current');await tick();assert.equal(w.__state.current.liked,true);
  failMutation=true;click('#like-current');await tick();assert.equal(w.__state.current.liked,true);assert.match(text('toast'),/Spotify rejected/);failMutation=false;
  click('#current-menu');await tick();assert.match(text('action-dialog'),/Add to playlist/);w.document.getElementById('action-dialog').close();
- click('[data-view="settings"]');await tick();assert.match(text('content'),/Import data/);assert.match(text('content'),/Follow device theme/);assert.equal(w.document.getElementById('pair-form'),null);assert.equal(calls.some(c=>c.token),false);
+ click('[data-view="settings"]');await tick();assert.match(text('content'),/Import data/);assert.match(text('content'),/Follow device theme/);assert.ok(w.document.getElementById('pair-form'));assert.equal(calls.some(c=>c.token),false);
  // The full player follows the current song and exposes the same controls.
  w.__fullPlayer();assert.equal(text('full-title'),w.__state.current.title);assert.match(text('full-from'),/Radio/);assert.ok(w.document.getElementById('full-like'));w.document.getElementById('action-dialog').close();
  // Playlist creation uses the real action contract; rejected writes do not fake success.

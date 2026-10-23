@@ -14,7 +14,7 @@ import com.music.spotui.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.net.Inet4Address
 
-internal data class WebUiState(val running: Boolean = false, val link: String = "", val error: String = "")
+internal data class WebUiState(val running: Boolean = false, val link: String = "", val pairingPin: String = "", val error: String = "")
 internal object WebUiController {
     val state = MutableStateFlow(WebUiState())
     fun wifiAddress(context: Context): String? {
@@ -31,11 +31,13 @@ internal object WebUiController {
             .onFailure { state.value = WebUiState(error = "Couldn't start. Keep Guntify open and try again.") }
     }
     fun stop(context: Context) { context.stopService(Intent(context, WebUiService::class.java)) }
+    fun newPairingPin(context: Context) { context.startService(Intent(context, WebUiService::class.java).setAction("NEW_PAIRING_PIN")) }
 }
 
 /** Opt-in LAN session. No boot receiver and no sticky restart after force-stop. */
 class WebUiService : Service() {
     private var server: WebUiServer? = null
+    private var access: WebUiAccess? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
     private val handler = Handler(Looper.getMainLooper())
@@ -43,6 +45,7 @@ class WebUiService : Service() {
     private val watch = object : Runnable {
         override fun run() {
             if (server == null) return
+            server?.currentPin() // Rotate a 10-minute PIN and update the phone display.
             if (WebUiController.wifiAddress(this@WebUiService) != address) {
                 WebUiController.state.value = WebUiState(error = "Wi-Fi changed or disconnected. Reconnect and start desktop mode again.")
                 stopSelf(); return
@@ -56,6 +59,10 @@ class WebUiService : Service() {
     override fun onBind(intent: Intent?) = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "STOP") { stopSelf(); return START_NOT_STICKY }
+        if (intent?.action == "NEW_PAIRING_PIN") {
+            access?.rotatePin()
+            return START_NOT_STICKY
+        }
         if (server != null) return START_NOT_STICKY
         try {
             val manager = getSystemService(NotificationManager::class.java)
@@ -68,9 +75,14 @@ class WebUiService : Service() {
             ServiceCompat.startForeground(this, 7201, notification, if(Build.VERSION.SDK_INT>=29)ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE else 0)
             val ip = WebUiController.wifiAddress(this) ?: error("Connect your phone to Wi-Fi first.")
             address = ip
-            val secret = WebUiProtocol.secret()
+            val pairing = WebUiAccess(onPinChanged = { pin ->
+                WebUiController.state.value = WebUiController.state.value.let {
+                    if (it.running) it.copy(pairingPin = pin) else it
+                }
+            })
+            access = pairing
             val port = 8765
-            val started = WebUiServer(applicationContext, ip, port, secret)
+            val started = WebUiServer(applicationContext, ip, port, pairing)
             started.start(70_000, false)
             server = started
             wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"Guntify:WebUI").apply {
@@ -79,7 +91,7 @@ class WebUiService : Service() {
             wifiLock = (applicationContext.getSystemService(WIFI_SERVICE) as WifiManager).createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF,"Guntify:WebUI").apply {
                 setReferenceCounted(false); acquire()
             }
-            WebUiController.state.value = WebUiState(true,"http://$ip:$port/")
+            WebUiController.state.value = WebUiState(running = true, link = "http://$ip:$port/", pairingPin = pairing.currentPin())
             handler.post(watch); handler.postDelayed(renew,15*60_000L)
         } catch(e:Exception) {
             WebUiController.state.value = WebUiState(error = "Couldn't start desktop mode. Check Wi-Fi, then try again; the local port may be in use.")
@@ -90,6 +102,7 @@ class WebUiService : Service() {
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         server?.stop(); server=null
+        access?.invalidate(); access=null
         wifiLock?.let { if(it.isHeld)it.release() }; wifiLock=null
         wakeLock?.let { if(it.isHeld)it.release() }; wakeLock=null
         val error = WebUiController.state.value.error

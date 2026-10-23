@@ -87,11 +87,7 @@ async function api(action, extra = {}) {
   );
   const data = await res.json();
   if (!res.ok) {
-    if (res.status === 401) {
-      audio.pause();
-      $("pair").hidden = false;
-      $("shell").hidden = true;
-    }
+    if (res.status === 401) showPairing("Browser access has expired. Enter the current PIN from Guntify on your phone.");
     throw new Error(data.error || "Connection unavailable. Check your phone.");
   }
   return data;
@@ -2738,21 +2734,53 @@ async function enter() {
     }
   }, 10000);
 }
-$("reconnect").onclick = connect;
+function showPairing(message) {
+  clearInterval(heartbeat);
+  audio.pause();
+  $("shell").hidden = true;
+  $("pair").hidden = false;
+  $("pair-error").textContent = message;
+}
 async function connect() {
   try {
-    const res = await fetch("/session");
-    if (!res.ok)
-      throw new Error("Could not connect. Restart desktop mode on your phone.");
+    // Reuse a valid session cookie only. GET must never mint a new session.
+    const res = await fetch("/ping", { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) throw new Error("Pairing is required.");
     await enter();
-  } catch (e) {
-    $("pair").hidden = false;
-    $("shell").hidden = true;
-    $("pair-error").textContent = e.message;
+  } catch {
+    showPairing("Enter the one-time PIN shown in Guntify Desktop Mode on your phone.");
   }
 }
+$("pair-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const field = $("pair-pin");
+  const pin = field.value.trim();
+  if (!/^[0-9]{8}$/.test(pin)) {
+    $("pair-error").textContent = "Enter exactly 8 digits.";
+    return;
+  }
+  const submit = $("reconnect");
+  submit.disabled = true;
+  try {
+    const res = await fetch("/pair", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+      credentials: "same-origin",
+      signal: AbortSignal.timeout(10000),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || "PIN rejected. Check your phone.");
+    field.value = "";
+    await enter();
+  } catch (e) {
+    showPairing(e.message || "Could not pair. Check the phone and try again.");
+  } finally {
+    field.value = "";
+    submit.disabled = false;
+  }
+});
 connect();
-
 async function renderDownloadManager(generation) {
   clearTimeout(downloadRefreshTimer);
   const request = ++downloadRequest;

@@ -51,7 +51,14 @@ internal fun WebUiSettings() {
             if(state.running) {
                 Text("Type this address on your computer",color=AppSecondary)
                 SelectionContainer { Text(state.link.substringBefore('#'),color=AppText,fontSize=20.sp) }
-                Text("The browser connects automatically while desktop mode is running.",color=AppSecondary)
+                Text("Pair your browser using this one-time 8-digit PIN. Only the phone displays it.",color=AppSecondary)
+                SelectionContainer {
+                    Text(state.pairingPin.ifBlank { "••••••••" },color=AppPalette,fontSize=29.sp,fontWeight=FontWeight.Bold)
+                }
+                Text("PIN changes after each pairing and expires after 10 minutes. Browser access expires after 8 hours.",color=AppSecondary)
+                TextButton(onClick={WebUiController.newPairingPin(context)}) {
+                    Text("Generate new pairing PIN",color=AppPalette)
+                }
                 TextButton(onClick={
                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Guntify desktop mode",state.link))
                     copied=true
@@ -67,7 +74,7 @@ internal fun WebUiSettings() {
     Spacer(Modifier.height(20.dp))
     Text("How to connect",color=AppText,fontSize=19.sp,fontWeight=FontWeight.Bold)
     Spacer(Modifier.height(10.dp))
-    Text("1. Connect your phone and computer to the same home Wi-Fi/router. A computer connected by Ethernet to that router also works.\n\n2. Start desktop mode, then type the complete http:// address above into the computer's browser.\n\n3. Choose a song and press Play. Sound comes from the computer, not the phone. Keep the browser tab open.\n\n4. Keep the phone on Wi-Fi. Locking its screen is fine; force-stopping Guntify or changing Wi-Fi will disconnect the browser.",color=AppSecondary)
+    Text("1. Connect your phone and computer to the same home Wi-Fi/router. A computer connected by Ethernet to that router also works.\n\n2. Start desktop mode, then type the complete http:// address above into the computer's browser.\n\n3. Enter the 8-digit PIN shown above, then choose a song and press Play. Sound comes from the computer, not the phone. Keep the browser tab open.\n\n4. Keep the phone on Wi-Fi. Locking its screen is fine; force-stopping Guntify or changing Wi-Fi will disconnect the browser.",color=AppSecondary)
     Spacer(Modifier.height(18.dp))
     Text("Keep the connection alive",color=AppText,fontSize=19.sp,fontWeight=FontWeight.Bold)
     Spacer(Modifier.height(8.dp))
@@ -77,7 +84,7 @@ internal fun WebUiSettings() {
     Text("Connection tips",color=AppText,fontWeight=FontWeight.Bold)
     Text("Use http:// rather than https://. Guest Wi-Fi or router client isolation may block devices from seeing each other. A VPN may also interfere. If Wi-Fi reconnects, restart desktop mode and use the new address. Some audio formats depend on browser support.",color=AppSecondary)
     Spacer(Modifier.height(12.dp))
-    Text("Anyone on this Wi-Fi can connect while desktop mode is running, browse this account's music and play it. This local HTTP connection is for trusted Wi-Fi only; don't forward its port or expose it to the internet. Stopping desktop mode disconnects the session and invalidates browser sessions.",color=AppSecondary,fontSize=12.sp)
+    Text("Browsers must pair using the PIN shown on this phone before accessing music or backups. HTTP on your local network is NOT encrypted; others on an untrusted Wi-Fi could intercept browser session cookies. Use only trusted private Wi-Fi, never expose port 8765 to the internet. Stopping desktop mode revokes all browser sessions.",color=AppSecondary,fontSize=12.sp)
     Spacer(Modifier.height(130.dp))
     if(showStart) AlertDialog(onDismissRequest={showStart=false},containerColor=AppSurface,
         title={Text("Start your desktop player?",color=AppText)},
