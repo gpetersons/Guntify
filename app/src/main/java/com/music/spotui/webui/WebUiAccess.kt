@@ -42,7 +42,8 @@ internal class WebUiAccess(
     /** Called from the Android phone UI, never from an unauthenticated HTTP request. */
     @Synchronized fun rotatePin(): String {
         if (closed) return ""
-        pin = newPin()
+        val oldPin = pin
+        do { pin = newPin() } while (pin == oldPin)
         pinExpiresAt = now() + PIN_TTL_MS
         failed = 0
         blockedUntil = 0
