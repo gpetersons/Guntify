@@ -765,12 +765,17 @@ class PlaybackService : MediaLibraryService() {
                 } else {
                     val song = id?.let { trackById[it] }
                     if (song != null && request == carPlayRequest) {
-                        val queue = queueByTrackId[id] ?: listOf(song)
                         // A selection from the active queue must preserve its
-                        // Radio station and current playback collection.
+                        // Radio station and use the LATEST live queue, not a
+                        // browse snapshot from before Spotify added more songs.
                         val fromActiveQueue = id?.startsWith(
                             "song/" + CarBrowsePolicy.encode(CarBrowsePolicy.PLAYING_QUEUE) + "/"
                         ) == true
+                        val live = currentSongState.queue.value
+                        val queue = if (fromActiveQueue) live else queueByTrackId[id] ?: listOf(song)
+                        if (queue.none { it.id == song.id }) return@future MediaSession.MediaItemsWithStartPosition(
+                            emptyList(), C.INDEX_UNSET, C.TIME_UNSET
+                        )
                         if (!fromActiveQueue) currentSongState.updateQueue(queue)
                         if (!fromActiveQueue) collectionByTrackId[id]?.let { collection ->
                             currentSongState.collection.value = collection
