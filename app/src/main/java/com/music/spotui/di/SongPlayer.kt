@@ -283,13 +283,12 @@ object SongPlayer {
         tailNotified = null
         // A manual play (tap / next / prev) supersedes any in-flight crossfade.
         cancelCrossfade()
-        // Do not keep the previous track audible while this request resolves.
-        // Otherwise the UI can show the newly tapped track while old audio keeps
-        // playing for several seconds, or forever if resolution fails.
-        runCatching {
-            player?.pause()
-            player?.clearMediaItems()
-        }
+        // Stop audible playback but retain the previous MediaItem until the new
+        // stream is ready. Clearing the last item here makes Android Auto see an
+        // empty timeline during YouTube/FLAC lookup and may eject Now Playing.
+        // startStream() atomically replaces it when the new source resolves.
+        // A failed lookup also retains usable metadata for recovery/skip.
+        runCatching { player?.pause() }
 
         // Podcast episodes are encoded as "episode:<id>" queries — play them via the
         // Spotify web player's episode page (same engine as tracks).

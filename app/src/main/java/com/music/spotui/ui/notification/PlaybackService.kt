@@ -2,6 +2,8 @@ package com.music.spotui.ui.notification
 
 import android.app.PendingIntent
 import android.content.Intent
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
@@ -10,11 +12,16 @@ import androidx.media3.common.Player
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import androidx.media3.session.CommandButton
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.music.spotui.MainActivity
+import com.music.spotui.R
+import com.music.spotui.audio.RadioPlaybackController
 import com.music.spotui.data.api.Api
 import com.music.spotui.data.api.Response
 import com.music.spotui.data.entity.SongsModel
@@ -46,11 +53,15 @@ import javax.inject.Inject
  * browse the library — Liked Songs, Downloads, playlists and albums — and start
  * playback from the car.
  */
+@OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var currentSongState: CurrentSongState
     @Inject lateinit var repository: AppRepository
+    @Inject lateinit var radioPlayback: RadioPlaybackController
+
+    private val startRadioCommand = SessionCommand("com.music.spotui.action.START_RADIO", android.os.Bundle.EMPTY)
 
     private var mediaSession: MediaLibrarySession? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -207,6 +218,15 @@ class PlaybackService : MediaLibraryService() {
 
         mediaSession = MediaLibrarySession.Builder(this, wrap(base), LibraryCallback())
             .setSessionActivity(sessionActivity)
+            // Media3 1.3 custom action is forwarded to legacy Android Auto controls.
+            // Auto decides whether it fits in the transport row or overflow menu.
+            .setCustomLayout(listOf(
+                CommandButton.Builder()
+                    .setDisplayName("Start Radio")
+                    .setIconResId(R.drawable.ic_car_radio)
+                    .setSessionCommand(startRadioCommand)
+                    .build()
+            ))
             .build()
         recentStores.forEach { it.registerOnSharedPreferenceChangeListener(recentListener) }
 
@@ -466,12 +486,21 @@ class PlaybackService : MediaLibraryService() {
             skip = {
                 val queue = currentSongState.queue.value
                 val index = queue.indexOfFirst { it.id == currentSongState.songId.value }
-                if (index < 0 || index >= queue.lastIndex) false
-                else {
-                    com.music.spotui.data.preferences.PlaybackDiagnostics.record(applicationContext, "Recovery skip", "Holding next song on further failures")
-                    com.music.spotui.ui.components.PlaybackFeedback.skipping()
-                    advance(forward = true)
-                    true
+                when {
+                    index < 0 -> false
+                    index < queue.lastIndex -> {
+                        com.music.spotui.data.preferences.PlaybackDiagnostics.record(applicationContext, "Recovery skip", "Trying next queued song")
+                        com.music.spotui.ui.components.PlaybackFeedback.skipping()
+                        advance(forward = true)
+                        true
+                    }
+                    currentSongState.collection.value?.type == "radio" -> {
+                        // The final radio song failed: request more suggestions while
+                        // keeping the current car session/track visible.
+                        fillRadioQueue(false)
+                        false
+                    }
+                    else -> false
                 }
             }, onWaiting = { com.music.spotui.ui.components.PlaybackFeedback.retrying() })
     }
@@ -507,8 +536,16 @@ class PlaybackService : MediaLibraryService() {
             val nextCurrent = next.indexOfFirst { it.id == current.id }
             if (nextCurrent in 0 until next.lastIndex) {
                 val ended = SongPlayer.hasEnded()
+                // A failed final stream is usually paused/READY rather than
+                // ENDED. If new Radio suggestions arrive while recovery waits,
+                // go to the next track instead of retrying the failed one.
+                val failedCurrent = streamRecovery.isRecovering &&
+                    !SongPlayer.isPlaying() && SongPlayer.isCurrentRequest(current.url)
                 currentSongState.replaceRadioQueue(next)
-                if (ended && !currentSongState.repeat.value) advance(forward = true)
+                if (!currentSongState.repeat.value && (ended || failedCurrent)) {
+                    if (failedCurrent) streamRecovery.recovered()
+                    advance(forward = true)
+                }
             }
         }
     }
@@ -584,6 +621,39 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private inner class LibraryCallback : MediaLibrarySession.Callback {
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): MediaSession.ConnectionResult =
+            MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(
+                    MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
+                        .buildUpon()
+                        .add(startRadioCommand)
+                        .build()
+                )
+                .build()
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: android.os.Bundle,
+        ): ListenableFuture<SessionResult> {
+            if (customCommand.customAction != startRadioCommand.customAction) {
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+            }
+            // Use the shared in-app track identity, not ExoPlayer's resolved
+            // YouTube stream URI, so the radio recommendations use Spotify IDs.
+            val song = CarRadioActionPolicy.currentTrack(
+                currentSongState.queue.value, currentSongState.songId.value
+            ) ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+            val started = radioPlayback.startRadioFromSong(song, applicationContext, serviceScope)
+            return Futures.immediateFuture(SessionResult(
+                if (started) SessionResult.RESULT_SUCCESS else SessionResult.RESULT_ERROR_BAD_VALUE
+            ))
+        }
+
         override fun onPlaybackResumption(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
