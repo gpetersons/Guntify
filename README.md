@@ -3,7 +3,9 @@
 </p>
 <h1 align="center">ŠprotiFy</h1>
 <p align="center">🎶 Your favorites. Your discoveries. Your kind of radio.</p>
-<p align="center"><strong><a href="https://github.com/gpetersons/Guntify/releases/download/v1.0.0-beta.1/Guntify.apk">⬇️ Download ŠprotiFy for Android</a></strong> · <a href="https://github.com/gpetersons/Guntify/releases">What's new</a></p>
+<p align="center"><strong><a href="https://github.com/gpetersons/Guntify/releases/download/v1.0.0-beta.2/Guntify.apk">⬇️ Download the latest signed Android beta (v1.0.0-beta.2)</a></strong> · <a href="https://github.com/gpetersons/Guntify/releases">All releases</a></p>
+
+> **Branding update in progress:** ŠprotiFy is the new name of Guntify. The latest published, signed Beta 2 APK still displays **Guntify**. The ŠprotiFy name and sardine icon are prepared in [PR #7](https://github.com/gpetersons/Guntify/pull/7) and are **not yet included in that download**.
 
 ŠprotiFy is a music player that gets to know what you love. Find songs, keep your favorites together, and make your own radio stations. 🎧
 
@@ -11,17 +13,19 @@
 
 ## 🚀 Start listening
 
-1. **Download ŠprotiFy** using the button above and open the file to install it.
-2. **Sign in to Spotify** to bring in your music and playlists.
-3. **Pick a song and press Play.** Home gets more personal as you listen.
+1. **Download the currently published signed beta** using the link above, then open the APK to install it.
+2. **Sign in to Spotify** to access your music and playlists.
+3. **Pick a song and press Play.** Home becomes more personal as you listen.
 
-**Separate installation:** ŠprotiFy has its own Android package ID and installs alongside USpot. Local data does not transfer automatically. Keep USpot installed until you have verified what you need.
+**For existing Guntify users:** ŠprotiFy keeps the same Android application ID (`lv.guntify.player`). After a newer signed version is released with the same signing key and a higher version code, it can update Guntify in place. Do not uninstall Guntify just to change its name: uninstalling may delete local app data.
 
-Next time there's an update, ŠprotiFy can let you know. Choose **Install** or **Cancel**, or check anytime in **Settings → Updates**.
+**For USpot users:** This is a separate app from USpot. Local data does not transfer automatically. Keep USpot installed until you have verified what you need.
+
+Check for future releases under **Settings → Updates** or on the [Releases page](https://github.com/gpetersons/Guntify/releases). The new ŠprotiFy APK has not been published yet.
 
 ## 📸 Take a look around
 
-*Screenshots below were inherited from USpot; some may still show upstream branding.*
+*Screenshots are from earlier app builds; visual details and branding may differ from the upcoming ŠprotiFy release.*
 
 <table>
   <tr>
@@ -69,7 +73,7 @@ Your computer plays the music, and your listening adds to the phone app's histor
 
 ## 🔒 Your listening stays yours
 
-ŠprotiFy retains local listening-history features from USpot. A complete independent security and network traffic audit has **not yet been completed**. This first release should be treated as an early test build.
+ŠprotiFy retains local listening-history features from USpot. A complete independent security and network traffic audit has **not yet been completed**. Treat the published beta as a test build. Use Desktop & Browser mode only on a trusted home network; do not expose its local server to the internet.
 
 ## 💚 Thank you, Spotui and USpot
 
@@ -79,4 +83,4 @@ Thanks also to Meld, Neptune, SpotiFLAC, SimpMusic and the other projects credit
 
 ŠprotiFy is an independent fork of USpot, originally based on Spotui. It is not affiliated with Spotify or YouTube. Available music and account features depend on those services.
 
-[License](LICENSE) · [Credits](NOTICE) · [Source code](https://github.com/gpetersons/Guntify/releases/download/v1.0.0-beta.1/Guntify-source.zip)
+[License](LICENSE) · [Credits](NOTICE) · [Beta 2 source archive](https://github.com/gpetersons/Guntify/releases/download/v1.0.0-beta.2/Guntify-source.zip) · [Current development source](https://github.com/gpetersons/Guntify/tree/branding/sprotify-name-icon)
