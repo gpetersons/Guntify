@@ -88,8 +88,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag=v1.0.0-beta.8
+          # The first Beta 8 has a broken API 8 playback template. Rebuild and
+          # validate the replacement BEFORE removing that specific bad release.
+          # This operation was explicitly requested; do not touch other tags.
           if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Release already exists. Refusing to overwrite signed release."
-            exit 1
+            echo "Replacing the withdrawn, non-functional Beta 8 release."
+            gh release delete "$tag" --yes --cleanup-tag
           fi
-          gh release create "$tag" release/* --target "$GITHUB_SHA" --title "Sprotify 1.0.0 Beta 8" --notes-file RELEASE_NOTES.md --prerelease
+          gh release create "$tag" release/* --target "$GITHUB_SHA" --title "Sprotify 1.0.0 Beta 8 (Legacy Android Auto)" --notes-file RELEASE_NOTES.md --prerelease

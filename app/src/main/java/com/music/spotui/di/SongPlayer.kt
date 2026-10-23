@@ -578,9 +578,11 @@ object SongPlayer {
         artist: String = metaArtist,
         cover: String = metaCover,
     ): MediaItem {
-        val radioStation = boundState?.collection?.value?.takeIf { it.type == "radio" }?.name
-        val albumLabel = radioStation?.let { "Playing radio: $it" }
-            ?: boundState?.album?.value.orEmpty()
+        // Legacy Android Auto owns its header; pass the real active playback
+        // context in standard album metadata without replacing song or artist.
+        val albumLabel = boundState?.collection?.value?.let {
+            com.music.spotui.ui.notification.CarPlaybackContextPolicy.title(it, title)
+        } ?: boundState?.album?.value.orEmpty()
         val metadata = androidx.media3.common.MediaMetadata.Builder()
             .setTitle(title)
             .setDisplayTitle(title)

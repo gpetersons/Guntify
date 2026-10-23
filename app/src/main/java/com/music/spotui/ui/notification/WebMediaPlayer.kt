@@ -38,7 +38,12 @@ class WebMediaPlayer(
             .setArtist(artist)
             .setSubtitle(artist)
             .setDescription(artist)
-            .apply { if (cover.isNotBlank()) setArtworkUri(Uri.parse(cover)) }
+            .apply {
+                currentSongState.collection.value?.let {
+                    setAlbumTitle(CarPlaybackContextPolicy.title(it, title))
+                }
+                if (cover.isNotBlank()) setArtworkUri(Uri.parse(cover))
+            }
             .build()
         val mediaItem = MediaItem.Builder()
             .setMediaId(id)
