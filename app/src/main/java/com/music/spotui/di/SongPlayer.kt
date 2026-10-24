@@ -2051,7 +2051,8 @@ object SongPlayer {
                     val (sp, sf) = createPlayerWithFilter(ctx, handleAudioFocus = false)
                     secondaryPlayer = sp
                     secondaryPlayerFilter = sf
-                    sp.setMediaItem(buildMediaItem(nextUrl, streamMimeType(nextUrl)))
+                    sp.setMediaItem(buildMediaItem(nextUrl, streamMimeType(nextUrl), nextSong.url,
+                        nextSong.title, nextSong.singer, nextSong.coverUri))
                     sp.prepare()
                     sp.volume = 0f
                     sp.playWhenReady = true
