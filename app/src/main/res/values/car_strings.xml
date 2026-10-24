@@ -1,0 +1,4 @@
+<resources>
+    <string name="car_playing_now">Playing now</string>
+    <string name="car_up_next">Up next</string>
+</resources>

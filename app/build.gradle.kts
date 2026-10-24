@@ -17,10 +17,8 @@ android {
         applicationId = "lv.guntify.player"
         minSdk = 26
         targetSdk = 34
-        // Reissue the Beta 9 display version with a higher build code so phones
-        // that installed the withdrawn Beta 9 can update in place.
-        versionCode = 11
-        versionName = "1.0.0-beta.9"
+        versionCode = 12
+        versionName = "1.0.0-beta.12"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

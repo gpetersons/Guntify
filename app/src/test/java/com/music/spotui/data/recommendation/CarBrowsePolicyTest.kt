@@ -7,14 +7,32 @@ import org.junit.Test
 
 class CarBrowsePolicyTest {
     private fun song(id: Int) = SongsModel(id, "Song $id", "Album", "Artist", "art", "q$id", "s$id")
-    @Test fun personalizedRootHasStableBrowsableSections() {
+    @Test fun rootHasFourStableBrowsableTabs() {
         val root = CarBrowsePolicy.root()
-        assertEquals(listOf("Playing queue", "Continue listening", "Recommended for you",
-            "Made for you", "Recently played", "Your radios", "Liked Songs", "Library"),
-            root.map { it.title })
+        assertEquals(listOf("home", "recents", "browse", "library"), root.map { it.id })
         assertTrue(root.all { !it.playable })
-        assertEquals(root.map { it.id }, CarBrowsePolicy.root("Bones Radio").map { it.id })
-        assertEquals("Playing: Bones Radio", CarBrowsePolicy.root("Bones Radio").first().title)
+        assertEquals("Bones Radio", CarBrowsePolicy.home("Bones Radio").first().subtitle)
+        assertEquals(CarBrowsePolicy.PLAYING_QUEUE, CarBrowsePolicy.home("Album").first().id)
+    }
+    @Test fun queueStartsWithCurrentAndPreservesUpcomingOrder() {
+        val queue = listOf(song(1), song(2), song(4), song(3))
+        assertEquals(listOf(2, 4, 3), CarBrowsePolicy.queueFromCurrent(queue, 2).map { it.id })
+        assertEquals(listOf(3), CarBrowsePolicy.queueFromCurrent(queue, 3).map { it.id })
+        assertEquals(listOf(1, 2, 4, 3), queue.map { it.id })
+    }
+    @Test fun queueHandlesMissingCurrentEmptyAndDuplicateTracks() {
+        assertTrue(CarBrowsePolicy.queueFromCurrent(emptyList(), -1).isEmpty())
+        assertEquals(listOf(1, 2), CarBrowsePolicy.queueFromCurrent(listOf(song(1), song(1), song(2)), -1).map { it.id })
+    }
+    @Test fun everyFormerRootSectionRemainsReachable() {
+        val ids = (CarBrowsePolicy.home("") + CarBrowsePolicy.browse() + CarBrowsePolicy.library()).map { it.id }
+        assertTrue(ids.containsAll(listOf("playing-queue", "continue-listening", "for-you", "made-for-you", "recent-radios", "liked")))
+    }
+    @Test fun preloadedTrackKeepsItsOwnAlbumIncludingAnEmptyAlbum() {
+        val queue = listOf(song(1).copy(album = "First"), song(2).copy(album = "Second"), song(3).copy(album = ""))
+        assertEquals("Second", CarBrowsePolicy.albumForQuery(queue, "q2", "First"))
+        assertEquals("", CarBrowsePolicy.albumForQuery(queue, "q3", "First"))
+        assertEquals("Fallback", CarBrowsePolicy.albumForQuery(queue, "missing", "Fallback"))
     }
     @Test fun radioRowIsPlayableWithOriginalStationIdentity() {
         val seed = song(1)
@@ -95,7 +113,7 @@ class CarBrowsePolicyTest {
         assertFalse(CarBrowsePolicy.isRadioPlaylist("Best country"))
     }
     @Test fun downloadsRemainBrowsableUnderLibrary() {
-        assertEquals(listOf("playlists", "albums", "downloads"), CarBrowsePolicy.library().map { it.id })
+        assertEquals(listOf("liked", "playlists", "albums", "downloads"), CarBrowsePolicy.library().map { it.id })
         assertTrue(CarBrowsePolicy.library().all { !it.playable })
     }
 

@@ -578,19 +578,15 @@ object SongPlayer {
         artist: String = metaArtist,
         cover: String = metaCover,
     ): MediaItem {
-        // Legacy Android Auto owns its header; pass the real active playback
-        // context in standard album metadata without replacing song or artist.
-        val albumLabel = boundState?.collection?.value?.let {
-            com.music.spotui.ui.notification.CarPlaybackContextPolicy.title(it, title)
-        } ?: boundState?.album?.value.orEmpty()
+        // Resolve album by query so preloaded tracks do not inherit the current album.
+        val albumLabel = com.music.spotui.ui.notification.CarBrowsePolicy.albumForQuery(
+            boundState?.queue?.value.orEmpty(), query, boundState?.album?.value.orEmpty())
         val metadata = androidx.media3.common.MediaMetadata.Builder()
             .setTitle(title)
             .setDisplayTitle(title)
             .setArtist(artist)
             .setSubtitle(artist)
             .setDescription(artist)
-            // Android Auto controls its Now Playing layout; retain song/artist
-            // and attach the active Radio station as standard album metadata.
             .setAlbumTitle(albumLabel)
             .apply { if (cover.isNotBlank()) setArtworkUri(android.net.Uri.parse(cover)) }
             .build()
