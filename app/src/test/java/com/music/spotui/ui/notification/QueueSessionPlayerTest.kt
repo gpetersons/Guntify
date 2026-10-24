@@ -17,13 +17,21 @@ import org.robolectric.Shadows.shadowOf
 class QueueSessionPlayerTest {
     private fun song(id: Int) = SongsModel(id, "Song $id", "Album $id", "Artist", "https://example.com/$id.jpg", "query$id", durationMs = 200_000)
     private class Engine : SimpleBasePlayer(Looper.getMainLooper()) {
-        var value = State.Builder().setAvailableCommands(Player.Commands.EMPTY)
+        private var value = State.Builder().setAvailableCommands(Player.Commands.EMPTY)
             .setPlaylist(listOf(MediaItemData.Builder("stream").setDurationUs(200_000_000).build()))
             .setCurrentMediaItemIndex(0).setContentPositionMs(12000)
             .setPlayWhenReady(true, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
             .setPlaybackState(Player.STATE_READY).build()
         override fun getState() = value
-        fun change() = invalidateState()
+        fun suppress() {
+            value = value.buildUpon().setPlaybackSuppressionReason(Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS).build()
+            invalidateState()
+        }
+        fun fail() {
+            value = value.buildUpon().setPlaybackState(Player.STATE_IDLE)
+                .setPlayerError(PlaybackException("failure", null, PlaybackException.ERROR_CODE_IO_UNSPECIFIED)).build()
+            invalidateState()
+        }
     }
     @Test fun fullQueuePublishesCoherentTimelineAndIndexedSelectionWithoutChangingEngine() {
         val songs = listOf(song(1), song(2), song(3))
@@ -74,16 +82,13 @@ class QueueSessionPlayerTest {
         val player = QueueSessionPlayer(Looper.getMainLooper(), { state }, {}, {}, {}, {})
         val first = Engine()
         player.bind(first)
-        first.value = first.value.buildUpon().setPlaybackSuppressionReason(Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS).build()
-        first.change(); shadowOf(Looper.getMainLooper()).idle()
+        first.suppress(); shadowOf(Looper.getMainLooper()).idle()
         assertFalse(player.isPlaying)
         val second = Engine()
         player.bind(second)
         assertTrue(player.isPlaying)
         assertEquals(2, player.mediaItemCount)
-        second.value = second.value.buildUpon().setPlaybackState(Player.STATE_IDLE)
-            .setPlayerError(PlaybackException("failure", null, PlaybackException.ERROR_CODE_IO_UNSPECIFIED)).build()
-        second.change(); shadowOf(Looper.getMainLooper()).idle()
+        second.fail(); shadowOf(Looper.getMainLooper()).idle()
         assertEquals(Player.STATE_IDLE, player.playbackState)
         assertNotNull(player.playerError)
         player.release()
