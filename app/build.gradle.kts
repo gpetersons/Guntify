@@ -11,7 +11,7 @@ plugins {
 
 android {
     namespace = "com.music.spotui"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "lv.guntify.player"
