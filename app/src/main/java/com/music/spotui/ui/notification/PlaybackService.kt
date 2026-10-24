@@ -363,7 +363,7 @@ class PlaybackService : MediaLibraryService() {
         showingWeb = wantWeb
         val session = mediaSession ?: return
         session.player = if (wantWeb) {
-            webPlayer ?: return
+            wrap(webPlayer ?: return)
         } else {
             wrap(SongPlayer.exoPlayer ?: return)
         }
@@ -372,13 +372,26 @@ class PlaybackService : MediaLibraryService() {
     /** Wrap an ExoPlayer so the media session routes next/previous to our in-app queue
      *  (the player only ever holds one resolved stream at a time). */
     private fun wrap(base: Player): ForwardingPlayer = object : ForwardingPlayer(base) {
-        // Our callbacks resolve tracks through SongPlayer and intentionally return no stream URIs.
-        // Media3 must not clear an already-prepared stream when it applies that empty result.
+        // Auto can call either setMediaItems (play now) or addMediaItems (queue).
+        // Keep both operations inside our lazy in-app player rather than ExoPlayer's
+        // temporary resolved-stream playlist.
         override fun setMediaItems(items: MutableList<MediaItem>, resetPosition: Boolean) {
-            if (items.isNotEmpty()) super.setMediaItems(items, resetPosition)
+            if (items.isNotEmpty()) playCarSelection(items.first())
         }
         override fun setMediaItems(items: MutableList<MediaItem>, startIndex: Int, startPositionMs: Long) {
-            if (items.isNotEmpty()) super.setMediaItems(items, startIndex, startPositionMs)
+            items.getOrNull(startIndex)?.let(::playCarSelection)
+        }
+        override fun addMediaItem(mediaItem: MediaItem) {
+            queueCarSelection(mediaItem)
+        }
+        override fun addMediaItem(index: Int, mediaItem: MediaItem) {
+            queueCarSelection(mediaItem)
+        }
+        override fun addMediaItems(mediaItems: MutableList<MediaItem>) {
+            mediaItems.forEach(::queueCarSelection)
+        }
+        override fun addMediaItems(index: Int, mediaItems: MutableList<MediaItem>) {
+            mediaItems.forEach(::queueCarSelection)
         }
         override fun prepare() { if (pendingVoice == null) super.prepare() }
         override fun seekToDefaultPosition() { if (pendingVoice == null) super.seekToDefaultPosition() }
@@ -415,12 +428,13 @@ class PlaybackService : MediaLibraryService() {
                 .add(COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
                 .add(COMMAND_SEEK_FORWARD)
                 .add(COMMAND_SEEK_BACK)
+                .add(COMMAND_CHANGE_MEDIA_ITEMS)
                 .build()
 
         override fun isCommandAvailable(command: Int): Boolean = when (command) {
             COMMAND_SEEK_TO_NEXT, COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
             COMMAND_SEEK_TO_PREVIOUS, COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
-            COMMAND_SEEK_FORWARD, COMMAND_SEEK_BACK -> true
+            COMMAND_SEEK_FORWARD, COMMAND_SEEK_BACK, COMMAND_CHANGE_MEDIA_ITEMS -> true
             else -> super.isCommandAvailable(command)
         }
 
@@ -459,6 +473,31 @@ class PlaybackService : MediaLibraryService() {
         override fun seekToNextMediaItem() = advance(forward = true,manual=true)
         override fun seekToPrevious() = advance(forward = false)
         override fun seekToPreviousMediaItem() = advance(forward = false)
+    }
+
+    /** Android Auto's Queue action reaches Player.addMediaItem(s), not a play request. */
+    private fun queueCarSelection(item: MediaItem) {
+        item.mediaId.takeIf { it.isNotBlank() }?.let(trackById::get)?.let(currentSongState::addToQueue)
+    }
+
+    /** A browse selection reaches Player.setMediaItem(s) and should start playback. */
+    private fun playCarSelection(item: MediaItem) {
+        val id = item.mediaId.takeIf { it.isNotBlank() } ?: return
+        val song = trackById[id] ?: return
+        val fromActiveQueue = id.startsWith("song/" + CarBrowsePolicy.encode(CarBrowsePolicy.PLAYING_QUEUE) + "/")
+        val live = currentSongState.queue.value
+        val queue = if (fromActiveQueue) live else queueByTrackId[id] ?: listOf(song)
+        if (queue.none { it.id == song.id }) return
+        if (!fromActiveQueue) currentSongState.updateQueue(queue)
+        if (!fromActiveQueue) collectionByTrackId[id]?.let { collection ->
+            currentSongState.collection.value = collection
+            com.music.spotui.data.preferences.HomeHiddenItems.beginReplay(applicationContext, collection.type, collection.id)
+        }
+        val index = queue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
+        currentSongState.updateSongState(song.coverUri, song.title, song.singer, true, song.id, index, song.album)
+        if (!fromActiveQueue || !SongPlayer.isCurrentRequest(song.url)) {
+            SongPlayer.playSong(song.url, applicationContext)
+        }
     }
 
     /** Advance the in-app queue one step in the given direction and start it. */
@@ -854,6 +893,17 @@ class PlaybackService : MediaLibraryService() {
             LibraryResult.ofItemList(ImmutableList.copyOf(selected), params)
         }
 
+        override fun onAddMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>,
+        ): ListenableFuture<MutableList<MediaItem>> = future {
+            mediaItems.mapNotNull { requested ->
+                val song = trackById[requested.mediaId] ?: return@mapNotNull null
+                requested.buildUpon().setUri(song.url).build()
+            }.toMutableList()
+        }
+
         // Preserve the collection behind the selected row, not just the track's ID.
         override fun onSetMediaItems(
             mediaSession: MediaSession,
@@ -877,26 +927,13 @@ class PlaybackService : MediaLibraryService() {
                 } else {
                     val song = id?.let { trackById[it] }
                     if (song != null && request == carPlayRequest) {
-                        // A selection from the active queue must preserve its
-                        // Radio station and use the LATEST live queue, not a
-                        // browse snapshot from before Spotify added more songs.
-                        val fromActiveQueue = id?.startsWith(
-                            "song/" + CarBrowsePolicy.encode(CarBrowsePolicy.PLAYING_QUEUE) + "/"
-                        ) == true
-                        val live = currentSongState.queue.value
-                        val queue = if (fromActiveQueue) live else queueByTrackId[id] ?: listOf(song)
-                        if (queue.none { it.id == song.id }) return@future MediaSession.MediaItemsWithStartPosition(
-                            emptyList(), C.INDEX_UNSET, C.TIME_UNSET
+                        // Returning a resolved item lets Media3 preserve the
+                        // controller's intent: it calls setMediaItems for Play
+                        // and addMediaItems for the native Android Auto Queue action.
+                        val resolved = requested.buildUpon().setUri(song.url).build()
+                        return@future MediaSession.MediaItemsWithStartPosition(
+                            listOf(resolved), 0, startPositionMs
                         )
-                        if (!fromActiveQueue) currentSongState.updateQueue(queue)
-                        if (!fromActiveQueue) collectionByTrackId[id]?.let { collection ->
-                            currentSongState.collection.value = collection
-                            com.music.spotui.data.preferences.HomeHiddenItems.beginReplay(applicationContext, collection.type, collection.id)
-                        }
-                        val idx = queue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
-                        currentSongState.updateSongState(song.coverUri, song.title, song.singer, true, song.id, idx, song.album)
-                        if (!fromActiveQueue || !SongPlayer.isCurrentRequest(song.url))
-                            SongPlayer.playSong(song.url, applicationContext)
                     }
                 }
                 MediaSession.MediaItemsWithStartPosition(emptyList(), C.INDEX_UNSET, C.TIME_UNSET)
