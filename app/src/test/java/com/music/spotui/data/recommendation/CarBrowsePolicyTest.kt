@@ -26,7 +26,7 @@ class CarBrowsePolicyTest {
     }
     @Test fun everyFormerRootSectionRemainsReachable() {
         val ids = (CarBrowsePolicy.home("") + CarBrowsePolicy.browse() + CarBrowsePolicy.library()).map { it.id }
-        assertTrue(ids.containsAll(listOf("playing-queue", "continue-listening", "for-you", "made-for-you", "recent-radios", "liked")))
+        assertTrue(ids.containsAll(listOf("playing-queue", "continue-listening", "for-you", "made-for-you", "recent-radios")))
     }
     @Test fun preloadedTrackKeepsItsOwnAlbumIncludingAnEmptyAlbum() {
         val queue = listOf(song(1).copy(album = "First"), song(2).copy(album = "Second"), song(3).copy(album = ""))
@@ -112,8 +112,8 @@ class CarBrowsePolicyTest {
         assertFalse(CarBrowsePolicy.isRadioPlaylist("Radiohead"))
         assertFalse(CarBrowsePolicy.isRadioPlaylist("Best country"))
     }
-    @Test fun downloadsRemainBrowsableUnderLibrary() {
-        assertEquals(listOf("liked", "playlists", "albums", "downloads"), CarBrowsePolicy.library().map { it.id })
+    @Test fun libraryUsesThreeBrowsableCategories() {
+        assertEquals(listOf("playlists", "albums", "artists"), CarBrowsePolicy.library().map { it.id })
         assertTrue(CarBrowsePolicy.library().all { !it.playable })
     }
 

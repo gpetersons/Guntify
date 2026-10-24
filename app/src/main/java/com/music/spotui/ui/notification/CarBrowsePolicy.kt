@@ -8,6 +8,8 @@ import java.net.URLEncoder
 
 /** Stable car browse IDs; collection history is independent of Home visibility preferences. */
 object CarBrowsePolicy {
+    const val SUGGESTED = "suggested-tracks"
+    const val ARTISTS = "artists"
     const val HOME = "home"
     const val BROWSE = "browse"
     const val RECENTS = "recents"
@@ -34,8 +36,7 @@ object CarBrowsePolicy {
         Entry(CONTINUE, "Continue listening"), Entry(FOR_YOU, "Recommended for you"),
     )
     fun browse() = listOf(Entry(MIXES, "Made for you"), Entry(RECENT_RADIOS, "Your radios"))
-    fun library() = listOf(Entry("liked", "Liked Songs"), Entry("playlists", "Playlists"),
-        Entry("albums", "Albums"), Entry("downloads", "Downloads"))
+    fun library() = listOf(Entry("playlists", "Playlists"), Entry("albums", "Albums"), Entry(ARTISTS, "Artists"))
 
     /** Match the actual resolved/preloaded query, never the collection display title. */
     fun albumForQuery(songs: List<SongsModel>, query: String, fallback: String): String =
