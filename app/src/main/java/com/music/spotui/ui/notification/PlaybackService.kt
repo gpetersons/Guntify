@@ -178,7 +178,9 @@ class PlaybackService : MediaLibraryService() {
         recentRefreshJob?.cancel()
         recentRefreshJob = serviceScope.launch {
             kotlinx.coroutines.delay(200L)
-            mediaSession?.notifyChildrenChanged(CarBrowsePolicy.RECENT, recentCarEntries().size, null)
+            val recentCount = recentCarEntries().size
+            mediaSession?.notifyChildrenChanged(CarBrowsePolicy.RECENT, recentCount, null)
+            mediaSession?.notifyChildrenChanged(CarBrowsePolicy.RECENTS, recentCount, null)
             mediaSession?.notifyChildrenChanged(CarBrowsePolicy.RECENT_RADIOS, recentRadioEntries().size, null)
         }
     }
@@ -320,19 +322,25 @@ class PlaybackService : MediaLibraryService() {
                 .distinctUntilChanged()
                 .collect { refreshCarControls() }
         }
-        // The phone and Android Auto share this actual playback queue. Notify
-        // only the dedicated queue node so album/Now Playing navigation is stable.
+        // Refresh browse queue groups and Home's source subtitle on track changes too.
+        // This does not replace the audio engine timeline exposed by the native Queue.
         playingQueueObserver = serviceScope.launch {
-            snapshotFlow { currentSongState.queue.value.map { it.id to it.url } }
+            snapshotFlow { Triple(currentSongState.queue.value,
+                currentSongState.songId.value, playingSourceName()) }
                 .distinctUntilChanged()
-                .collect { items ->
-                    mediaSession?.notifyChildrenChanged(CarBrowsePolicy.PLAYING_QUEUE, items.size, null)
+                .collect { (queue, currentId, _) ->
+                    mediaSession?.notifyChildrenChanged(CarBrowsePolicy.PLAYING_QUEUE,
+                        CarBrowsePolicy.queueFromCurrent(queue, currentId).size, null)
+                    mediaSession?.notifyChildrenChanged(CarBrowsePolicy.HOME, CarBrowsePolicy.home(playingSourceName()).size, null)
+                    updatePlaylistMetadata()
+                    webPlayer?.refresh()
                 }
         }
 
         // When a crossfade promotes a new ExoPlayer instance, re-bind the session to it
         // (runs on the main thread; setPlayer is the supported way to swap a session's player).
         SongPlayer.onPlayerSwapped = { newPlayer ->
+            updatePlaylistMetadata()
             if (!showingWeb) mediaSession?.player = wrap(newPlayer)
         }
 
@@ -824,8 +832,8 @@ class PlaybackService : MediaLibraryService() {
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?,
         ): ListenableFuture<LibraryResult<MediaItem>> =
-            Futures.immediateFuture(LibraryResult.ofItem(folder(ROOT, playingSourceName()), LibraryParams.Builder()
-                .setExtras(android.os.Bundle().apply { putBoolean("android.media.browse.SEARCH_SUPPORTED", true) }).build()))
+            Futures.immediateFuture(LibraryResult.ofItem(folder(ROOT, "Sprotify"), LibraryParams.Builder()
+                .setExtras(browseStyleExtras().apply { putBoolean("android.media.browse.SEARCH_SUPPORTED", true) }).build()))
 
         override fun onGetChildren(
             session: MediaLibrarySession,
@@ -847,7 +855,7 @@ class PlaybackService : MediaLibraryService() {
         ): ListenableFuture<LibraryResult<MediaItem>> = future {
             val item = trackById[mediaId]?.let { playable(it, mediaId) }
                 ?: browseById[mediaId]
-                ?: (listOf(CarBrowsePolicy.Entry(ROOT, "Sprotify")) + (carRootEntries() + CarBrowsePolicy.library())).firstOrNull { it.id == mediaId }?.let(::carItem)
+                ?: (listOf(CarBrowsePolicy.Entry(ROOT, "Sprotify")) + (carRootEntries() + CarBrowsePolicy.home(playingSourceName()) + CarBrowsePolicy.browse() + CarBrowsePolicy.library())).firstOrNull { it.id == mediaId }?.let(::carItem)
                 ?: recentCarEntries().firstOrNull { it.id == mediaId }?.let(::carItem)
             item?.let { LibraryResult.ofItem(it, null) } ?: LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
         }
@@ -973,22 +981,16 @@ class PlaybackService : MediaLibraryService() {
         return CarBrowsePolicy.recentRadios(saved + recentCarItems())
     }
 
-    private fun activeRadioName(): String? =
-        currentSongState.collection.value?.takeIf { it.type == "radio" }?.name
-
     private fun playingSourceName(): String =
         CarPlaybackContextPolicy.title(
             currentSongState.collection.value, currentSongState.title.value
         )
 
-    // A standard MediaLibraryService cannot customize the host-owned Now
-    // Playing header. Expose the same source as browse-root and queue titles,
-    // which legacy hosts may show as navigation context.
-    private fun carRootEntries() = CarBrowsePolicy.root(activeRadioName()).map { entry ->
-        if (entry.id == CarBrowsePolicy.PLAYING_QUEUE)
-            entry.copy(title = playingSourceName())
-        else entry
+    private fun updatePlaylistMetadata() {
+        SongPlayer.exoPlayer?.setPlaylistMetadata(MediaMetadata.Builder().setTitle(playingSourceName()).build())
     }
+
+    private fun carRootEntries() = CarBrowsePolicy.root()
 
     private suspend fun carHomeFeed(): HomeFeedModel = withContext(Dispatchers.IO) {
         // Prefer the phone's already-loaded feed or persisted account-scoped
@@ -1057,15 +1059,27 @@ class PlaybackService : MediaLibraryService() {
 
     private suspend fun childrenOf(parentId: String): List<MediaItem> = when {
         parentId == ROOT -> carRootEntries().map(::carItem)
-        parentId == CarBrowsePolicy.PLAYING_QUEUE ->
-            registerTracks(parentId, currentSongState.queue.value)
+        parentId == CarBrowsePolicy.HOME -> CarBrowsePolicy.home(playingSourceName()).map(::carItem)
+        parentId == CarBrowsePolicy.BROWSE -> CarBrowsePolicy.browse().map(::carItem)
+        parentId == CarBrowsePolicy.PLAYING_QUEUE -> {
+            val currentId = currentSongState.songId.value
+            registerTracks(parentId, CarBrowsePolicy.queueFromCurrent(currentSongState.queue.value, currentId))
+                .map { item ->
+                    val song = trackById[item.mediaId]
+                    item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon()
+                        .setExtras(android.os.Bundle().apply {
+                            putString(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE,
+                                getString(if (song?.id == currentId) R.string.car_playing_now else R.string.car_up_next))
+                        }).build()).build()
+                }
+        }
         parentId == CarBrowsePolicy.CONTINUE ->
             registerTracks(parentId, continueCarTracks())
         parentId == CarBrowsePolicy.FOR_YOU ->
             CarBrowsePolicy.recommendations(carHomeFeed(), mixesOnly = false).map(::carItem)
         parentId == CarBrowsePolicy.MIXES ->
             CarBrowsePolicy.recommendations(carHomeFeed(), mixesOnly = true).map(::carItem)
-        parentId == CarBrowsePolicy.RECENT -> recentCarEntries().map(::carItem)
+        parentId == CarBrowsePolicy.RECENT || parentId == CarBrowsePolicy.RECENTS -> recentCarEntries().map(::carItem)
         parentId == CarBrowsePolicy.RECENT_RADIOS -> recentRadioEntries().map(::carItem)
         parentId == CarBrowsePolicy.LIBRARY -> CarBrowsePolicy.library().map(::carItem)
         parentId == NODE_LIKED ->
@@ -1141,10 +1155,26 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
+    private fun browseStyleExtras() = android.os.Bundle().apply {
+        putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM)
+        putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE, MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM)
+    }
+
     private fun carItem(entry: CarBrowsePolicy.Entry): MediaItem = MediaItem.Builder().setMediaId(entry.id)
         .setMediaMetadata(MediaMetadata.Builder().setTitle(entry.title).setSubtitle(entry.subtitle)
             .setIsBrowsable(!entry.playable).setIsPlayable(entry.playable)
-            .apply { if (entry.artwork.isNotBlank()) setArtworkUri(android.net.Uri.parse(entry.artwork)) }.build())
+            .setExtras(browseStyleExtras())
+            .apply {
+                val icon = when (entry.id) {
+                    CarBrowsePolicy.HOME -> R.drawable.ic_home_filled
+                    CarBrowsePolicy.RECENTS -> R.drawable.ic_car_recents
+                    CarBrowsePolicy.BROWSE -> R.drawable.ic_view_grid
+                    CarBrowsePolicy.LIBRARY -> R.drawable.ic_library_big
+                    else -> null
+                }
+                if (entry.artwork.isNotBlank()) setArtworkUri(android.net.Uri.parse(entry.artwork))
+                else if (icon != null) setArtworkUri(android.net.Uri.parse("android.resource://$packageName/$icon"))
+            }.build())
         .build().also { browseById[entry.id] = it }
 
     private fun folder(id: String, title: String, coverUri: String = ""): MediaItem =
@@ -1155,6 +1185,7 @@ class PlaybackService : MediaLibraryService() {
                     .setTitle(title)
                     .setIsBrowsable(true)
                     .setIsPlayable(false)
+                    .setExtras(browseStyleExtras())
                     .apply { if (coverUri.isNotBlank()) setArtworkUri(android.net.Uri.parse(coverUri)) }
                     .build(),
             )
@@ -1170,9 +1201,7 @@ class PlaybackService : MediaLibraryService() {
                     .setArtist(song.singer)
                     .setSubtitle(song.singer)
                     .setDescription(song.singer)
-                    .setAlbumTitle(collectionByTrackId[id]?.let {
-                        CarPlaybackContextPolicy.title(it, song.title)
-                    } ?: song.album)
+                    .setAlbumTitle(song.album)
                     .setSupportedCommands(listOf(addToQueueCommand.customAction))
                     .setIsBrowsable(false)
                     .setIsPlayable(true)

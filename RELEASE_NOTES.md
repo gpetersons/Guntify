@@ -1,21 +1,23 @@
-# Sprotify 1.0.0 Beta 9 — update build 11
+# Sprotify 1.0.0 Beta 12
 
-This reissues the Beta 9 display version with Android version code 11. Phones with earlier Beta 9 builds can update in place, while the app continues to show `1.0.0-beta.9`.
+## Android Auto
 
-## Android Auto playback and queue
+- Four browsable top-level tabs: Home, Recents, Browse and Library, with tab icons. Existing recommendations, mixes, radios, liked songs, playlists, albums and downloads remain reachable.
+- Home's Playing queue shows the current song followed by upcoming songs, with Playing now / Up next group hints. It refreshes when the current track, queue metadata or playback source changes. Selecting a song still uses the existing stream resolver and shared phone queue.
+- Collection artwork uses grid hints and songs use list hints. The car host decides the final presentation.
+- Track metadata contains the actual album instead of the playlist or radio name, including preloaded upcoming tracks. Playback source is supplied separately as playlist metadata and the Playing queue subtitle.
+- Keeps the existing Add to queue command for clients that support media-item actions. Its visibility depends on the host.
 
-- Restores the proven track-selection path through `SongPlayer`, so selecting a track in Android Auto uses the app's normal stream resolver and starts playback.
-- Adds an explicit **Ievietot rindā** action to playable track rows. It adds that song to the shared in-app queue without interrupting the current track.
-- Keeps Android Auto's regular track selection as **play now**.
+## Scope and verification
+
+Uses the existing MediaLibraryService with Media3 1.5.1; no Car App API 8 dependency. The native host Queue still reflects the audio engine's limited timeline. This release improves the browse queue; a full logical-session queue adapter and shared transition refactor are deferred.
+
+The build workflow runs Android unit tests, Spotify tests, desktop UI tests, debug assembly and release lint. The publish workflow repeats tests, builds the signed APK and verifies its signature and package/version before publishing. DHU and BYD playback have not been tested for this release.
+
+Manual checks: open all four tabs, play a playlist and radio, advance tracks with Playing queue open, add a search result to the queue without interrupting audio, verify different albums across a preloaded transition, then reconnect Android Auto. Also verify phone and Spotify web playback.
 
 ## Installation
 
-- Signed `Sprotify.apk`, same package and signing identity as earlier betas.
-- `versionCode 11`, `versionName 1.0.0-beta.9`.
-- Package `lv.guntify.player` unchanged; install over Beta 8 or Beta 9 without uninstalling. The higher build code enables the in-app updater to offer this build.
+`versionCode 12`, `versionName 1.0.0-beta.12`, package `lv.guntify.player`. The existing signing identity is retained, allowing an in-place update from build 11.
 
-## Checks
-
-GitHub Actions builds the signed APK and runs the repository's unit, Spotify and desktop UI checks. Please verify phone audio first, then confirm in Android Auto that **Ievietot rindā** leaves the current song playing and places the selected song next.
-
-Credits, GPLv3 license and source attribution remain in `LICENSE`, `NOTICE` and `SOURCE.md`.
+Release assets include signed `Sprotify.apk`, source archive, checksums, license and attribution. See `LICENSE`, `NOTICE` and `SOURCE.md`.

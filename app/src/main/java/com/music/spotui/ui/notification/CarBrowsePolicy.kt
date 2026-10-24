@@ -8,6 +8,9 @@ import java.net.URLEncoder
 
 /** Stable car browse IDs; collection history is independent of Home visibility preferences. */
 object CarBrowsePolicy {
+    const val HOME = "home"
+    const val BROWSE = "browse"
+    const val RECENTS = "recents"
     const val RECENT = "recent"
     const val RECENT_RADIOS = "recent-radios"
     const val LIBRARY = "library"
@@ -21,18 +24,30 @@ object CarBrowsePolicy {
     fun radioStation(id: String): String? = if (!id.startsWith("radio/")) null else
         runCatching { URLDecoder.decode(id.removePrefix("radio/"), "UTF-8").takeIf { it.isNotBlank() } }.getOrNull()
     fun trackId(parent: String, song: SongsModel) = "song/${encode(parent)}/${song.id}"
-    /** IDs stay stable when a new Radio starts on the phone. */
-    fun root(activeRadioName: String? = null) = listOf(
-        Entry(PLAYING_QUEUE, activeRadioName?.takeIf { it.isNotBlank() }?.let { "Playing: $it" } ?: "Playing queue"),
-        Entry(CONTINUE, "Continue listening"),
-        Entry(FOR_YOU, "Recommended for you"),
-        Entry(MIXES, "Made for you"),
-        Entry(RECENT, "Recently played"),
-        Entry(RECENT_RADIOS, "Your radios"),
-        Entry("liked", "Liked Songs"),
-        Entry(LIBRARY, "Library"),
+    /** Four stable, browsable tabs supported by the standard car media host. */
+    fun root() = listOf(
+        Entry(HOME, "Home"), Entry(RECENTS, "Recents"),
+        Entry(BROWSE, "Browse"), Entry(LIBRARY, "Library"),
     )
-    fun library() = listOf(Entry("playlists", "Playlists"), Entry("albums", "Albums"), Entry("downloads", "Downloads"))
+    fun home(source: String) = listOf(
+        Entry(PLAYING_QUEUE, "Playing queue", subtitle = source),
+        Entry(CONTINUE, "Continue listening"), Entry(FOR_YOU, "Recommended for you"),
+    )
+    fun browse() = listOf(Entry(MIXES, "Made for you"), Entry(RECENT_RADIOS, "Your radios"))
+    fun library() = listOf(Entry("liked", "Liked Songs"), Entry("playlists", "Playlists"),
+        Entry("albums", "Albums"), Entry("downloads", "Downloads"))
+
+    /** Match the actual resolved/preloaded query, never the collection display title. */
+    fun albumForQuery(songs: List<SongsModel>, query: String, fallback: String): String =
+        songs.firstOrNull { it.url == query }?.album ?: fallback
+
+    /** Browse the current track and remaining queue, without changing playback order.
+     * If the saved current ID is missing, show the whole queue as upcoming. */
+    fun queueFromCurrent(songs: List<SongsModel>, currentId: Int): List<SongsModel> {
+        val queue = songs.distinctBy { it.id }
+        val index = queue.indexOfFirst { it.id == currentId }
+        return queue.drop(index.coerceAtLeast(0))
+    }
     /** Spotify supplies these as playlists, without a reliable Radio type flag.
      * Only radio-named playlist titles qualify; this does not assert Spotify ownership. */
     fun recentRadios(items: List<HomeItem>, limit: Int = 40): List<Entry> = recent(items.filter {

@@ -39,9 +39,7 @@ class WebMediaPlayer(
             .setSubtitle(artist)
             .setDescription(artist)
             .apply {
-                currentSongState.collection.value?.let {
-                    setAlbumTitle(CarPlaybackContextPolicy.title(it, title))
-                }
+                setAlbumTitle(currentSongState.album.value)
                 if (cover.isNotBlank()) setArtworkUri(Uri.parse(cover))
             }
             .build()
@@ -82,6 +80,8 @@ class WebMediaPlayer(
                 SpotifyWebPlayer.isPlaying,
                 Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST,
             )
+            .setPlaylistMetadata(MediaMetadata.Builder()
+                .setTitle(CarPlaybackContextPolicy.title(currentSongState.collection.value, title)).build())
             .setPlaylist(listOf(itemData))
             .setCurrentMediaItemIndex(0)
             .setContentPositionMs(posMs)
