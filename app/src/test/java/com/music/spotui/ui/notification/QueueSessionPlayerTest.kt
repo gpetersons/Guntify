@@ -1,0 +1,91 @@
+package com.music.spotui.ui.notification
+
+import android.os.Looper
+import androidx.media3.common.*
+import androidx.media3.common.util.UnstableApi
+import com.music.spotui.data.entity.SongsModel
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.Shadows.shadowOf
+
+@RunWith(RobolectricTestRunner::class)
+@Config(manifest = Config.NONE, sdk = [28])
+@UnstableApi
+class QueueSessionPlayerTest {
+    private fun song(id: Int) = SongsModel(id, "Song $id", "Album $id", "Artist", "https://example.com/$id.jpg", "query$id", durationMs = 200_000)
+    private class Engine : SimpleBasePlayer(Looper.getMainLooper()) {
+        var value = State.Builder().setAvailableCommands(Player.Commands.EMPTY)
+            .setPlaylist(listOf(MediaItemData.Builder("stream").setDurationUs(200_000_000).build()))
+            .setCurrentMediaItemIndex(0).setContentPositionMs(12000)
+            .setPlayWhenReady(true, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+            .setPlaybackState(Player.STATE_READY).build()
+        override fun getState() = value
+        fun change() = invalidateState()
+    }
+    @Test fun fullQueuePublishesCoherentTimelineAndIndexedSelectionWithoutChangingEngine() {
+        val songs = listOf(song(1), song(2), song(3))
+        var state = QueueSessionPlayer.Snapshot(songs, 1, "Radio", true, true)
+        var selected = -1
+        val engine = Engine()
+        val player = QueueSessionPlayer(Looper.getMainLooper(), { state }, { selected = it }, {}, {}, {})
+        player.bind(engine)
+        assertEquals(3, player.mediaItemCount)
+        assertEquals("Radio", player.playlistMetadata.title)
+        assertEquals(0, player.currentMediaItemIndex)
+        player.seekToDefaultPosition(2)
+        assertEquals(3, selected)
+        assertEquals(1, engine.mediaItemCount)
+        assertEquals("stream", engine.currentTimeline.getWindow(0, Timeline.Window()).uid)
+        player.setMediaItems(emptyList())
+        assertEquals(3, player.mediaItemCount)
+        var countInEvent = 0
+        player.addListener(object : Player.Listener {
+            override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+                countInEvent = timeline.windowCount
+                assertEquals(player.mediaItemCount, countInEvent)
+            }
+        })
+        state = state.copy(songs = songs + song(4))
+        player.refresh()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(4, countInEvent)
+        assertEquals(1, engine.mediaItemCount)
+        player.release()
+    }
+    @Test fun newSelectionImmediatelyReplacesOldArtworkAndPositionWhileResolving() {
+        var state = QueueSessionPlayer.Snapshot(listOf(song(1), song(2)), 1, "Album", true, true)
+        val player = QueueSessionPlayer(Looper.getMainLooper(), { state }, {}, {}, {}, {})
+        player.bind(Engine())
+        assertEquals("Song 1", player.mediaMetadata.title)
+        state = state.copy(currentId = 2, engineMatches = false)
+        player.refresh()
+        assertEquals("Song 2", player.mediaMetadata.title)
+        assertEquals("https://example.com/2.jpg", player.mediaMetadata.artworkUri.toString())
+        assertEquals(0L, player.currentPosition)
+        assertEquals(Player.STATE_BUFFERING, player.playbackState)
+        assertEquals(1, player.currentMediaItemIndex)
+        player.release()
+    }
+    @Test fun engineSuppressionErrorsAndSwapsReachTheSessionWithoutReplacingQueue() {
+        val state = QueueSessionPlayer.Snapshot(listOf(song(1), song(2)), 1, "Playlist", true, true)
+        val player = QueueSessionPlayer(Looper.getMainLooper(), { state }, {}, {}, {}, {})
+        val first = Engine()
+        player.bind(first)
+        first.value = first.value.buildUpon().setPlaybackSuppressionReason(Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS).build()
+        first.change(); shadowOf(Looper.getMainLooper()).idle()
+        assertFalse(player.isPlaying)
+        val second = Engine()
+        player.bind(second)
+        assertTrue(player.isPlaying)
+        assertEquals(2, player.mediaItemCount)
+        second.value = second.value.buildUpon().setPlaybackState(Player.STATE_IDLE)
+            .setPlayerError(PlaybackException("failure", null, PlaybackException.ERROR_CODE_IO_UNSPECIFIED)).build()
+        second.change(); shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(Player.STATE_IDLE, player.playbackState)
+        assertNotNull(player.playerError)
+        player.release()
+    }
+}

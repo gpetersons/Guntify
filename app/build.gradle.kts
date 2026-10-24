@@ -17,8 +17,8 @@ android {
         applicationId = "lv.guntify.player"
         minSdk = 26
         targetSdk = 34
-        versionCode = 12
-        versionName = "1.0.0-beta.12"
+        versionCode = 13
+        versionName = "1.0.0-beta.13"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -98,6 +98,7 @@ dependencies {
     implementation(project(":spotify"))
     implementation(project(":innertube"))
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
