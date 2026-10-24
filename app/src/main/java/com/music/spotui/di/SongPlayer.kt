@@ -1633,6 +1633,14 @@ object SongPlayer {
         recoveryAllowed = true
         onPlaybackRequestChanged?.invoke()
         if (webPlaybackActive()) { SpotifyWebPlayer.resume(); return }
+        // Media3 follows track selection with Play. Never resume the retained OLD
+        // stream while the selected track's resolver is still running.
+        if (playbackResolveJob?.isActive == true) return
+        val selectedQuery = boundState?.queue?.value?.firstOrNull { it.id == boundState?.songId?.value }?.url
+        if (selectedQuery != null && player?.currentMediaItem?.mediaId != selectedQuery) {
+            appCtx?.let { playSong(selectedQuery, it) }
+            return
+        }
         // Fresh launch: nothing loaded yet — resume the restored session track.
         if ((player?.mediaItemCount ?: 0) == 0 || player?.playbackState == Player.STATE_IDLE) {
             val q = restoreQuery ?: boundState?.queue?.value?.firstOrNull { it.id == boundState?.songId?.value }?.url

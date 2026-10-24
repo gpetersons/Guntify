@@ -312,7 +312,7 @@ class PlaybackService : MediaLibraryService() {
         val projection = QueueSessionPlayer(mainLooper, snapshot = {
             val current = selectedCarTrack()
             QueueSessionPlayer.Snapshot(currentSongState.queue.value, currentSongState.songId.value,
-                playingSourceName(), currentSongState.playingState.value,
+                playingSourceName(), currentSongState.playingState.value || SongPlayer.isResolvingAudio(),
                 if (showingWeb) webPlayer?.currentMediaItem?.mediaId == current?.id?.toString()
                 else SongPlayer.exoPlayer?.currentMediaItem?.mediaId == current?.url)
         }, onSelect = ::selectQueueSong, onSeek = SongPlayer::seekTo,
