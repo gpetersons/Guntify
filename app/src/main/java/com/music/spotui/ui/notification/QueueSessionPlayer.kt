@@ -59,7 +59,11 @@ class QueueSessionPlayer(
             val metadata = MediaMetadata.Builder().setTitle(song.title).setDisplayTitle(song.title)
                 .setArtist(song.singer).setSubtitle(song.singer).setAlbumTitle(song.album)
                 .setIsPlayable(true).setIsBrowsable(false)
-                .apply { if (song.coverUri.isNotBlank()) setArtworkUri(Uri.parse(song.coverUri)) }.build()
+                // A non-null URI also invalidates Media3 legacy's pending artwork callback
+                // when switching from remote artwork to a track with no cover.
+                .setArtworkUri(Uri.parse(song.coverUri.ifBlank {
+                    "android.resource://${com.music.spotui.BuildConfig.APPLICATION_ID}/drawable/placeholder"
+                })).build()
             val duration = if (i == index && matched && p!!.duration > 0) p.duration
                 else song.durationMs.toLong().takeIf { it > 0 } ?: C.TIME_UNSET
             MediaItemData.Builder(song.id)

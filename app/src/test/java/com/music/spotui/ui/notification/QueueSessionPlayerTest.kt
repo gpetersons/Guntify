@@ -75,6 +75,10 @@ class QueueSessionPlayerTest {
         assertEquals(0L, player.currentPosition)
         assertEquals(Player.STATE_BUFFERING, player.playbackState)
         assertEquals(1, player.currentMediaItemIndex)
+        state = state.copy(songs = listOf(song(1), song(2).copy(coverUri = "")))
+        player.refresh()
+        assertEquals("android.resource", player.mediaMetadata.artworkUri?.scheme)
+        assertEquals("Song 2", player.mediaMetadata.title)
         player.release()
     }
     @Test fun engineSuppressionErrorsAndSwapsReachTheSessionWithoutReplacingQueue() {
