@@ -11,7 +11,7 @@ plugins {
 
 android {
     namespace = "com.music.spotui"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "lv.guntify.player"
@@ -19,7 +19,7 @@ android {
         targetSdk = 34
         // Reissue the Beta 9 display version with a higher build code so phones
         // that installed the withdrawn Beta 9 can update in place.
-        versionCode = 10
+        versionCode = 11
         versionName = "1.0.0-beta.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -129,12 +129,12 @@ dependencies {
     implementation("androidx.palette:palette-ktx:1.0.0")
 
     //exoplayer
-    implementation("androidx.media3:media3-exoplayer:1.3.1")
-    implementation("androidx.media3:media3-exoplayer-dash:1.3.1")
+    implementation("androidx.media3:media3-exoplayer:1.5.1")
+    implementation("androidx.media3:media3-exoplayer-dash:1.5.1")
     // PlayerView for the Spotify Canvas looping video on the now-playing screen.
-    implementation("androidx.media3:media3-ui:1.3.1")
+    implementation("androidx.media3:media3-ui:1.5.1")
     // media session + system media notification (lock screen / notification center)
-    implementation("androidx.media3:media3-session:1.3.1")
+    implementation("androidx.media3:media3-session:1.5.1")
 
     //Storage Access Framework folder enumeration (local music import)
     implementation("androidx.documentfile:documentfile:1.0.1")
