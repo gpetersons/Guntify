@@ -17,10 +17,10 @@ android {
         applicationId = "lv.guntify.player"
         minSdk = 26
         targetSdk = 34
-        // Rebuilt Beta 8 from stable Beta 7; no Car App Library dependency.
-        // Same signing identity and package for an in-place update.
-        versionCode = 8
-        versionName = "1.0.0-beta.8"
+        // Reissue the Beta 9 display version with a higher build code so phones
+        // that installed the withdrawn Beta 9 can update in place.
+        versionCode = 10
+        versionName = "1.0.0-beta.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

@@ -24,11 +24,15 @@ object UpdatePolicy {
     private fun parseOne(j: JSONObject): AppRelease? {
         if (j.optBoolean("draft")) return null
         val tag = j.getString("tag_name")
-        val beta = Regex("^v?([0-9]+(?:\\.[0-9]+){1,3})-beta\\.([0-9]+)$").matchEntire(tag)
+        // A withdrawn beta can be reissued under its original display version
+        // while carrying a higher Android build number for in-place updates.
+        // Example: v1.0.0-beta.9-build.10 has versionCode 10 and displays beta.9.
+        val beta = Regex("^v?([0-9]+(?:\\.[0-9]+){1,3})-beta\\.([0-9]+)(?:-build\\.([0-9]+))?$").matchEntire(tag)
         val stable = Regex("^v?([0-9]+(?:\\.[0-9]+){1,3})-build-([0-9]+)$").matchEntire(tag)
         val match = beta ?: stable ?: error("The release does not contain a supported build number.")
         if (j.optBoolean("prerelease") != (beta != null)) return null
-        val code = match.groupValues[2].toLongOrNull()?.takeIf { it > 0 }
+        val betaBuild = beta?.groupValues?.get(3)?.takeIf { it.isNotBlank() }
+        val code = (betaBuild ?: match.groupValues[2]).toLongOrNull()?.takeIf { it > 0 }
             ?: error("Invalid build number.")
         val version = if (beta != null) match.groupValues[1] + "-beta." + match.groupValues[2]
             else match.groupValues[1]

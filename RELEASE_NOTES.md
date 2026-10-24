@@ -1,28 +1,26 @@
-# Sprotify 1.0.0 Beta 8 — corrected legacy Android Auto release
+# Sprotify 1.0.0 Beta 9 — update build 10
 
-This is a **replacement Beta 8 APK**, rebuilt from the stable Beta 7 Android Auto media player. The previous Beta 8 introduced a Car App API 8 template that could show a source header but failed to load playback on the tested head unit. That experimental template has been fully removed.
+This reissues the Beta 9 display version with Android version code 10. The higher code lets phones that installed the withdrawn Beta 9 update in place, while the app continues to show `1.0.0-beta.9`.
 
-## Only two new features
+## Android Auto queue fix
 
-1. **Three Shuffle modes from Android Auto:** OFF (plain icon) → ON (small dot) → SMART (dot + star) → OFF. Android Auto calls the same `CurrentSongState.cycleShuffle()` as the phone, so both controls remain in sync. Radio and Downloads keep the phone's existing OFF/ON-only behavior.
-2. **Playback source information:** Radio station, playlist, album and Liked Songs names are exposed through standard Media3 album metadata and Android Auto browse-root/playing-queue titles. The current song title and artist are preserved. For example `Endless radio` or `Dziesmas, kas tev patīk`. **The Android Auto legacy Now Playing header is controlled by the host:** the source name is not guaranteed to appear exactly in the top bar, despite the metadata being available.
+- Android Auto's native `Ievietot rindā` action now follows the media-session add-item path and adds the selected track to the shared in-app queue after the current track. It does not replace the queue or start the selected track immediately.
+- Selecting a track to play still uses the set-item path and starts that track.
+- Multiple manual additions retain their order ahead of the remaining queue.
 
-## Restored / deliberately unchanged
+## Deliberately unchanged
 
-- Stable **Beta 7 MediaLibraryService**, ExoPlayer and Spotify Web playback.
-- Original Android Auto Now Playing UI and its built-in `Ievietot rindā` queue button **with text**.
-- Radio button, Repeat, Favorites, artist/title, artwork, fast Next, queue and playback restoration.
-- **No Car App API 8**, Car App Library service or related dependencies/manifest permissions.
+- Same package, signing identity, player and update path.
+- Other Android Auto controls, browse screens, metadata and playback behavior.
 
 ## Installation
 
-- `Sprotify.apk`, signed using the same key as Beta 7.
-- `versionCode 8`, `versionName 1.0.0-beta.8`.
-- Package `lv.guntify.player` unchanged; install over Beta 7 or the previous Beta 8 **without uninstalling**.
-- Because this replaces an APK with the **same Beta 8 version number**, built-in update checks may not detect it. Download and install this corrected APK manually.
+- `Sprotify.apk`, signed with the same key as earlier Sprotify betas.
+- `versionCode 10`, `versionName 1.0.0-beta.9`.
+- Package `lv.guntify.player` unchanged; install over Beta 8 or the withdrawn Beta 9 **without uninstalling**. The higher build code enables the in-app updater to offer this build.
 
 ## Checks
 
-GitHub Actions run unit tests, desktop UI checks and verify the signed APK package and version. Physical head-unit testing is still needed for source-label placement, Smart Shuffle indicator visibility and playback.
+GitHub Actions run unit tests, desktop UI checks and verify the signed APK package and version. Please confirm on Android Auto that `Ievietot rindā` leaves the current song playing and places the selected song next in the shared queue.
 
 Credits, GPLv3 license and source attribution remain in `LICENSE`, `NOTICE` and `SOURCE.md`.
